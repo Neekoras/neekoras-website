@@ -26,7 +26,7 @@
         /* HERO — particle network IS the hero */
         .hero { position:relative; min-height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
         .hero canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
-        #bgSnake { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+        #bgSnake { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; opacity:0.4; }
         .hero-content { position:relative; z-index:2; text-align:center; pointer-events:none; }
         .hero h1 { font-family:'JetBrains Mono',monospace; font-size:clamp(2.5rem,8vw,5rem); font-weight:700; letter-spacing:-3px; margin-bottom:0.5rem; }
         .hero h1 span { color:var(--accent); }
@@ -195,131 +195,148 @@
 })();
 
 
-// ── BG SNAKE: snake eating dots that spell "neekoras" ──
+// ── BG SNAKE: contribution grid style ──
 (function(){
     const c=document.getElementById('bgSnake'),ctx=c.getContext('2d');
-    let w,h,cols,rows,cell=14,snake,dots,dir,lastMove=0,speed=120;
+    let w,h,cols,rows,cell=12,gap=3;
+    let grid,snake,dir,food,lastMove=0,speed=100;
 
-    // Pixel font for "neekoras" — each letter is 5x7 grid
-    const FONT={
-'n':[0,1,1,1,0,1,0,0,0,1,1,0,0,1,1,1,0,1,1,1,1,0,0,0,1,1,0,0,1,1,1,0,1,1,0],
-'e':[1,1,1,1,1,1,0,0,0,0,1,1,1,1,0,1,0,0,0,0,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1],
-'e':[1,1,1,1,1,1,0,0,0,0,1,1,1,1,0,1,0,0,0,0,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1],
-'k':[1,0,0,1,1,1,0,0,1,0,1,1,0,0,0,1,0,1,1,0,1,0,0,1,0,1,0,0,1,1,1,0,0,1,1],
-'o':[0,1,1,1,0,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1,0,1,1,1,0],
-'r':[1,1,1,1,0,1,0,0,1,0,1,1,1,0,0,1,0,0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0],
-'a':[0,1,1,1,0,1,0,0,0,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1],
-'s':[0,1,1,1,1,1,0,0,0,0,1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,0,0,0,0,1,1,1,1,0,0]
-    };
-
-    function getWordDots(){
-        const word='neekoras';
-        const letterW=5,letterH=7,gap=1;
-        const totalW=word.length*(letterW+gap)-gap;
-        const offsetX=Math.floor((cols-totalW)/2);
-        const offsetY=Math.floor((rows-letterH)/2);
-        const result=[];
-        let cx=0;
-        for(const ch of word){
-            const glyph=FONT[ch];
-            if(!glyph)continue;
-            for(let gy=0;gy<letterH;gy++){
-                for(let gx=0;gx<letterW;gx++){
-                    if(glyph[gy*letterW+gx]){
-                        result.push({x:offsetX+cx+gx,y:offsetY+gy,eaten:false});
-                    }
-                }
-            }
-            cx+=letterW+gap;
-        }
-        return result;
+    function resize(){
+        w=c.width=window.innerWidth;
+        h=c.height=window.innerHeight;
+        cols=Math.floor(w/(cell+gap));
+        rows=Math.floor(h/(cell+gap));
     }
-
-    function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight;cols=Math.floor(w/cell);rows=Math.floor(h/cell);}
 
     function init(){
         resize();
-        const sx=Math.floor(cols/2)-10,sy=Math.floor(rows/2)+5;
-        snake=[{x:sx,y:sy},{x:sx-1,y:sy},{x:sx-2,y:sy}];
+        // Build grid — all cells dim
+        grid=[];
+        for(let y=0;y<rows;y++){
+            for(let x=0;x<cols;x++){
+                grid.push({x,y,lit:0}); // lit: 0=empty, 1-4=lit levels
+            }
+        }
+        // Start snake somewhere
+        const sx=Math.floor(cols*0.3),sy=Math.floor(rows*0.5);
+        snake=[];
+        for(let i=0;i<8;i++) snake.push({x:sx-i,y:sy});
         dir={x:1,y:0};
-        speed=120;
-        dots=getWordDots();
+        // Place food
+        placeFood();
+    }
+
+    function placeFood(){
+        let tries=0;
+        while(tries<100){
+            const fx=Math.floor(Math.random()*cols);
+            const fy=Math.floor(Math.random()*rows);
+            if(!snake.some(s=>s.x===fx&&s.y===fy)){
+                food={x:fx,y:fy};return;
+            }
+            tries++;
+        }
+        food={x:0,y:0};
+    }
+
+    function getCell(x,y){
+        if(x<0||x>=cols||y<0||y>=rows)return null;
+        return grid[y*cols+x];
+    }
+
+    // AI: wander randomly, prefer food direction with some randomness
+    function pickDir(){
+        const head=snake[0];
+        // All possible directions (no reverse)
+        const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+        const valid=dirs.filter(d=>{
+            if(d.x===-dir.x&&d.y===-dir.y)return false;
+            const nx=head.x+d.x,ny=head.y+d.y;
+            if(nx<0||nx>=cols||ny<0||ny>=rows)return false;
+            if(snake.some(s=>s.x===nx&&s.y===ny))return false;
+            return true;
+        });
+        if(valid.length===0)return;
+
+        // 60% chance go toward food, 40% random
+        if(food&&Math.random()<0.6){
+            const dx=food.x-head.x,dy=food.y-head.y;
+            const toward=valid.filter(d=>{
+                if(dx>0&&d.x>0)return true;
+                if(dx<0&&d.x<0)return true;
+                if(dy>0&&d.y>0)return true;
+                if(dy<0&&d.y<0)return true;
+                return false;
+            });
+            if(toward.length>0){dir=toward[Math.floor(Math.random()*toward.length)];return;}
+        }
+        dir=valid[Math.floor(Math.random()*valid.length)];
     }
 
     init();
-    window.addEventListener('resize',()=>{resize();dots=getWordDots();});
-
-    function pickDir(){
-        const head=snake[0];
-        let nearest=null,best=Infinity;
-        dots.forEach(d=>{
-            if(d.eaten)return;
-            const dist=Math.abs(d.x-head.x)+Math.abs(d.y-head.y);
-            if(dist<best){best=dist;nearest=d;}
-        });
-        if(!nearest){
-            // All eaten — respawn dots
-            dots=getWordDots();
-            return;
-        }
-        const dx=nearest.x-head.x,dy=nearest.y-head.y;
-        let candidates=[];
-        if(dx>0)candidates.push({x:1,y:0});
-        if(dx<0)candidates.push({x:-1,y:0});
-        if(dy>0)candidates.push({x:0,y:1});
-        if(dy<0)candidates.push({x:0,y:-1});
-        candidates.push({x:0,y:1},{x:0,y:-1},{x:1,y:0},{x:-1,y:0});
-        for(const cd of candidates){
-            if(cd.x===-dir.x&&cd.y===-dir.y)continue;
-            const nx=head.x+cd.x,ny=head.y+cd.y;
-            if(nx<0||nx>=cols||ny<0||ny>=rows)continue;
-            if(snake.some(s=>s.x===nx&&s.y===ny))continue;
-            dir=cd;return;
-        }
-    }
+    window.addEventListener('resize',()=>{resize();});
 
     function frame(t){
         requestAnimationFrame(frame);
         if(t-lastMove<speed)return;
         lastMove=t;
+
         pickDir();
+
         const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+        // Wrap
         if(head.x<0)head.x=cols-1;if(head.x>=cols)head.x=0;
         if(head.y<0)head.y=rows-1;if(head.y>=rows)head.y=0;
+
+        // Hit self = restart
         if(snake.some(s=>s.x===head.x&&s.y===head.y)){init();return;}
+
         snake.unshift(head);
+
+        // Light up the cell the head enters
+        const cell=getCell(head.x,head.y);
+        if(cell)cell.lit=Math.min(cell.lit+1,4);
+
+        // Eating food?
         let ate=false;
-        dots.forEach(d=>{if(!d.eaten&&d.x===head.x&&d.y===head.y){d.eaten=true;ate=true;}});
+        if(food&&head.x===food.x&&head.y===food.y){
+            ate=true;
+            placeFood();
+            if(snake.length>30){
+                // Trim snake occasionally so it doesn't get too long
+                snake.pop();
+            }
+        }
         if(!ate)snake.pop();
-        if(dots.every(d=>d.eaten)){
-            dots=getWordDots();
+
+        // Fade lit cells slowly
+        grid.forEach(g=>{if(g.lit>0&&!snake.some(s=>s.x===g.x&&s.y===g.y))g.lit=Math.max(g.lit-0.005,0);});
+
+        // Draw
+        ctx.clearRect(0,0,w,h);
+
+        // Grid cells
+        const colors=['#1a1a1f','#1e3a2a','#166534','#10b981','#34d399'];
+        grid.forEach(g=>{
+            const px=g.x*(cell+gap),py=g.y*(cell+gap);
+            ctx.fillStyle=colors[Math.floor(g.lit)];
+            ctx.fillRect(px,py,cell,cell);
+        });
+
+        // Food dot — subtle pulse
+        if(food){
+            const px=food.x*(cell+gap),py=food.y*(cell+gap);
+            ctx.fillStyle='rgba(16,185,129,0.5)';
+            ctx.fillRect(px,py,cell,cell);
         }
 
-        ctx.clearRect(0,0,w,h);
-        // Draw uneaten dots
-        dots.forEach(d=>{
-            if(d.eaten)return;
-            ctx.beginPath();
-            ctx.arc(d.x*cell+cell/2,d.y*cell+cell/2,2.8,0,Math.PI*2);
-            ctx.fillStyle='rgba(16,185,129,0.2)';
-            ctx.fill();
-        });
-        // Draw snake
+        // Snake body — slightly brighter than lit cells
         snake.forEach((s,i)=>{
-            const a=1-i/snake.length*0.8;
-            const r=Math.max(3.5-i*0.06,1.5);
-            ctx.beginPath();
-            ctx.arc(s.x*cell+cell/2,s.y*cell+cell/2,r,0,Math.PI*2);
-            ctx.fillStyle=`rgba(16,185,129,${a*0.45})`;
-            ctx.fill();
+            const px=s.x*(cell+gap),py=s.y*(cell+gap);
+            const a=1-i/snake.length*0.6;
+            ctx.fillStyle=`rgba(52,211,153,${a})`;
+            ctx.fillRect(px,py,cell,cell);
         });
-        // Head brighter
-        if(snake.length){
-            ctx.beginPath();
-            ctx.arc(snake[0].x*cell+cell/2,snake[0].y*cell+cell/2,4,0,Math.PI*2);
-            ctx.fillStyle='rgba(16,185,129,0.55)';
-            ctx.fill();
-        }
     }
     requestAnimationFrame(frame);
 })();
