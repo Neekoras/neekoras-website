@@ -211,58 +211,86 @@
     for(let i=0;i<drops.length;i++){const ch=chars[Math.floor(Math.random()*chars.length)];const x=i*fs,y=drops[i]*fs;const dx=mx-x,dy=my-y,d=Math.sqrt(dx*dx+dy*dy);const bright=d<80?0.95:0.3;const char=d<80?String.fromCharCode(0x30A0+Math.random()*96):ch;ctx.fillStyle=`rgba(16,185,129,${bright})`;ctx.fillText(char,x,y);if(y>h&&Math.random()>0.975)drops[i]=0;else drops[i]+=0.5+Math.random()*0.5;}requestAnimationFrame(frame);}frame();
 })();
 
-// ── BG SNAKE: little snake eating dots in the hero ──
+// ── BG SNAKE: snake eating dots that spell "neekoras" ──
 (function(){
     const c=document.getElementById('bgSnake'),ctx=c.getContext('2d');
-    let w,h,cols,rows,cell=16,snake,dots,dir,timer,lastMove=0,speed=180;
+    let w,h,cols,rows,cell=14,snake,dots,dir,lastMove=0,speed=120;
+
+    // Pixel font for "neekoras" — each letter is 5x7 grid
+    const FONT={
+'n':[0,1,1,1,0,1,0,0,0,1,1,0,0,1,1,1,0,1,1,1,1,0,0,0,1,1,0,0,1,1,1,0,1,1,0],
+'e':[1,1,1,1,1,1,0,0,0,0,1,1,1,1,0,1,0,0,0,0,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1],
+'e':[1,1,1,1,1,1,0,0,0,0,1,1,1,1,0,1,0,0,0,0,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1],
+'k':[1,0,0,1,1,1,0,0,1,0,1,1,0,0,0,1,0,1,1,0,1,0,0,1,0,1,0,0,1,1,1,0,0,1,1],
+'o':[0,1,1,1,0,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1,0,1,1,1,0],
+'r':[1,1,1,1,0,1,0,0,1,0,1,1,1,0,0,1,0,0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0],
+'a':[0,1,1,1,0,1,0,0,0,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1],
+'s':[0,1,1,1,1,1,0,0,0,0,1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,0,0,0,0,1,1,1,1,0,0]
+    };
+
+    function getWordDots(){
+        const word='neekoras';
+        const letterW=5,letterH=7,gap=1;
+        const totalW=word.length*(letterW+gap)-gap;
+        const offsetX=Math.floor((cols-totalW)/2);
+        const offsetY=Math.floor((rows-letterH)/2);
+        const result=[];
+        let cx=0;
+        for(const ch of word){
+            const glyph=FONT[ch];
+            if(!glyph)continue;
+            for(let gy=0;gy<letterH;gy++){
+                for(let gx=0;gx<letterW;gx++){
+                    if(glyph[gy*letterW+gx]){
+                        result.push({x:offsetX+cx+gx,y:offsetY+gy,eaten:false});
+                    }
+                }
+            }
+            cx+=letterW+gap;
+        }
+        return result;
+    }
 
     function resize(){const r=c.parentElement.getBoundingClientRect();w=c.width=r.width;h=c.height=r.height;cols=Math.floor(w/cell);rows=Math.floor(h/cell);}
+
     function init(){
         resize();
-        // Start snake at a random spot
-        const sx=Math.floor(Math.random()*cols),sy=Math.floor(Math.random()*rows);
+        const sx=Math.floor(cols/2)-10,sy=Math.floor(rows/2)+5;
         snake=[{x:sx,y:sy},{x:sx-1,y:sy},{x:sx-2,y:sy}];
         dir={x:1,y:0};
-        timer=0;
-        speed=180;
-        // Scatter dots
-        dots=[];
-        for(let i=0;i<40;i++) dots.push({x:Math.floor(Math.random()*cols),y:Math.floor(Math.random()*rows),eaten:false});
+        speed=120;
+        dots=getWordDots();
     }
 
     init();
-    window.addEventListener('resize',resize);
+    window.addEventListener('resize',()=>{resize();dots=getWordDots();});
 
-    // AI: simple pathfinding toward nearest dot
     function pickDir(){
         const head=snake[0];
-        // Find nearest uneaten dot
         let nearest=null,best=Infinity;
         dots.forEach(d=>{
             if(d.eaten)return;
             const dist=Math.abs(d.x-head.x)+Math.abs(d.y-head.y);
             if(dist<best){best=dist;nearest=d;}
         });
-        if(!nearest)return; // all eaten, just wander
-
-        const dx=nearest.x-head.x, dy=nearest.y-head.y;
-        let candidates=[];
-        if(dx>0) candidates.push({x:1,y:0});
-        if(dx<0) candidates.push({x:-1,y:0});
-        if(dy>0) candidates.push({x:0,y:1});
-        if(dy<0) candidates.push({x:0,y:-1});
-
-        // Add perpendicular options for variety
-        candidates.push({x:0,y:1},{x:0,y:-1},{x:1,y:0},{x:-1,y:0});
-
-        // Filter: can't reverse, can't hit self, can't hit wall
-        for(const cd of candidates){
-            if(cd.x===-dir.x && cd.y===-dir.y) continue; // no reverse
-            const nx=head.x+cd.x, ny=head.y+cd.y;
-            if(nx<0||nx>=cols||ny<0||ny>=rows) continue;
-            if(snake.some(s=>s.x===nx&&s.y===ny)) continue;
-            dir=cd;
+        if(!nearest){
+            // All eaten — respawn dots
+            dots=getWordDots();
             return;
+        }
+        const dx=nearest.x-head.x,dy=nearest.y-head.y;
+        let candidates=[];
+        if(dx>0)candidates.push({x:1,y:0});
+        if(dx<0)candidates.push({x:-1,y:0});
+        if(dy>0)candidates.push({x:0,y:1});
+        if(dy<0)candidates.push({x:0,y:-1});
+        candidates.push({x:0,y:1},{x:0,y:-1},{x:1,y:0},{x:-1,y:0});
+        for(const cd of candidates){
+            if(cd.x===-dir.x&&cd.y===-dir.y)continue;
+            const nx=head.x+cd.x,ny=head.y+cd.y;
+            if(nx<0||nx>=cols||ny<0||ny>=rows)continue;
+            if(snake.some(s=>s.x===nx&&s.y===ny))continue;
+            dir=cd;return;
         }
     }
 
@@ -270,65 +298,42 @@
         requestAnimationFrame(frame);
         if(t-lastMove<speed)return;
         lastMove=t;
-
         pickDir();
-
         const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
-        // Wrap around edges
-        if(head.x<0)head.x=cols-1;
-        if(head.x>=cols)head.x=0;
-        if(head.y<0)head.y=rows-1;
-        if(head.y>=rows)head.y=0;
-
-        // Hit self? restart
+        if(head.x<0)head.x=cols-1;if(head.x>=cols)head.x=0;
+        if(head.y<0)head.y=rows-1;if(head.y>=rows)head.y=0;
         if(snake.some(s=>s.x===head.x&&s.y===head.y)){init();return;}
-
         snake.unshift(head);
-
-        // Check if eating a dot
         let ate=false;
-        dots.forEach(d=>{
-            if(!d.eaten && d.x===head.x && d.y===head.y){
-                d.eaten=true;
-                ate=true;
-            }
-        });
-
-        if(!ate) snake.pop();
-
-        // All dots eaten? respawn
+        dots.forEach(d=>{if(!d.eaten&&d.x===head.x&&d.y===head.y){d.eaten=true;ate=true;}});
+        if(!ate)snake.pop();
         if(dots.every(d=>d.eaten)){
-            dots=[];
-            for(let i=0;i<40;i++) dots.push({x:Math.floor(Math.random()*cols),y:Math.floor(Math.random()*rows),eaten:false});
+            dots=getWordDots();
         }
 
-        // Draw
         ctx.clearRect(0,0,w,h);
-
-        // Dots
+        // Draw uneaten dots
         dots.forEach(d=>{
             if(d.eaten)return;
             ctx.beginPath();
-            ctx.arc(d.x*cell+cell/2,d.y*cell+cell/2,2.5,0,Math.PI*2);
-            ctx.fillStyle='rgba(16,185,129,0.25)';
+            ctx.arc(d.x*cell+cell/2,d.y*cell+cell/2,2.8,0,Math.PI*2);
+            ctx.fillStyle='rgba(16,185,129,0.2)';
             ctx.fill();
         });
-
-        // Snake body with gradient fade
+        // Draw snake
         snake.forEach((s,i)=>{
             const a=1-i/snake.length*0.8;
-            const r=3.5-i*0.08;
+            const r=Math.max(3.5-i*0.06,1.5);
             ctx.beginPath();
-            ctx.arc(s.x*cell+cell/2,s.y*cell+cell/2,Math.max(r,1.5),0,Math.PI*2);
-            ctx.fillStyle=`rgba(16,185,129,${a*0.5})`;
+            ctx.arc(s.x*cell+cell/2,s.y*cell+cell/2,r,0,Math.PI*2);
+            ctx.fillStyle=`rgba(16,185,129,${a*0.45})`;
             ctx.fill();
         });
-
-        // Head slightly brighter
+        // Head brighter
         if(snake.length){
             ctx.beginPath();
             ctx.arc(snake[0].x*cell+cell/2,snake[0].y*cell+cell/2,4,0,Math.PI*2);
-            ctx.fillStyle='rgba(16,185,129,0.6)';
+            ctx.fillStyle='rgba(16,185,129,0.55)';
             ctx.fill();
         }
     }
