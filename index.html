@@ -31,6 +31,7 @@
         .hero h1 { font-family:'JetBrains Mono',monospace; font-size:clamp(2.5rem,8vw,5rem); font-weight:700; letter-spacing:-3px; margin-bottom:0.5rem; }
         .hero h1 span { color:var(--accent); }
         .hero .subtitle { font-size:1rem; color:var(--muted); }
+        .hero .subtitle .cursor { color:var(--accent); animation:blink 1s step-end infinite; }
         .hero .hint { position:absolute; bottom:2rem; left:50%; transform:translateX(-50%); color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:0.7rem; animation:bob 2s ease-in-out infinite; z-index:2; }
         @keyframes bob { 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(6px);} }
 
@@ -82,7 +83,7 @@
         <canvas id="heroCanvas"></canvas>
         <div class="hero-content">
             <h1>neeko<span>r</span>as</h1>
-            <div class="subtitle">developer</div>
+            <div class="subtitle"><span id="typed"></span><span class="cursor">|</span></div>
         </div>
         <div class="hint">↓ scroll</div>
     </section>
@@ -133,6 +134,13 @@
     function frame(){ctx.clearRect(0,0,w,h);particles.forEach(p=>{p.update();p.draw();});for(let i=0;i<particles.length;i++){for(let j=i+1;j<particles.length;j++){const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<100){ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(16,185,129,${0.15*(1-d/100)})`;ctx.stroke();}}}requestAnimationFrame(frame);}frame();
 })();
 
+
+// ── TYPING ──
+(function(){
+    const phrases=["developer","cybersecurity analyst","builder"];
+    let pi=0,ci=0,del=false;const el=document.getElementById('typed');
+    function type(){const p=phrases[pi];if(!del){el.textContent=p.substring(0,ci+1);ci++;if(ci===p.length){del=true;setTimeout(type,2000);return;}setTimeout(type,70);}else{el.textContent=p.substring(0,ci-1);ci--;if(ci===0){del=false;pi=(pi+1)%phrases.length;setTimeout(type,400);return;}setTimeout(type,35);}}type();
+})();
 // ── RIPPLES: full section background ──
 (function(){
     const c=document.getElementById('rippleCanvas'),ctx=c.getContext('2d');let w,h,ripples=[];
