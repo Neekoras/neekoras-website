@@ -59,13 +59,6 @@
         .synth-section canvas { width:min(600px,90vw); height:200px; cursor:pointer; border-radius:12px; }
         .synth-section .hint { color:var(--muted); font-size:0.7rem; font-family:'JetBrains Mono',monospace; margin-top:1rem; }
 
-        /* SNAKE SECTION */
-        .snake-section { position:relative; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; border-top:1px solid var(--border); }
-        .snake-section .label { font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--accent); text-transform:uppercase; letter-spacing:3px; margin-bottom:1.5rem; }
-        .snake-section canvas { width:min(500px,90vw); height:min(400px,60vh); border-radius:12px; border:1px solid var(--border); }
-        .snake-section .score-display { font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--muted); margin-top:1rem; }
-        .snake-section .hint { color:var(--muted); font-size:0.65rem; font-family:'JetBrains Mono',monospace; margin-top:0.5rem; }
-
         /* MATRIX SECTION */
 
         @media(max-width:600px) {
@@ -125,13 +118,7 @@
         <div class="hint">click the keys</div>
     </section>
 
-    <!-- SNAKE: full section -->
-    <section class="snake-section" id="snake">
-        <div class="label">// snake</div>
-        <canvas id="snakeGame"></canvas>
-        <div class="score-display" id="snakeScore">score: 0</div>
-        <div class="hint">arrow keys / swipe to play · click to restart</div>
-    </section>
+
 
 
     <script>
@@ -177,22 +164,6 @@
     function frame(){ctx.fillStyle='#111113';ctx.fillRect(0,0,w,h);pads.forEach(p=>{p.pressed*=0.92;const l=18+p.pressed*30;ctx.fillStyle=`hsl(${p.hue},60%,${l}%)`;ctx.beginPath();const rad=6;ctx.moveTo(p.x+rad,p.y);ctx.arcTo(p.x+p.w,p.y,p.x+p.w,p.y+p.h,rad);ctx.arcTo(p.x+p.w,p.y+p.h,p.x,p.y+p.h,rad);ctx.arcTo(p.x,p.y+p.h,p.x,p.y,rad);ctx.arcTo(p.x,p.y,p.x+p.w,p.y,rad);ctx.fill();ctx.fillStyle=p.pressed>0.3?'rgba(250,250,250,0.8)':'rgba(113,113,122,0.4)';ctx.font=`${Math.min(11,p.w*0.3)}px JetBrains Mono`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(p.label,p.x+p.w/2,p.y+p.h/2);});requestAnimationFrame(frame);}frame();
 })();
 
-// ── SNAKE ──
-(function(){
-    const c=document.getElementById('snakeGame'),ctx=c.getContext('2d'),scoreEl=document.getElementById('snakeScore');
-    let w,h,cellSize=14,cols,rows,snake,dir,food,alive,score,lastMove=0,interval=100;
-    function resize(){const r=c.getBoundingClientRect();w=c.width=r.width;h=c.height=r.height;cols=Math.floor(w/cellSize);rows=Math.floor(h/cellSize);}
-    function init(){resize();snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)}];dir={x:1,y:0};placeFood();alive=true;score=0;interval=100;scoreEl.textContent='score: 0';}
-    function placeFood(){food={x:Math.floor(Math.random()*cols),y:Math.floor(Math.random()*rows)};}
-    init();window.addEventListener('resize',resize);
-    document.addEventListener('keydown',e=>{if(e.key==='ArrowUp'&&dir.y===0){dir={x:0,y:-1};e.preventDefault();}if(e.key==='ArrowDown'&&dir.y===0){dir={x:0,y:1};e.preventDefault();}if(e.key==='ArrowLeft'&&dir.x===0){dir={x:-1,y:0};e.preventDefault();}if(e.key==='ArrowRight'&&dir.x===0){dir={x:1,y:0};e.preventDefault();}});
-    let tx,ty;c.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;});c.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;if(Math.abs(dx)>Math.abs(dy)){if(dx>0&&dir.x===0)dir={x:1,y:0};if(dx<0&&dir.x===0)dir={x:-1,y:0};}else{if(dy>0&&dir.y===0)dir={x:0,y:1};if(dy<0&&dir.y===0)dir={x:0,y:-1};}});
-    c.addEventListener('click',()=>{if(!alive)init();});
-    function frame(t){if(t-lastMove>interval&&alive){lastMove=t;const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};if(head.x<0||head.x>=cols||head.y<0||head.y>=rows)alive=false;if(snake.some(s=>s.x===head.x&&s.y===head.y))alive=false;if(alive){snake.unshift(head);if(head.x===food.x&&head.y===food.y){placeFood();score++;interval=Math.max(50,interval-2);scoreEl.textContent='score: '+score;}else{snake.pop();}}}
-    ctx.fillStyle='#111113';ctx.fillRect(0,0,w,h);ctx.fillStyle='#10b981';ctx.beginPath();ctx.arc(food.x*cellSize+cellSize/2,food.y*cellSize+cellSize/2,cellSize/2-1,0,Math.PI*2);ctx.fill();snake.forEach((s,i)=>{const a=1-i/snake.length*0.6;ctx.fillStyle=`rgba(16,185,129,${a})`;ctx.fillRect(s.x*cellSize+1,s.y*cellSize+1,cellSize-2,cellSize-2);});
-    if(!alive){ctx.fillStyle='rgba(9,9,11,0.7)';ctx.fillRect(0,0,w,h);ctx.fillStyle='#fafafa';ctx.font='14px JetBrains Mono';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('game over — click to retry',w/2,h/2);ctx.textAlign='start';}
-    requestAnimationFrame(frame);}requestAnimationFrame(frame);
-})();
 
 
 // ── BG SNAKE: contribution grid style ──
