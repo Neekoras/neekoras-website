@@ -137,11 +137,7 @@
         <div class="hint">arrow keys / swipe to play · click to restart</div>
     </section>
 
-    <!-- MATRIX: rain as footer atmosphere -->
-    <section class="matrix-section" id="matrix">
-        <canvas id="matrixRain"></canvas>
-        <div class="overlay"><p>hover to glitch</p></div>
-    </section>
+
     <script>
 // ── HERO: particle network ──
 (function(){
@@ -202,15 +198,6 @@
     requestAnimationFrame(frame);}requestAnimationFrame(frame);
 })();
 
-// ── MATRIX RAIN: footer atmosphere ──
-(function(){
-    const c=document.getElementById('matrixRain'),ctx=c.getContext('2d');let w,h,mx=-1000,my=-1000,drops,chars='abcdefghijklmnopqrstuvwxyz0123456789@#$%&*<>[]{}';
-    function resize(){const r=c.parentElement.getBoundingClientRect();w=c.width=r.width;h=c.height=r.height;const fs=12;drops=[];for(let i=0;i<w/fs;i++)drops.push(Math.random()*h/fs*-1);}
-    resize();window.addEventListener('resize',resize);
-    c.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;});c.addEventListener('mouseleave',()=>{mx=-1000;my=-1000;});
-    function frame(){ctx.fillStyle='rgba(9,9,11,0.06)';ctx.fillRect(0,0,w,h);const fs=12;ctx.font=fs+'px JetBrains Mono';
-    for(let i=0;i<drops.length;i++){const ch=chars[Math.floor(Math.random()*chars.length)];const x=i*fs,y=drops[i]*fs;const dx=mx-x,dy=my-y,d=Math.sqrt(dx*dx+dy*dy);const bright=d<80?0.95:0.3;const char=d<80?String.fromCharCode(0x30A0+Math.random()*96):ch;ctx.fillStyle=`rgba(16,185,129,${bright})`;ctx.fillText(char,x,y);if(y>h&&Math.random()>0.975)drops[i]=0;else drops[i]+=0.5+Math.random()*0.5;}requestAnimationFrame(frame);}frame();
-})();
 
 // ── BG SNAKE: snake eating dots that spell "neekoras" ──
 (function(){
