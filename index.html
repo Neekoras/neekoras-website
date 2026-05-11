@@ -25,6 +25,7 @@
         /* HERO — particle network IS the hero */
         .hero { position:relative; min-height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
         .hero canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
+        .hero #bgSnake { z-index:1; }
         .hero-content { position:relative; z-index:2; text-align:center; pointer-events:none; }
         .hero h1 { font-family:'JetBrains Mono',monospace; font-size:clamp(2.5rem,8vw,5rem); font-weight:700; letter-spacing:-3px; margin-bottom:0.5rem; }
         .hero h1 span { color:var(--accent); }
@@ -89,6 +90,7 @@
     <!-- HERO: particle network -->
     <section class="hero" id="hero">
         <canvas id="heroCanvas"></canvas>
+        <canvas id="bgSnake"></canvas>
         <div class="hero-content">
             <h1>neeko<span>r</span>as</h1>
             <div class="subtitle">developer</div>
@@ -207,6 +209,130 @@
     c.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;});c.addEventListener('mouseleave',()=>{mx=-1000;my=-1000;});
     function frame(){ctx.fillStyle='rgba(9,9,11,0.06)';ctx.fillRect(0,0,w,h);const fs=12;ctx.font=fs+'px JetBrains Mono';
     for(let i=0;i<drops.length;i++){const ch=chars[Math.floor(Math.random()*chars.length)];const x=i*fs,y=drops[i]*fs;const dx=mx-x,dy=my-y,d=Math.sqrt(dx*dx+dy*dy);const bright=d<80?0.95:0.3;const char=d<80?String.fromCharCode(0x30A0+Math.random()*96):ch;ctx.fillStyle=`rgba(16,185,129,${bright})`;ctx.fillText(char,x,y);if(y>h&&Math.random()>0.975)drops[i]=0;else drops[i]+=0.5+Math.random()*0.5;}requestAnimationFrame(frame);}frame();
+})();
+
+// ── BG SNAKE: little snake eating dots in the hero ──
+(function(){
+    const c=document.getElementById('bgSnake'),ctx=c.getContext('2d');
+    let w,h,cols,rows,cell=16,snake,dots,dir,timer,lastMove=0,speed=180;
+
+    function resize(){const r=c.parentElement.getBoundingClientRect();w=c.width=r.width;h=c.height=r.height;cols=Math.floor(w/cell);rows=Math.floor(h/cell);}
+    function init(){
+        resize();
+        // Start snake at a random spot
+        const sx=Math.floor(Math.random()*cols),sy=Math.floor(Math.random()*rows);
+        snake=[{x:sx,y:sy},{x:sx-1,y:sy},{x:sx-2,y:sy}];
+        dir={x:1,y:0};
+        timer=0;
+        speed=180;
+        // Scatter dots
+        dots=[];
+        for(let i=0;i<40;i++) dots.push({x:Math.floor(Math.random()*cols),y:Math.floor(Math.random()*rows),eaten:false});
+    }
+
+    init();
+    window.addEventListener('resize',resize);
+
+    // AI: simple pathfinding toward nearest dot
+    function pickDir(){
+        const head=snake[0];
+        // Find nearest uneaten dot
+        let nearest=null,best=Infinity;
+        dots.forEach(d=>{
+            if(d.eaten)return;
+            const dist=Math.abs(d.x-head.x)+Math.abs(d.y-head.y);
+            if(dist<best){best=dist;nearest=d;}
+        });
+        if(!nearest)return; // all eaten, just wander
+
+        const dx=nearest.x-head.x, dy=nearest.y-head.y;
+        let candidates=[];
+        if(dx>0) candidates.push({x:1,y:0});
+        if(dx<0) candidates.push({x:-1,y:0});
+        if(dy>0) candidates.push({x:0,y:1});
+        if(dy<0) candidates.push({x:0,y:-1});
+
+        // Add perpendicular options for variety
+        candidates.push({x:0,y:1},{x:0,y:-1},{x:1,y:0},{x:-1,y:0});
+
+        // Filter: can't reverse, can't hit self, can't hit wall
+        for(const cd of candidates){
+            if(cd.x===-dir.x && cd.y===-dir.y) continue; // no reverse
+            const nx=head.x+cd.x, ny=head.y+cd.y;
+            if(nx<0||nx>=cols||ny<0||ny>=rows) continue;
+            if(snake.some(s=>s.x===nx&&s.y===ny)) continue;
+            dir=cd;
+            return;
+        }
+    }
+
+    function frame(t){
+        requestAnimationFrame(frame);
+        if(t-lastMove<speed)return;
+        lastMove=t;
+
+        pickDir();
+
+        const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+        // Wrap around edges
+        if(head.x<0)head.x=cols-1;
+        if(head.x>=cols)head.x=0;
+        if(head.y<0)head.y=rows-1;
+        if(head.y>=rows)head.y=0;
+
+        // Hit self? restart
+        if(snake.some(s=>s.x===head.x&&s.y===head.y)){init();return;}
+
+        snake.unshift(head);
+
+        // Check if eating a dot
+        let ate=false;
+        dots.forEach(d=>{
+            if(!d.eaten && d.x===head.x && d.y===head.y){
+                d.eaten=true;
+                ate=true;
+            }
+        });
+
+        if(!ate) snake.pop();
+
+        // All dots eaten? respawn
+        if(dots.every(d=>d.eaten)){
+            dots=[];
+            for(let i=0;i<40;i++) dots.push({x:Math.floor(Math.random()*cols),y:Math.floor(Math.random()*rows),eaten:false});
+        }
+
+        // Draw
+        ctx.clearRect(0,0,w,h);
+
+        // Dots
+        dots.forEach(d=>{
+            if(d.eaten)return;
+            ctx.beginPath();
+            ctx.arc(d.x*cell+cell/2,d.y*cell+cell/2,2.5,0,Math.PI*2);
+            ctx.fillStyle='rgba(16,185,129,0.25)';
+            ctx.fill();
+        });
+
+        // Snake body with gradient fade
+        snake.forEach((s,i)=>{
+            const a=1-i/snake.length*0.8;
+            const r=3.5-i*0.08;
+            ctx.beginPath();
+            ctx.arc(s.x*cell+cell/2,s.y*cell+cell/2,Math.max(r,1.5),0,Math.PI*2);
+            ctx.fillStyle=`rgba(16,185,129,${a*0.5})`;
+            ctx.fill();
+        });
+
+        // Head slightly brighter
+        if(snake.length){
+            ctx.beginPath();
+            ctx.arc(snake[0].x*cell+cell/2,snake[0].y*cell+cell/2,4,0,Math.PI*2);
+            ctx.fillStyle='rgba(16,185,129,0.6)';
+            ctx.fill();
+        }
+    }
+    requestAnimationFrame(frame);
 })();
     </script>
 </body>
