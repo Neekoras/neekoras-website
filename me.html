@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nicholas Lin — About</title>
+<meta name="description" content="About Nicholas Lin — builder, musician, Bay Area.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3efe6;--ink:#18160f;--muted:#8a8375;--line:#d9d2c4;--accent:#a2492f;
+    --serif:'Instrument Serif', Georgia, serif;--sans:'Inter', system-ui, sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  a{color:inherit;text-decoration:none}
+  .kicker{font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);font-weight:500}
+
+  .cursor{position:fixed;top:0;left:0;width:9px;height:9px;border-radius:50%;background:var(--ink);pointer-events:none;z-index:10000;transform:translate(-50%,-50%);transition:width .25s,height .25s,background .25s;mix-blend-mode:difference}
+  .cursor.big{width:46px;height:46px;background:#fff}
+  @media (hover:none){.cursor{display:none}}
+
+  nav{position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:1.5rem clamp(1.25rem,5vw,3.5rem);mix-blend-mode:difference;color:#fff}
+  nav .brand{font-family:var(--serif);font-size:1.35rem}
+  nav .brand em{font-style:italic}
+  nav .links{display:flex;gap:1.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}
+  nav .links a{position:relative;padding-bottom:2px}
+  nav .links a::after{content:"";position:absolute;left:0;bottom:0;width:0;height:1px;background:currentColor;transition:width .3s}
+  nav .links a:hover::after,nav .links a.active::after{width:100%}
+
+  .wrap{max-width:720px;margin:0 auto;padding:9rem clamp(1.25rem,5vw,2rem) 4rem}
+  .head{margin-bottom:3rem}
+  .head h1{font-family:var(--serif);font-weight:400;font-size:clamp(2.8rem,8vw,4.5rem);line-height:.95;letter-spacing:-.01em;margin-bottom:.75rem}
+  .head h1 em{font-style:italic;color:var(--accent)}
+  .head .tagline{color:var(--muted);letter-spacing:.05em}
+
+  .photos{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:3.5rem}
+  .photos img{width:100%;aspect-ratio:4/5;object-fit:cover;filter:grayscale(.2) contrast(1.02);transition:filter .6s,transform .8s cubic-bezier(.2,.8,.2,1)}
+  .photos img:hover{filter:grayscale(0);transform:scale(1.02)}
+
+  section{margin-bottom:3.25rem}
+  section h2{font-family:var(--serif);font-weight:400;font-size:clamp(1.6rem,4vw,2.2rem);margin-bottom:1rem;line-height:1.1}
+  section h2 em{font-style:italic;color:var(--accent)}
+  section p{color:#3a362c;line-height:1.75;font-size:1.02rem;margin-bottom:1.1rem}
+  section p:last-child{margin-bottom:0}
+  section p strong{font-weight:600;color:var(--ink)}
+  .lead{font-family:var(--serif);font-size:clamp(1.3rem,3vw,1.7rem);line-height:1.4;color:var(--ink)}
+
+  .rule{height:1px;background:var(--line);margin:3.25rem 0}
+
+  .links-row{display:flex;gap:1.25rem;flex-wrap:wrap;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;margin-top:.5rem}
+  .links-row a{display:inline-flex;align-items:center;gap:.5rem;padding-bottom:3px;border-bottom:1px solid transparent;transition:border-color .3s}
+  .links-row a:hover{border-color:var(--ink)}
+  .back{display:inline-flex;align-items:center;gap:.5rem;margin-top:3.5rem;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:color .3s}
+  .back:hover{color:var(--ink)}
+  .back .arrow{transition:transform .3s}
+  .back:hover .arrow{transform:translateX(-4px)}
+
+  .reveal{opacity:0;transform:translateY(20px);transition:opacity .8s,transform .8s cubic-bezier(.2,.8,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  @media(max-width:520px){.photos{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+
+<nav>
+  <a href="/" class="brand">Nicholas <em>Lin</em></a>
+  <div class="links">
+    <a href="/">Home</a>
+    <a href="/me" class="active">About</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="head reveal">
+    <h1>Nicholas <em>Lin</em></h1>
+    <div class="tagline">Builder · Musician · Bay Area</div>
+  </div>
+
+  <div class="photos reveal">
+    <img src="/img/photo1.jpg" alt="Nicholas" loading="lazy" data-cursor>
+    <img src="/img/photo2.jpg" alt="Nicholas" loading="lazy" data-cursor>
+  </div>
+
+  <section class="reveal">
+    <p class="lead">I like making things — software, music, and the occasional plan that sounds ridiculous until it works.</p>
+  </section>
+
+  <div class="rule reveal"></div>
+
+  <section class="reveal">
+    <h2>The <em>good</em> kind of chaos</h2>
+    <p>Hackathons are where I do some of my best work. I've won six, and each one taught me something about moving fast, executing, and what happens when you stop overthinking and start building.</p>
+    <p>At the <strong>Celebrity Hunt Hackathon</strong> in San Francisco, we were handed a list of 100 names — presidents, CEOs like Jensen Huang and Tim Cook, world-famous artists — and told to get one of them on FaceTime. So we mapped the people around them: assistants, managers, producers, collaborators. We pulled phone numbers for over 40 of them. Most hung up. One didn't — <strong>Michael Dell</strong>, the 13th richest person in the world, picked up. We were the only team at the whole event to get someone from the list on a call. First place, and mentorship with people from Palantir, Google, and OpenAI.</p>
+    <p>At <strong>Funding the Commons</strong> we placed 3rd out of 240 and got pulled into a private investor meeting with a room full of VCs. And I took <strong>2nd at Y Combinator's Hack the Stackathon</strong> — a $10,000 prize. I've judged a few hackathons too, which is its own kind of fun: watching other people sprint toward something real.</p>
+  </section>
+
+  <section class="reveal">
+    <h2>Taking things <em>apart</em></h2>
+    <p>I spend time on security research — I've found real vulnerabilities in a handful of venture-backed companies. I genuinely think the best way to understand how something works is to try to break it. Knowing where things crack makes you a much better builder.</p>
+  </section>
+
+  <section class="reveal">
+    <h2>Away from the <em>screen</em></h2>
+    <p>When I'm not building, I'm probably at a piano — nine years and counting — or playing flute, where I'm the section leader for my school's ensemble. Music and building have more in common than people think: both are structure, iteration, and finding flow in the details.</p>
+    <p>I'm always down to work on something interesting or just talk about things worth making. Reach out.</p>
+    <div class="links-row">
+      <a href="https://github.com/Neekoras" target="_blank" rel="noopener" data-cursor>GitHub</a>
+      <a href="https://www.linkedin.com/in/nicholas-lin-086600390/" target="_blank" rel="noopener" data-cursor>LinkedIn</a>
+    </div>
+  </section>
+
+  <a href="/" class="back" data-cursor><span class="arrow">←</span> Back home</a>
+</div>
+
+<script>
+  (function(){
+    var c=document.getElementById('cursor'),x=0,y=0,cx=0,cy=0;
+    if(matchMedia('(hover:hover)').matches){
+      addEventListener('mousemove',function(e){x=e.clientX;y=e.clientY});
+      (function loop(){cx+=(x-cx)*.2;cy+=(y-cy)*.2;c.style.left=cx+'px';c.style.top=cy+'px';requestAnimationFrame(loop)})();
+      document.querySelectorAll('[data-cursor],a').forEach(function(el){
+        el.addEventListener('mouseenter',function(){c.classList.add('big')});
+        el.addEventListener('mouseleave',function(){c.classList.remove('big')});
+      });
+    }
+  })();
+  (function(){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.1});
+    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+  })();
+</script>
+</body>
+</html>

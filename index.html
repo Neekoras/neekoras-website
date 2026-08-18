@@ -1,323 +1,221 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>neekoras</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;700&display=swap');
-        :root {
-            --bg: #09090b; --surface: #111113; --border: #1e1e22;
-            --text: #fafafa; --muted: #71717a;
-            --accent: #10b981; --accent-dim: rgba(16,185,129,0.06); --accent-border: rgba(16,185,129,0.2);
-        }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; overflow-x:hidden; }
-        body > section, body > nav { position:relative; z-index:1; }
-        
-        /* NAV */
-        nav { position:fixed; top:0; left:0; width:100%; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; z-index:100; background:rgba(9,9,11,0.7); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
-        nav .brand { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1rem; color:var(--text); text-decoration:none; }
-        nav .brand span { color:var(--accent); }
-        nav .nav-links { display:flex; gap:1.5rem; list-style:none; }
-        nav .nav-links a { color:var(--muted); text-decoration:none; font-size:0.8rem; font-family:'JetBrains Mono',monospace; transition:color 0.2s; }
-        nav .nav-links a:hover { color:var(--text); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nicholas Lin</title>
+<meta name="description" content="Nicholas Lin — builder and musician based in the Bay Area.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3efe6;      /* warm cream */
+    --ink:#18160f;        /* near-black */
+    --muted:#8a8375;      /* soft taupe */
+    --line:#d9d2c4;       /* hairline */
+    --accent:#a2492f;     /* one warm clay accent, used sparingly */
+    --serif:'Instrument Serif', Georgia, serif;
+    --sans:'Inter', system-ui, sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-weight:400;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  /* subtle paper grain */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  a{color:inherit;text-decoration:none}
+  .kicker{font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);font-weight:500}
 
-        /* HERO — particle network IS the hero */
-        .hero { position:relative; min-height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-        .hero canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
-        #bgSnake { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; opacity:0.4; }
-        .hero-content { position:relative; z-index:2; text-align:center; pointer-events:none; }
-        .hero h1 { font-family:'JetBrains Mono',monospace; font-size:clamp(2.5rem,8vw,5rem); font-weight:700; letter-spacing:-3px; margin-bottom:0.5rem; }
-        .hero h1 span { color:var(--accent); }
-        .hero .subtitle { font-size:1rem; color:var(--muted); }
-        .hero .subtitle .cursor { color:var(--accent); animation:blink 1s step-end infinite; }
-        .hero .hint { position:absolute; bottom:2rem; left:50%; transform:translateX(-50%); color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:0.7rem; animation:bob 2s ease-in-out infinite; z-index:2; }
-        @keyframes bob { 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(6px);} }
+  /* ---- custom cursor (desktop only) ---- */
+  .cursor{position:fixed;top:0;left:0;width:9px;height:9px;border-radius:50%;background:var(--ink);
+    pointer-events:none;z-index:10000;transform:translate(-50%,-50%);
+    transition:width .25s ease,height .25s ease,background .25s ease,opacity .25s ease;mix-blend-mode:difference}
+  .cursor.big{width:46px;height:46px;background:#fff}
+  @media (hover:none){.cursor{display:none}}
 
-        /* RIPPLE SECTION — ripple canvas IS the background */
-        .ripple-section { position:relative; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-        .ripple-section canvas { position:absolute; top:0; left:0; width:100%; height:100%; cursor:crosshair; }
-        .ripple-section .overlay { position:relative; z-index:2; text-align:center; pointer-events:none; }
-        .ripple-section h2 { font-family:'JetBrains Mono',monospace; font-size:clamp(1.5rem,4vw,2.5rem); font-weight:700; letter-spacing:-1px; margin-bottom:0.5rem; }
-        .ripple-section h2 span { color:var(--accent); }
-        .ripple-section .sub { color:var(--muted); font-size:0.85rem; font-family:'JetBrains Mono',monospace; }
+  /* ---- nav ---- */
+  nav{position:fixed;top:0;left:0;width:100%;z-index:50;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:1.5rem clamp(1.25rem,5vw,3.5rem);
+    mix-blend-mode:difference;color:#fff}
+  nav .brand{font-family:var(--serif);font-size:1.35rem;letter-spacing:.01em}
+  nav .brand em{font-style:italic}
+  nav .links{display:flex;gap:1.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}
+  nav .links a{position:relative;padding-bottom:2px}
+  nav .links a::after{content:"";position:absolute;left:0;bottom:0;width:0;height:1px;background:currentColor;transition:width .3s ease}
+  nav .links a:hover::after{width:100%}
 
-        /* DOT GRID SECTION — grid IS the background */
-        .grid-section { position:relative; height:100vh; overflow:hidden; }
-        .grid-section canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
-        .grid-section .content { position:relative; z-index:2; height:100%; display:flex; flex-direction:column; justify-content:center; padding:2rem; max-width:640px; margin:0 auto; }
-        .grid-section h2 { font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--accent); text-transform:uppercase; letter-spacing:3px; margin-bottom:2rem; }
-        .grid-section p { color:var(--muted); line-height:1.8; font-size:0.95rem; margin-bottom:1.5rem; pointer-events:none; }
-        .grid-section p strong { color:var(--text); font-weight:500; }
-        .grid-section .links { display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem; }
-        .grid-section .links a { display:inline-flex; align-items:center; gap:0.5rem; padding:0.5rem 1rem; border:1px solid var(--border); border-radius:8px; color:var(--muted); text-decoration:none; font-family:'JetBrains Mono',monospace; font-size:0.75rem; transition:all 0.2s; }
-        .grid-section .links a:hover { border-color:var(--accent-border); color:var(--text); background:var(--accent-dim); }
+  /* ---- hero ---- */
+  .hero{min-height:100vh;display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(2rem,5vw,5rem);
+    align-items:center;padding:7rem clamp(1.25rem,5vw,3.5rem) 4rem;max-width:1400px;margin:0 auto}
+  .hero-copy .kicker{margin-bottom:1.5rem}
+  .hero-copy h1{font-family:var(--serif);font-weight:400;line-height:.95;
+    font-size:clamp(3.2rem,9vw,7rem);letter-spacing:-.01em;margin-bottom:1.5rem}
+  .hero-copy h1 em{font-style:italic;color:var(--accent)}
+  .hero-copy .lede{font-size:clamp(1rem,1.4vw,1.15rem);line-height:1.6;color:#3a362c;max-width:34ch;margin-bottom:2.25rem}
+  .hero-copy .cta{display:flex;gap:1.5rem;align-items:center;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase}
+  .hero-copy .cta a{display:inline-flex;align-items:center;gap:.5rem}
+  .hero-copy .cta a.primary{border-bottom:1px solid var(--ink);padding-bottom:3px}
+  .hero-copy .cta a .arrow{transition:transform .3s ease}
+  .hero-copy .cta a:hover .arrow{transform:translateX(5px)}
 
-        /* SYNTH SECTION */
-        .synth-section { position:relative; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; border-top:1px solid var(--border); }
-        .synth-section .label { font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--accent); text-transform:uppercase; letter-spacing:3px; margin-bottom:2rem; }
-        .synth-section canvas { width:min(600px,90vw); height:200px; cursor:pointer; border-radius:12px; }
-        .synth-section .hint { color:var(--muted); font-size:0.7rem; font-family:'JetBrains Mono',monospace; margin-top:1rem; }
+  .hero-photo{position:relative;justify-self:center;width:100%;max-width:420px;aspect-ratio:4/5}
+  .hero-photo img{width:100%;height:100%;object-fit:cover;filter:grayscale(.15) contrast(1.02)}
+  .hero-photo .frame{position:absolute;inset:0;border:1px solid var(--line);transform:translate(14px,14px);z-index:-1}
+  .hero-photo figcaption{position:absolute;bottom:-1.9rem;left:0;font-size:.68rem;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted)}
 
-        /* MATRIX SECTION */
+  /* ---- marquee ---- */
+  .marquee{border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding:1rem 0;white-space:nowrap}
+  .marquee .track{display:inline-block;animation:scroll 32s linear infinite;font-family:var(--serif);font-size:1.7rem;color:var(--ink)}
+  .marquee .track span{margin:0 1.5rem;opacity:.9}
+  .marquee .track .dot{color:var(--accent)}
+  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
-        @media(max-width:600px) {
-            nav .nav-links{gap:1rem;}
-            .synth-section canvas{height:160px;}
-        }
-    </style>
+  /* ---- index / contents ---- */
+  .contents{max-width:1000px;margin:0 auto;padding:clamp(5rem,10vw,9rem) clamp(1.25rem,5vw,3.5rem)}
+  .contents > .kicker{margin-bottom:3rem}
+  .row{display:grid;grid-template-columns:auto 1fr auto;gap:1.5rem;align-items:baseline;
+    padding:1.75rem 0;border-top:1px solid var(--line);transition:padding-left .4s ease}
+  .row:last-child{border-bottom:1px solid var(--line)}
+  .row:hover{padding-left:1rem}
+  .row .num{font-family:var(--serif);font-size:1.1rem;color:var(--muted);font-style:italic}
+  .row .title{font-family:var(--serif);font-size:clamp(1.6rem,4vw,2.6rem);line-height:1.05}
+  .row .desc{font-size:.9rem;color:var(--muted);max-width:26ch;text-align:right;line-height:1.5}
+  @media(max-width:640px){.row{grid-template-columns:auto 1fr}.row .desc{display:none}}
+
+  /* ---- gallery ---- */
+  .gallery{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1rem,3vw,2.5rem);
+    max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,9rem)}
+  .gallery figure{overflow:hidden}
+  .gallery img{width:100%;height:100%;object-fit:cover;aspect-ratio:3/4;
+    filter:grayscale(.2) contrast(1.02);transition:transform .8s cubic-bezier(.2,.8,.2,1),filter .6s ease}
+  .gallery figure:hover img{transform:scale(1.04);filter:grayscale(0)}
+  .gallery figure:nth-child(2){margin-top:3.5rem}
+  @media(max-width:640px){.gallery figure:nth-child(2){margin-top:0}}
+
+  /* ---- footer ---- */
+  footer{border-top:1px solid var(--line);padding:clamp(3rem,6vw,5rem) clamp(1.25rem,5vw,3.5rem)}
+  .footer-in{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:2rem}
+  footer h2{font-family:var(--serif);font-size:clamp(2rem,6vw,3.5rem);font-weight:400;line-height:1;letter-spacing:-.01em}
+  footer h2 em{font-style:italic;color:var(--accent)}
+  .footer-links{display:flex;gap:1.25rem;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase}
+  .footer-links a{display:inline-flex;align-items:center;gap:.4rem;padding-bottom:3px;border-bottom:1px solid transparent;transition:border-color .3s}
+  .footer-links a:hover{border-color:var(--ink)}
+  .colophon{max-width:1100px;margin:2.5rem auto 0;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+  /* ---- reveal ---- */
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.8,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  @media(max-width:860px){
+    .hero{grid-template-columns:1fr;text-align:left;padding-top:8rem;gap:3rem}
+    .hero-photo{max-width:320px;order:-1;justify-self:start}
+  }
+</style>
 </head>
 <body>
-    <canvas id="bgSnake"></canvas>
-    <nav>
-        <a href="#" class="brand">neeko<span>r</span>as</a>
-        <ul class="nav-links">
-            <li><a href="#hero">top</a></li>
-            <li><a href="#about">about</a></li>
-        </ul>
-    </nav>
+<div class="cursor" id="cursor"></div>
 
-    <!-- HERO: particle network -->
-    <section class="hero" id="hero">
-        <canvas id="heroCanvas"></canvas>
-        <div class="hero-content">
-            <h1>neeko<span>r</span>as</h1>
-            <div class="subtitle"><span id="typed"></span><span class="cursor">|</span></div>
-        </div>
-        <div class="hint">↓ scroll</div>
-    </section>
+<nav>
+  <a href="/" class="brand">Nicholas <em>Lin</em></a>
+  <div class="links">
+    <a href="/me">About</a>
+    <a href="#say-hi">Contact</a>
+  </div>
+</nav>
 
-    <!-- RIPPLE: click-to-ripple background -->
-    <section class="ripple-section" id="ripple">
-        <canvas id="rippleCanvas"></canvas>
-        <div class="overlay">
-            <h2>click <span>anywhere</span></h2>
-            <div class="sub">see what happens</div>
-        </div>
-    </section>
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-copy">
+    <div class="kicker reveal">Builder · Musician · Bay Area</div>
+    <h1 class="reveal">Nicholas<br><em>Lin</em></h1>
+    <p class="lede reveal">I build things that (mostly) work, play a fair bit of piano, and occasionally talk complete strangers into answering the phone.</p>
+    <div class="cta reveal">
+      <a href="/me" class="primary" data-cursor>Read more <span class="arrow">→</span></a>
+      <a href="#say-hi" data-cursor>Get in touch</a>
+    </div>
+  </div>
+  <figure class="hero-photo reveal" data-cursor>
+    <img src="/img/photo1.jpg" alt="Nicholas Lin">
+    <div class="frame"></div>
+    <figcaption>Nicholas — Bay Area</figcaption>
+  </figure>
+</header>
 
-    <!-- DOT GRID + ABOUT: magnetic grid as background, about text on top -->
-    <section class="grid-section" id="about">
-        <canvas id="dotGrid"></canvas>
-        <div class="content">
-            <h2>// about</h2>
-            <p>Hey, I'm <strong>Nicholas</strong>. I build things — mostly code, sometimes chaos. 6x hackathon winner, cybersecurity researcher, and lead software engineer at Jobinba.</p>
-            <p>I like deep learning, cloud infra, breaking into things (ethically), and shipping projects at 3am before a deadline. Currently exploring the intersection of AI and well-being.</p>
-            <div class="links">
-                <a href="https://github.com/Neekoras" target="_blank"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg> github</a>
-                <a href="https://www.linkedin.com/in/nicholas-lin-086600390/" target="_blank"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg> linkedin</a>
-            </div>
-        </div>
-    </section>
+<!-- MARQUEE -->
+<div class="marquee">
+  <div class="track">
+    <span>Building</span><span class="dot">✦</span><span>Music</span><span class="dot">✦</span><span>Curiosity</span><span class="dot">✦</span><span>Making things people use</span><span class="dot">✦</span>
+    <span>Building</span><span class="dot">✦</span><span>Music</span><span class="dot">✦</span><span>Curiosity</span><span class="dot">✦</span><span>Making things people use</span><span class="dot">✦</span>
+  </div>
+</div>
 
-    <!-- SYNTH PAD: full section -->
-    <section class="synth-section" id="synth">
-        <div class="label">// play something</div>
-        <canvas id="soundPad"></canvas>
-        <div class="hint">click the keys</div>
-    </section>
+<!-- CONTENTS -->
+<section class="contents">
+  <div class="kicker reveal">A few things I'm into</div>
+  <a class="row reveal" href="/me" data-cursor>
+    <span class="num">01</span>
+    <span class="title">Building things</span>
+    <span class="desc">Software, side projects, and ideas that start bad and end well.</span>
+  </a>
+  <a class="row reveal" href="/me" data-cursor>
+    <span class="num">02</span>
+    <span class="title">Making music</span>
+    <span class="desc">Nine years of piano. Flute section leader. Structure and flow.</span>
+  </a>
+  <a class="row reveal" href="/me" data-cursor>
+    <span class="num">03</span>
+    <span class="title">Figuring out how things break</span>
+    <span class="desc">The fastest way to understand something is to take it apart.</span>
+  </a>
+</section>
 
+<!-- GALLERY -->
+<section class="gallery">
+  <figure class="reveal" data-cursor><img src="/img/photo1.jpg" alt="Nicholas"></figure>
+  <figure class="reveal" data-cursor><img src="/img/photo2.jpg" alt="Nicholas"></figure>
+</section>
 
+<!-- FOOTER -->
+<footer id="say-hi">
+  <div class="footer-in reveal">
+    <h2>Let's make<br>something <em>good.</em></h2>
+    <div class="footer-links">
+      <a href="https://github.com/Neekoras" target="_blank" rel="noopener" data-cursor>GitHub</a>
+      <a href="https://www.linkedin.com/in/nicholas-lin-086600390/" target="_blank" rel="noopener" data-cursor>LinkedIn</a>
+      <a href="/me" data-cursor>About</a>
+    </div>
+  </div>
+  <div class="colophon">© <span id="yr"></span> Nicholas Lin — Bay Area</div>
+</footer>
 
-
-    <script>
-// ── HERO: particle network ──
-(function(){
-    const c=document.getElementById('heroCanvas'),ctx=c.getContext('2d');
-    let w,h,particles=[],mx=-1000,my=-1000;
-    function resize(){const r=c.parentElement.getBoundingClientRect();w=c.width=r.width;h=c.height=r.height;}
-    resize();window.addEventListener('resize',resize);
-    c.parentElement.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;});
-    class P{constructor(){this.reset();}reset(){this.x=Math.random()*w;this.y=Math.random()*h;this.vx=(Math.random()-0.5)*0.3;this.vy=(Math.random()-0.5)*0.3;this.r=Math.random()*1.5+0.5;}update(){const dx=mx-this.x,dy=my-this.y,d=Math.sqrt(dx*dx+dy*dy);if(d<150){this.vx+=dx*0.0003;this.vy+=dy*0.0003;}this.vx*=0.99;this.vy*=0.99;this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>w||this.y<0||this.y>h)this.reset();}draw(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle='rgba(16,185,129,0.4)';ctx.fill();}}
-    for(let i=0;i<80;i++)particles.push(new P());
-    function frame(){ctx.clearRect(0,0,w,h);particles.forEach(p=>{p.update();p.draw();});for(let i=0;i<particles.length;i++){for(let j=i+1;j<particles.length;j++){const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<100){ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(16,185,129,${0.15*(1-d/100)})`;ctx.stroke();}}}requestAnimationFrame(frame);}frame();
-})();
-
-
-// ── TYPING ──
-(function(){
-    const phrases=["developer","cybersecurity analyst","builder"];
-    let pi=0,ci=0,del=false;const el=document.getElementById('typed');
-    function type(){const p=phrases[pi];if(!del){el.textContent=p.substring(0,ci+1);ci++;if(ci===p.length){del=true;setTimeout(type,2000);return;}setTimeout(type,70);}else{el.textContent=p.substring(0,ci-1);ci--;if(ci===0){del=false;pi=(pi+1)%phrases.length;setTimeout(type,400);return;}setTimeout(type,35);}}type();
-})();
-// ── RIPPLES: full section background ──
-(function(){
-    const c=document.getElementById('rippleCanvas'),ctx=c.getContext('2d');let w,h,ripples=[];
-    function resize(){const r=c.parentElement.getBoundingClientRect();w=c.width=r.width;h=c.height=r.height;}resize();window.addEventListener('resize',resize);
-    c.addEventListener('click',e=>{const r=c.getBoundingClientRect();ripples.push({x:e.clientX-r.left,y:e.clientY-r.top,r:0,maxR:200+Math.random()*150,alpha:1,hue:Math.random()*60+140});});
-    function frame(){ctx.fillStyle='#09090b';ctx.fillRect(0,0,w,h);ripples=ripples.filter(r=>r.alpha>0.01);ripples.forEach(r=>{r.r+=2.5;r.alpha=1-r.r/r.maxR;for(let ring=0;ring<3;ring++){const rr=r.r*(1-ring*0.3);if(rr>0){ctx.beginPath();ctx.arc(r.x,r.y,rr,0,Math.PI*2);ctx.strokeStyle=`hsla(${r.hue},70%,55%,${r.alpha*(1-ring*0.35)})`;ctx.lineWidth=2-ring*0.5;ctx.stroke();}}});requestAnimationFrame(frame);}frame();
-})();
-
-// ── DOT GRID: about section background ──
-(function(){
-    const c=document.getElementById('dotGrid'),ctx=c.getContext('2d');let w,h,mx=-1000,my=-1000;
-    function resize(){const r=c.parentElement.getBoundingClientRect();w=c.width=r.width;h=c.height=r.height;}resize();window.addEventListener('resize',resize);
-    c.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;});c.addEventListener('mouseleave',()=>{mx=-1000;my=-1000;});
-    function frame(){ctx.clearRect(0,0,w,h);const sp=28,cols=Math.ceil(w/sp),rows=Math.ceil(h/sp);for(let i=0;i<cols;i++){for(let j=0;j<rows;j++){const bx=i*sp+sp/2,by=j*sp+sp/2,dx=mx-bx,dy=my-by,d=Math.sqrt(dx*dx+dy*dy);const push=d<120?(1-d/120)*14:0;const ox=d>0&&d<120?-dx/d*push:0;const oy=d>0&&d<120?-dy/d*push:0;const size=d<120?1.5+(1-d/120)*2.5:1.5;const alpha=d<120?0.3+(1-d/120)*0.7:0.12;ctx.beginPath();ctx.arc(bx+ox,by+oy,size,0,Math.PI*2);ctx.fillStyle=`rgba(16,185,129,${alpha})`;ctx.fill();}}requestAnimationFrame(frame);}frame();
-})();
-
-// ── SYNTH PAD ──
-(function(){
-    const c=document.getElementById('soundPad'),ctx=c.getContext('2d');let w,h,audioCtx;
-    const notes=[261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25,587.33,659.25,698.46,783.99,880.00,987.77,1046.50,1174.66];
-    const labels=['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5','F5','G5','A5','B5','C6','D6'];
-    const hues=[160,170,150,155,165,145,175,140,160,170,150,155,165,145,175,140];let pads=[];
-    function resize(){const r=c.getBoundingClientRect();w=c.width=r.width;h=c.height=r.height;buildPads();}
-    function buildPads(){pads=[];const cols=8,rows=2,gap=4,pw=(w-gap*(cols+1))/cols,ph=(h-gap*(rows+1))/rows;for(let r=0;r<rows;r++){for(let cl=0;cl<cols;cl++){const i=r*cols+cl;pads.push({x:gap+cl*(pw+gap),y:gap+r*(ph+gap),w:pw,h:ph,note:notes[i],label:labels[i],hue:hues[i],pressed:0});}}}
-    resize();window.addEventListener('resize',resize);
-    function play(freq){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='triangle';osc.frequency.value=freq;gain.gain.setValueAtTime(0.12,audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.8);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+0.8);}
-    c.addEventListener('click',e=>{const r=c.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;pads.forEach(p=>{if(x>p.x&&x<p.x+p.w&&y>p.y&&y<p.y+p.h){p.pressed=1;play(p.note);}});});
-    function frame(){ctx.fillStyle='#111113';ctx.fillRect(0,0,w,h);pads.forEach(p=>{p.pressed*=0.92;const l=18+p.pressed*30;ctx.fillStyle=`hsl(${p.hue},60%,${l}%)`;ctx.beginPath();const rad=6;ctx.moveTo(p.x+rad,p.y);ctx.arcTo(p.x+p.w,p.y,p.x+p.w,p.y+p.h,rad);ctx.arcTo(p.x+p.w,p.y+p.h,p.x,p.y+p.h,rad);ctx.arcTo(p.x,p.y+p.h,p.x,p.y,rad);ctx.arcTo(p.x,p.y,p.x+p.w,p.y,rad);ctx.fill();ctx.fillStyle=p.pressed>0.3?'rgba(250,250,250,0.8)':'rgba(113,113,122,0.4)';ctx.font=`${Math.min(11,p.w*0.3)}px JetBrains Mono`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(p.label,p.x+p.w/2,p.y+p.h/2);});requestAnimationFrame(frame);}frame();
-})();
-
-
-
-// ── BG SNAKE: contribution grid style ──
-(function(){
-    const c=document.getElementById('bgSnake'),ctx=c.getContext('2d');
-    let w,h,cols,rows,cell=12,gap=3;
-    let grid,snake,dir,food,lastMove=0,speed=100;
-
-    function resize(){
-        w=c.width=window.innerWidth;
-        h=c.height=window.innerHeight;
-        cols=Math.floor(w/(cell+gap));
-        rows=Math.floor(h/(cell+gap));
+<script>
+  // custom cursor
+  (function(){
+    var c=document.getElementById('cursor'),x=0,y=0,cx=0,cy=0;
+    if(matchMedia('(hover:hover)').matches){
+      addEventListener('mousemove',function(e){x=e.clientX;y=e.clientY});
+      (function loop(){cx+=(x-cx)*.2;cy+=(y-cy)*.2;c.style.left=cx+'px';c.style.top=cy+'px';requestAnimationFrame(loop)})();
+      document.querySelectorAll('[data-cursor],a').forEach(function(el){
+        el.addEventListener('mouseenter',function(){c.classList.add('big')});
+        el.addEventListener('mouseleave',function(){c.classList.remove('big')});
+      });
     }
-
-    function init(){
-        resize();
-        // Build grid — all cells dim
-        grid=[];
-        for(let y=0;y<rows;y++){
-            for(let x=0;x<cols;x++){
-                grid.push({x,y,lit:0}); // lit: 0=empty, 1-4=lit levels
-            }
-        }
-        // Start snake somewhere
-        const sx=Math.floor(cols*0.3),sy=Math.floor(rows*0.5);
-        snake=[];
-        for(let i=0;i<8;i++) snake.push({x:sx-i,y:sy});
-        dir={x:1,y:0};
-        // Place food
-        placeFood();
-    }
-
-    function placeFood(){
-        let tries=0;
-        while(tries<100){
-            const fx=Math.floor(Math.random()*cols);
-            const fy=Math.floor(Math.random()*rows);
-            if(!snake.some(s=>s.x===fx&&s.y===fy)){
-                food={x:fx,y:fy};return;
-            }
-            tries++;
-        }
-        food={x:0,y:0};
-    }
-
-    function getCell(x,y){
-        if(x<0||x>=cols||y<0||y>=rows)return null;
-        return grid[y*cols+x];
-    }
-
-    // AI: wander randomly, prefer food direction with some randomness
-    function pickDir(){
-        const head=snake[0];
-        // All possible directions (no reverse)
-        const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
-        const valid=dirs.filter(d=>{
-            if(d.x===-dir.x&&d.y===-dir.y)return false;
-            const nx=head.x+d.x,ny=head.y+d.y;
-            if(nx<0||nx>=cols||ny<0||ny>=rows)return false;
-            if(snake.some(s=>s.x===nx&&s.y===ny))return false;
-            return true;
-        });
-        if(valid.length===0)return;
-
-        // 60% chance go toward food, 40% random
-        if(food&&Math.random()<0.6){
-            const dx=food.x-head.x,dy=food.y-head.y;
-            const toward=valid.filter(d=>{
-                if(dx>0&&d.x>0)return true;
-                if(dx<0&&d.x<0)return true;
-                if(dy>0&&d.y>0)return true;
-                if(dy<0&&d.y<0)return true;
-                return false;
-            });
-            if(toward.length>0){dir=toward[Math.floor(Math.random()*toward.length)];return;}
-        }
-        dir=valid[Math.floor(Math.random()*valid.length)];
-    }
-
-    init();
-    window.addEventListener('resize',()=>{resize();});
-
-    function frame(t){
-        requestAnimationFrame(frame);
-        if(t-lastMove<speed)return;
-        lastMove=t;
-
-        pickDir();
-
-        const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
-        // Wrap
-        if(head.x<0)head.x=cols-1;if(head.x>=cols)head.x=0;
-        if(head.y<0)head.y=rows-1;if(head.y>=rows)head.y=0;
-
-        // Hit self = restart
-        if(snake.some(s=>s.x===head.x&&s.y===head.y)){init();return;}
-
-        snake.unshift(head);
-
-        // Light up the cell the head enters
-        const cell=getCell(head.x,head.y);
-        if(cell)cell.lit=Math.min(cell.lit+1,4);
-
-        // Eating food?
-        let ate=false;
-        if(food&&head.x===food.x&&head.y===food.y){
-            ate=true;
-            placeFood();
-            if(snake.length>30){
-                // Trim snake occasionally so it doesn't get too long
-                snake.pop();
-            }
-        }
-        if(!ate)snake.pop();
-
-        // Fade lit cells slowly
-        grid.forEach(g=>{if(g.lit>0&&!snake.some(s=>s.x===g.x&&s.y===g.y))g.lit=Math.max(g.lit-0.005,0);});
-
-        // Draw
-        ctx.clearRect(0,0,w,h);
-
-        // Grid cells
-        const colors=['#1a1a1f','#1e3a2a','#166534','#10b981','#34d399'];
-        grid.forEach(g=>{
-            const px=g.x*(cell+gap),py=g.y*(cell+gap);
-            ctx.fillStyle=colors[Math.floor(g.lit)];
-            ctx.fillRect(px,py,cell,cell);
-        });
-
-        // Food dot — subtle pulse
-        if(food){
-            const px=food.x*(cell+gap),py=food.y*(cell+gap);
-            ctx.fillStyle='rgba(16,185,129,0.5)';
-            ctx.fillRect(px,py,cell,cell);
-        }
-
-        // Snake body — slightly brighter than lit cells
-        snake.forEach((s,i)=>{
-            const px=s.x*(cell+gap),py=s.y*(cell+gap);
-            const a=1-i/snake.length*0.6;
-            ctx.fillStyle=`rgba(52,211,153,${a})`;
-            ctx.fillRect(px,py,cell,cell);
-        });
-    }
-    requestAnimationFrame(frame);
-})();
-    </script>
+  })();
+  // scroll reveal
+  (function(){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(el,i){el.style.transitionDelay=(i%4)*0.06+'s';io.observe(el)});
+  })();
+  document.getElementById('yr').textContent=new Date().getFullYear();
+</script>
 </body>
 </html>
