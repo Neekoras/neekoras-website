@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcade · Nicholas Lin</title>
+<meta name="description" content="A small arcade. Games by Nicholas Lin.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<meta property="og:title" content="Arcade · Nicholas Lin">
+<meta property="og:description" content="A small arcade.">
+<meta property="og:image" content="https://neekoras.com/img/photo1.jpg">
+<meta property="og:url" content="https://neekoras.com/games">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3efe6;--ink:#18160f;--muted:#8a8375;--line:#d9d2c4;--accent:#a2492f;
+    --serif:'Instrument Serif', Georgia, serif;--sans:'Inter', system-ui, sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  a{color:inherit;text-decoration:none}
+  .kicker{font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);font-weight:500}
+
+  .cursor{position:fixed;top:0;left:0;width:9px;height:9px;border-radius:50%;background:var(--ink);pointer-events:none;z-index:10000;transform:translate(-50%,-50%);transition:width .25s,height .25s,background .25s,opacity .25s;mix-blend-mode:difference}
+  .cursor.big{width:46px;height:46px;background:#fff}
+  @media (hover:none){.cursor{display:none}}
+
+  nav{position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:1.5rem clamp(1.25rem,5vw,3.5rem);mix-blend-mode:difference;color:#fff}
+  nav .brand{font-family:var(--serif);font-size:1.35rem;letter-spacing:.01em}
+  nav .brand em{font-style:italic}
+  nav .links{display:flex;gap:1.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}
+  nav .links a{position:relative;padding-bottom:2px}
+  nav .links a::after{content:"";position:absolute;left:0;bottom:0;width:0;height:1px;background:currentColor;transition:width .3s ease}
+  nav .links a:hover::after{width:100%}
+
+  header.top{max-width:1100px;margin:0 auto;padding:9rem clamp(1.25rem,5vw,3.5rem) 2.5rem}
+  header.top .kicker{margin-bottom:1.25rem}
+  header.top h1{font-family:var(--serif);font-weight:400;line-height:.95;font-size:clamp(3rem,9vw,6rem);letter-spacing:-.01em;margin-bottom:1.25rem}
+  header.top h1 em{font-style:italic;color:var(--accent)}
+  header.top p{font-size:clamp(1rem,1.4vw,1.1rem);line-height:1.6;color:#3a362c;max-width:44ch}
+
+  .grid{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,9rem);
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:clamp(1rem,3vw,2rem)}
+  .card{position:relative;display:block;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    background:#efe9dc;aspect-ratio:4/5;transition:transform .5s cubic-bezier(.2,.8,.2,1),border-color .4s,box-shadow .5s}
+  .card:hover{transform:translateY(-6px);border-color:var(--ink);box-shadow:0 18px 40px -24px rgba(24,22,15,.55)}
+  .card .art{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .card .meta{position:absolute;left:0;bottom:0;width:100%;padding:1.25rem 1.35rem;
+    background:linear-gradient(to top,rgba(24,22,15,.82),rgba(24,22,15,0));color:var(--paper)}
+  .card .meta .name{font-family:var(--serif);font-size:1.9rem;line-height:1;margin-bottom:.25rem}
+  .card .meta .sub{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;opacity:.8}
+  .card .tag{position:absolute;top:1rem;right:1rem;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;
+    background:var(--paper);color:var(--ink);padding:.35rem .6rem;border-radius:20px;font-weight:600}
+  .card.soon{cursor:default}
+  .card.soon:hover{transform:none;border-color:var(--line);box-shadow:none}
+  .card.soon .art,.card.soon .meta .name{opacity:.55}
+  .card .tag.soon-tag{background:var(--accent);color:#fff}
+
+  /* 2048 mini art */
+  .art-2048{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:62%;transform:rotate(-4deg)}
+  .art-2048 span{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--serif);font-size:1.4rem;color:#fff}
+  .art-2048 .a{background:#e3b98f;color:#5c5443}.art-2048 .b{background:#d47e46}
+  .art-2048 .c{background:#a2492f}.art-2048 .d{background:#18160f;color:#f3efe6}
+  .art-2048 .e{background:#c4622f}.art-2048 .f{background:#e6d8bd;color:#5c5443}
+
+  /* celeste mini art */
+  .art-cel{width:64%;aspect-ratio:1;position:relative}
+  .art-cel .mtn{position:absolute;bottom:22%;left:50%;transform:translateX(-50%);width:0;height:0;
+    border-left:70px solid transparent;border-right:70px solid transparent;border-bottom:120px solid #a2492f}
+  .art-cel .snow{position:absolute;bottom:calc(22% + 78px);left:50%;transform:translateX(-50%);width:0;height:0;
+    border-left:26px solid transparent;border-right:26px solid transparent;border-bottom:44px solid #f3efe6}
+
+  footer{border-top:1px solid var(--line);padding:clamp(3rem,6vw,4rem) clamp(1.25rem,5vw,3.5rem)}
+  .footer-in{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem}
+  .footer-in a{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:color .3s}
+  .footer-in a:hover{color:var(--ink)}
+  .colophon{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.8,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+
+<nav>
+  <a href="/" class="brand">Nicholas <em>Lin</em></a>
+  <div class="links">
+    <a href="/">Home</a>
+    <a href="/me">About</a>
+  </div>
+</nav>
+
+<header class="top">
+  <div class="kicker reveal">Play</div>
+  <h1 class="reveal">The <em>Arcade</em></h1>
+  <p class="reveal">A few browser games, hosted here. No downloads, no accounts. Pick one and go.</p>
+</header>
+
+<section class="grid">
+  <a class="card reveal" href="/games/2048/" data-cursor>
+    <div class="art">
+      <div class="art-2048">
+        <span class="a">2</span><span class="b">8</span><span class="f">4</span>
+        <span class="c">32</span><span class="d">2048</span><span class="e">64</span>
+      </div>
+    </div>
+    <span class="tag">Play</span>
+    <div class="meta"><div class="name">2048</div><div class="sub">Puzzle · Keyboard & touch</div></div>
+  </a>
+
+  <div class="card soon reveal" data-cursor>
+    <div class="art">
+      <div class="art-cel"><div class="mtn"></div><div class="snow"></div></div>
+    </div>
+    <span class="tag soon-tag">Soon</span>
+    <div class="meta"><div class="name">Celeste</div><div class="sub">Platformer · WASM port</div></div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-in reveal">
+    <a href="/">← Back home</a>
+    <span class="colophon">© <span id="yr"></span> Nicholas Lin</span>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var c=document.getElementById('cursor'),x=0,y=0,cx=0,cy=0;
+    if(matchMedia('(hover:hover)').matches){
+      addEventListener('mousemove',function(e){x=e.clientX;y=e.clientY});
+      (function loop(){cx+=(x-cx)*.2;cy+=(y-cy)*.2;c.style.left=cx+'px';c.style.top=cy+'px';requestAnimationFrame(loop)})();
+      document.querySelectorAll('[data-cursor],a').forEach(function(el){
+        el.addEventListener('mouseenter',function(){c.classList.add('big')});
+        el.addEventListener('mouseleave',function(){c.classList.remove('big')});
+      });
+    }
+  })();
+  (function(){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(el,i){el.style.transitionDelay=(i%4)*0.06+'s';io.observe(el)});
+  })();
+  document.getElementById('yr').textContent=new Date().getFullYear();
+</script>
+</body>
+</html>
