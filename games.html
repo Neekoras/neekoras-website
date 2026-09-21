@@ -78,6 +78,15 @@
   .art-cel .snow{position:absolute;bottom:calc(22% + 78px);left:50%;transform:translateX(-50%);width:0;height:0;
     border-left:26px solid transparent;border-right:26px solid transparent;border-bottom:44px solid #f3efe6}
 
+  /* pokerogue mini art: a fanned hand of run cards */
+  .art-pr{width:62%;aspect-ratio:1;position:relative}
+  .art-pr span{position:absolute;left:50%;top:50%;width:46%;aspect-ratio:3/4;border-radius:10px;
+    transform-origin:50% 120%;box-shadow:0 10px 24px -14px rgba(24,22,15,.6)}
+  .art-pr .p1{background:#e6d8bd;transform:translate(-50%,-50%) rotate(-18deg)}
+  .art-pr .p2{background:#18160f;transform:translate(-50%,-50%) rotate(0deg)}
+  .art-pr .p3{background:#a2492f;transform:translate(-50%,-50%) rotate(18deg)}
+  .art-pr .p3::after{content:"";position:absolute;inset:30%;border-radius:50%;border:2px solid #f3efe6}
+
   footer{border-top:1px solid var(--line);padding:clamp(3rem,6vw,4rem) clamp(1.25rem,5vw,3.5rem)}
   .footer-in{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem}
   .footer-in a{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:color .3s}
@@ -123,6 +132,13 @@
     </div>
     <span class="tag">Play</span>
     <div class="meta"><div class="name">Celeste</div><div class="sub">Platformer · bring your own copy</div></div>
+  </a>
+  <a class="card reveal" href="/games/pokerogue/" data-cursor>
+    <div class="art">
+      <div class="art-pr"><span class="p1"></span><span class="p2"></span><span class="p3"></span></div>
+    </div>
+    <span class="tag">Play</span>
+    <div class="meta"><div class="name">PokeRogue</div><div class="sub">Roguelite · saves in your browser</div></div>
   </a>
 </section>
 
