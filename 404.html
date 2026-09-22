@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rest · Nicholas Lin</title>
+<meta name="description" content="No page at this address.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3efe6;--ink:#18160f;--muted:#8a8375;--line:#d9d2c4;--accent:#a2492f;
+    --serif:'Instrument Serif', Georgia, serif;--sans:'Inter', system-ui, sans-serif;
+    --mono:ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden;
+    display:flex;flex-direction:column}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  a{color:inherit;text-decoration:none}
+
+  .cursor{position:fixed;top:0;left:0;width:9px;height:9px;border-radius:50%;background:var(--ink);
+    pointer-events:none;z-index:10000;transform:translate(-50%,-50%);
+    transition:width .25s,height .25s,background .25s;mix-blend-mode:difference}
+  .cursor.big{width:46px;height:46px;background:#fff}
+  @media (hover:none){.cursor{display:none}}
+
+  nav{position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;justify-content:space-between;
+    align-items:center;padding:1.5rem clamp(1.25rem,5vw,3.5rem);mix-blend-mode:difference;color:#fff}
+  nav .brand{font-family:var(--serif);font-size:1.35rem}
+  nav .brand em{font-style:italic}
+  nav .links{display:flex;gap:1.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}
+  nav .links a{position:relative;padding-bottom:2px}
+  nav .links a::after{content:"";position:absolute;left:0;bottom:0;width:0;height:1px;
+    background:currentColor;transition:width .3s ease}
+  nav .links a:hover::after{width:100%}
+
+  main{flex:1;display:flex;flex-direction:column;justify-content:center;
+    padding:7rem clamp(1.25rem,5vw,3.5rem) 3rem;max-width:1100px;width:100%;margin:0 auto}
+  .eyebrow{font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);
+    font-weight:500;margin-bottom:1rem}
+  h1{font-family:var(--serif);font-weight:400;line-height:.9;
+    font-size:clamp(3.5rem,13vw,9rem);letter-spacing:-.015em}
+  h1 em{font-style:italic;color:var(--accent)}
+  .lede{margin-top:1.1rem;font-size:clamp(1rem,1.4vw,1.1rem);line-height:1.6;color:#3a362c;max-width:38ch}
+
+  /* the staff: five hairlines, one bar, one whole rest */
+  .staff{margin:clamp(1.75rem,4vw,2.5rem) 0 0;width:100%;cursor:pointer}
+  .staff svg{display:block;width:100%;height:auto;overflow:visible}
+  .staff .rule{stroke:var(--ink);stroke-width:1.15;opacity:.45;
+    stroke-dasharray:1000;stroke-dashoffset:1000;animation:draw .9s cubic-bezier(.2,.8,.2,1) forwards}
+  .staff .rule:nth-child(2){animation-delay:.06s}
+  .staff .rule:nth-child(3){animation-delay:.12s}
+  .staff .rule:nth-child(4){animation-delay:.18s}
+  .staff .rule:nth-child(5){animation-delay:.24s}
+  .staff .bar{stroke:var(--ink);stroke-width:1.6;opacity:0;animation:fade .5s ease .5s forwards}
+  .staff .time{font-family:var(--serif);font-size:40px;fill:var(--ink);opacity:0;
+    animation:fade-in .5s ease .42s forwards}
+  .staff .rest{fill:var(--accent);opacity:0;transform:translateY(-10px);
+    animation:drop .55s cubic-bezier(.2,.8,.2,1) .62s forwards}
+  .staff:hover .rest{fill:var(--ink)}
+  .staff .rest{transition:fill .35s ease}
+  .staff.ring .rest{animation:ring .7s cubic-bezier(.2,.8,.2,1)}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes fade{to{opacity:.5}}
+  @keyframes fade-in{to{opacity:1}}
+  @keyframes drop{to{opacity:1;transform:translateY(0)}}
+  @keyframes ring{0%{transform:translateY(0)}35%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+
+  .caption{margin-top:1.1rem;display:flex;flex-wrap:wrap;gap:.6rem 1.25rem;align-items:baseline;
+    font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .path{font-family:var(--mono);font-size:.78rem;letter-spacing:0;text-transform:none;
+    color:var(--muted);text-decoration:line-through;text-decoration-color:var(--accent);
+    overflow-wrap:anywhere}
+
+  footer{border-top:1px solid var(--line);padding:clamp(2rem,5vw,3rem) clamp(1.25rem,5vw,3.5rem)}
+  .footer-in{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;
+    align-items:center;flex-wrap:wrap;gap:1.5rem}
+  .footer-in a{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+    transition:color .3s}
+  .footer-in a:hover,.footer-in a:focus-visible{color:var(--ink)}
+  .colophon{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+  @media (max-width:560px){
+    nav{padding:1.1rem 1.25rem}
+    nav .brand{font-size:1.15rem}
+    nav .links{gap:.95rem;font-size:.66rem;letter-spacing:.1em}
+    main{padding-top:6rem}
+  }
+
+  :focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+  @media (prefers-reduced-motion:reduce){
+    .staff .rule,.staff .bar,.staff .rest,.staff .time,.staff.ring .rest{animation:none;
+      stroke-dashoffset:0;opacity:1;transform:none}
+    .staff .rule{opacity:.5}.staff .bar{opacity:.5}
+  }
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+
+<nav>
+  <a href="/" class="brand">Nicholas <em>Lin</em></a>
+  <div class="links">
+    <a href="/">Home</a>
+    <a href="/me">About</a>
+    <a href="/games">Arcade</a>
+  </div>
+</nav>
+
+<main>
+  <div class="eyebrow">Error 404</div>
+  <h1>One bar of <em>rest</em></h1>
+  <p class="lede">There is no page at this address. Nothing was deleted, this link just points nowhere.</p>
+
+  <div class="staff" id="staff" role="button" tabindex="0" aria-label="Play a note">
+    <svg viewBox="0 0 600 150" aria-hidden="true">
+      <line class="rule" x1="0" y1="26"  x2="600" y2="26"/>
+      <line class="rule" x1="0" y1="48"  x2="600" y2="48"/>
+      <line class="rule" x1="0" y1="70"  x2="600" y2="70"/>
+      <line class="rule" x1="0" y1="92"  x2="600" y2="92"/>
+      <line class="rule" x1="0" y1="114" x2="600" y2="114"/>
+      <!-- 4/4 time signature, then a whole rest, then the closing bar:
+           the staff itself reads four, rest, four -->
+      <text class="time" x="34" y="48" text-anchor="middle" dominant-baseline="central">4</text>
+      <text class="time" x="34" y="92" text-anchor="middle" dominant-baseline="central">4</text>
+      <rect class="rest" x="297" y="48" width="46" height="11" rx="1"/>
+      <line class="bar" x1="598" y1="26" x2="598" y2="114"/>
+    </svg>
+  </div>
+  <div class="caption">
+    <span>Click the staff</span>
+    <span class="path" id="path"></span>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-in">
+    <a href="/">← Back home</a>
+    <span class="colophon">© <span id="yr"></span> Nicholas Lin</span>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  document.getElementById('path').textContent = location.pathname + location.search;
+
+  (function(){
+    var c = document.getElementById('cursor'), x = 0, y = 0, cx = 0, cy = 0;
+    if (matchMedia('(hover:hover)').matches) {
+      addEventListener('mousemove', function(e){ x = e.clientX; y = e.clientY; });
+      (function loop(){ cx += (x-cx)*.2; cy += (y-cy)*.2;
+        c.style.left = cx+'px'; c.style.top = cy+'px'; requestAnimationFrame(loop); })();
+      document.querySelectorAll('a,[role="button"]').forEach(function(el){
+        el.addEventListener('mouseenter', function(){ c.classList.add('big'); });
+        el.addEventListener('mouseleave', function(){ c.classList.remove('big'); });
+      });
+    }
+  })();
+
+  // One soft note, only on a real click or key press. Nothing plays on load.
+  (function(){
+    var staff = document.getElementById('staff'), ctx = null, i = 0;
+    var notes = [523.25, 587.33, 659.25, 783.99, 880.00]; // C D E G A, one octave up
+    function play(){
+      try {
+        ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+        var t = ctx.currentTime, f = notes[i++ % notes.length];
+        var osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'triangle'; osc.frequency.value = f;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t); osc.stop(t + 1.5);
+      } catch (e) { /* no audio available, the page still works */ }
+      staff.classList.remove('ring');
+      void staff.offsetWidth;
+      staff.classList.add('ring');
+    }
+    staff.addEventListener('click', play);
+    staff.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(); }
+    });
+  })();
+</script>
+</body>
+</html>
