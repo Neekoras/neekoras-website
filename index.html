@@ -76,6 +76,16 @@
   .hero-copy .cta a .arrow{transition:transform .3s ease}
   .hero-copy .cta a:hover .arrow{transform:translateX(5px)}
 
+
+  /* live viewer count */
+  .here{margin-top:1.75rem;display:none;align-items:center;gap:.55rem;
+    font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .here.on{display:flex}
+  .here .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none;
+    animation:here-pulse 2.6s ease-in-out infinite}
+  @keyframes here-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
+  @media (prefers-reduced-motion:reduce){.here .dot{animation:none}}
+
   .hero-photo{position:relative;justify-self:center;width:100%;max-width:420px;aspect-ratio:4/5}
   .hero-photo img{width:100%;height:100%;object-fit:cover;filter:grayscale(.15) contrast(1.02)}
   .hero-photo .frame{position:absolute;inset:0;border:1px solid var(--line);transform:translate(14px,14px);z-index:-1}
@@ -141,7 +151,6 @@
   <a href="/" class="brand">Nicholas <em>Lin</em></a>
   <div class="links">
     <a href="/me">About</a>
-    <a href="/games">Games</a>
     <a href="#say-hi">Contact</a>
   </div>
 </nav>
@@ -156,6 +165,7 @@
       <a href="/me" class="primary" data-cursor>Read more <span class="arrow">→</span></a>
       <a href="#say-hi" data-cursor>Get in touch</a>
     </div>
+    <div class="here" id="here" aria-live="polite"><span class="dot"></span><span id="here-text"></span></div>
   </div>
   <figure class="hero-photo reveal" data-cursor>
     <img src="/img/photo1.jpg" alt="Nicholas Lin">
@@ -208,6 +218,30 @@
 </footer>
 
 <script>
+  // live viewer count: heartbeat to /api/presence with an id this browser made up
+  (function(){
+    var el = document.getElementById('here'), txt = document.getElementById('here-text'), id;
+    try {
+      id = localStorage.getItem('nl-visitor');
+      if (!id || !/^[0-9a-f-]{36}$/.test(id)) { id = crypto.randomUUID(); localStorage.setItem('nl-visitor', id); }
+    } catch (e) { id = crypto.randomUUID(); }
+    function beat(){
+      if (document.hidden) return;
+      fetch('/api/presence?id=' + id, { cache: 'no-store' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var n = d.count;
+          if (!n) { el.classList.remove('on'); return; }
+          txt.textContent = n === 1 ? 'One person here now' : n + ' people here now';
+          el.classList.add('on');
+        })
+        .catch(function(){ el.classList.remove('on'); });
+    }
+    beat();
+    setInterval(beat, 20000);
+    document.addEventListener('visibilitychange', function(){ if (!document.hidden) beat(); });
+  })();
+
   // custom cursor
   (function(){
     var c=document.getElementById('cursor'),hi=document.querySelector('.egg-spot .hi'),x=0,y=0,cx=0,cy=0;
