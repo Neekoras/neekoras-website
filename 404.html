@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#f3efe6;--ink:#18160f;--muted:#8a8375;--line:#d9d2c4;--accent:#a2492f;
+    --paper:#ece7db;--ink:#2a2720;--muted:#8a8375;--line:#d5cec0;--accent:#9a5540;
     --serif:'Instrument Serif', Georgia, serif;--sans:'Inter', system-ui, sans-serif;
     --mono:ui-monospace, SFMono-Regular, Menlo, monospace;
   }
@@ -43,15 +43,15 @@
 
   main{flex:1;display:flex;flex-direction:column;justify-content:center;
     padding:7rem clamp(1.25rem,5vw,3.5rem) 3rem;max-width:1100px;width:100%;margin:0 auto}
-  .eyebrow{font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);
+  .eyebrow{font-size:.66rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);
     font-weight:500;margin-bottom:1rem}
   h1{font-family:var(--serif);font-weight:400;line-height:.9;
-    font-size:clamp(3.5rem,13vw,9rem);letter-spacing:-.015em}
+    font-size:clamp(2.4rem,7vw,3.9rem);letter-spacing:-.01em}
   h1 em{font-style:italic;color:var(--accent)}
-  .lede{margin-top:1.1rem;font-size:clamp(1rem,1.4vw,1.1rem);line-height:1.6;color:#3a362c;max-width:38ch}
+  .lede{margin-top:.9rem;font-size:.95rem;line-height:1.65;color:#4a4639;max-width:40ch}
 
   /* the staff: five hairlines, one bar, one whole rest */
-  .staff{margin:clamp(1.75rem,4vw,2.5rem) 0 0;width:100%;cursor:pointer}
+  .staff{margin:clamp(1.5rem,3.5vw,2rem) 0 0;width:100%;max-width:470px;cursor:pointer}
   .staff svg{display:block;width:100%;height:auto;overflow:visible}
   .staff .rule{stroke:var(--ink);stroke-width:1.15;opacity:.45;
     stroke-dasharray:1000;stroke-dashoffset:1000;animation:draw .9s cubic-bezier(.2,.8,.2,1) forwards}
@@ -73,7 +73,7 @@
   @keyframes drop{to{opacity:1;transform:translateY(0)}}
   @keyframes ring{0%{transform:translateY(0)}35%{transform:translateY(-6px)}100%{transform:translateY(0)}}
 
-  .caption{margin-top:1.1rem;display:flex;flex-wrap:wrap;gap:.6rem 1.25rem;align-items:baseline;
+  .caption{margin-top:.95rem;display:flex;flex-wrap:wrap;gap:.6rem 1.25rem;align-items:baseline;
     font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
   .path{font-family:var(--mono);font-size:.78rem;letter-spacing:0;text-transform:none;
     color:var(--muted);text-decoration:line-through;text-decoration-color:var(--accent);
@@ -120,18 +120,18 @@
   <p class="lede">There is no page at this address. Nothing was deleted, this link just points nowhere.</p>
 
   <div class="staff" id="staff" role="button" tabindex="0" aria-label="Play a note">
-    <svg viewBox="0 0 600 150" aria-hidden="true">
-      <line class="rule" x1="0" y1="26"  x2="600" y2="26"/>
-      <line class="rule" x1="0" y1="48"  x2="600" y2="48"/>
-      <line class="rule" x1="0" y1="70"  x2="600" y2="70"/>
-      <line class="rule" x1="0" y1="92"  x2="600" y2="92"/>
-      <line class="rule" x1="0" y1="114" x2="600" y2="114"/>
+    <svg viewBox="0 0 460 140" aria-hidden="true">
+      <line class="rule" x1="0" y1="26"  x2="460" y2="26"/>
+      <line class="rule" x1="0" y1="48"  x2="460" y2="48"/>
+      <line class="rule" x1="0" y1="70"  x2="460" y2="70"/>
+      <line class="rule" x1="0" y1="92"  x2="460" y2="92"/>
+      <line class="rule" x1="0" y1="114" x2="460" y2="114"/>
       <!-- 4/4 time signature, then a whole rest, then the closing bar:
            the staff itself reads four, rest, four -->
-      <text class="time" x="34" y="48" text-anchor="middle" dominant-baseline="central">4</text>
-      <text class="time" x="34" y="92" text-anchor="middle" dominant-baseline="central">4</text>
-      <rect class="rest" x="297" y="48" width="46" height="11" rx="1"/>
-      <line class="bar" x1="598" y1="26" x2="598" y2="114"/>
+      <text class="time" x="30" y="48" text-anchor="middle" dominant-baseline="central">4</text>
+      <text class="time" x="30" y="92" text-anchor="middle" dominant-baseline="central">4</text>
+      <rect class="rest" x="208" y="48" width="42" height="11" rx="1"/>
+      <line class="bar" x1="458" y1="26" x2="458" y2="114"/>
     </svg>
   </div>
   <div class="caption">
