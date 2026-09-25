@@ -75,6 +75,19 @@
   .card:hover .icon{transform:scale(1.06) rotate(-2deg)}
   .card .art{padding-bottom:18%}
 
+  /* snow rider mini art: an original slope drawing, not the game's artwork */
+  .art-snow{width:46%;aspect-ratio:1;border-radius:22%;overflow:hidden;position:relative;
+    background:linear-gradient(#cfd8e0,#eef2f5);
+    box-shadow:0 18px 36px -18px rgba(24,22,15,.55),0 0 0 1px rgba(24,22,15,.08);
+    transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .art-snow .slope{position:absolute;inset:0;background:var(--paper);
+    clip-path:polygon(0 62%,100% 30%,100% 100%,0 100%)}
+  .art-snow .rider{position:absolute;left:38%;top:44%;width:13%;aspect-ratio:1;border-radius:50%;
+    background:var(--accent);box-shadow:0 6px 0 -2px rgba(24,22,15,.18)}
+  .art-snow .flake{position:absolute;width:5%;aspect-ratio:1;border-radius:50%;background:#fff;opacity:.9}
+  .art-snow .f1{left:18%;top:18%}.art-snow .f2{left:66%;top:12%}.art-snow .f3{left:80%;top:30%}
+  .card:hover .art-snow{transform:scale(1.06) rotate(-2deg)}
+
   footer{border-top:1px solid var(--line);padding:clamp(3rem,6vw,4rem) clamp(1.25rem,5vw,3.5rem)}
   .footer-in{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem}
   .footer-in a{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:color .3s}
@@ -124,6 +137,17 @@
     </div>
     <span class="tag">Play</span>
     <div class="meta"><div class="name">PokeRogue</div><div class="sub">Roguelite · saves in your browser</div></div>
+  </a>
+  <a class="card reveal" href="/games/snow-rider/" data-cursor>
+    <div class="art">
+      <div class="art-snow">
+        <span class="flake f1"></span><span class="flake f2"></span><span class="flake f3"></span>
+        <div class="slope"></div>
+        <span class="rider"></span>
+      </div>
+    </div>
+    <span class="tag">Play</span>
+    <div class="meta"><div class="name">Snow Rider 3D</div><div class="sub">Downhill · Keyboard</div></div>
   </a>
 </section>
 

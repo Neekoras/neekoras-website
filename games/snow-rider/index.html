@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Snow Rider 3D · Nicholas Lin</title>
+<meta name="description" content="Snow Rider 3D, playable here.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3efe6;--ink:#18160f;--muted:#8a8375;--line:#d9d2c4;--accent:#a2492f;
+    --serif:'Instrument Serif', Georgia, serif;--sans:'Inter', system-ui, sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;overflow:hidden}
+  a{color:inherit;text-decoration:none}
+
+  .bar{flex:none;display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    padding:.85rem clamp(1rem,4vw,2rem);border-bottom:1px solid var(--line)}
+  .bar .back{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    transition:color .3s}
+  .bar .back:hover,.bar .back:focus-visible{color:var(--ink)}
+  .bar .name{font-family:var(--serif);font-size:1.15rem}
+  .bar .name em{font-style:italic;color:var(--accent)}
+  .bar .full{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    background:none;border:1px solid var(--line);border-radius:20px;padding:.35rem .75rem;
+    cursor:pointer;font-family:inherit;transition:border-color .3s,color .3s}
+  .bar .full:hover{border-color:var(--ink);color:var(--ink)}
+
+  .stage{flex:1;position:relative;background:#0e0d0b;min-height:0}
+  .stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+  .note{flex:none;padding:.6rem clamp(1rem,4vw,2rem);font-size:.68rem;letter-spacing:.06em;
+    color:var(--muted);border-top:1px solid var(--line);background:var(--paper)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="back" href="/games">← Arcade</a>
+  <div class="name">Snow <em>Rider 3D</em></div>
+  <button class="full" id="full" type="button">Fullscreen</button>
+</div>
+
+<div class="stage">
+  <!-- The game runs from GameDistribution, the service that licenses it for
+       embedding. Nothing is copied onto this server. -->
+  <iframe
+    id="game"
+    src="https://html5.gamedistribution.com/3b79a8537ebc414fb4f9672a9b8c68c8/?gd_sdk_referrer_url=https%3A%2F%2Fneekoras.com%2Fgames%2Fsnow-rider"
+    title="Snow Rider 3D"
+    allow="autoplay; fullscreen; gamepad *;"
+    allowfullscreen
+    scrolling="no"></iframe>
+</div>
+
+<div class="note">Arrow keys or A and D to steer. Space to jump.</div>
+
+<script>
+  document.getElementById('full').addEventListener('click', function(){
+    var stage = document.querySelector('.stage');
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    (stage.requestFullscreen || stage.webkitRequestFullscreen || function(){}).call(stage);
+  });
+</script>
+</body>
+</html>
