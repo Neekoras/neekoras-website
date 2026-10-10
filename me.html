@@ -39,6 +39,8 @@
   nav .brand{font-family:var(--serif);font-size:1.35rem}
   nav .brand em{font-style:italic}
   nav .links{display:flex;gap:1.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}
+  @media (max-width:420px){nav .links{gap:1rem;font-size:.7rem;letter-spacing:.1em}}
+  @media (max-width:340px){nav .links{gap:.7rem;font-size:.64rem;letter-spacing:.06em}}
   nav .links a{position:relative;padding-bottom:2px}
   nav .links a::after{content:"";position:absolute;left:0;bottom:0;width:0;height:1px;background:currentColor;transition:width .3s}
   nav .links a:hover::after,nav .links a.active::after{width:100%}
@@ -86,6 +88,7 @@
   <div class="links">
     <a href="/">Home</a>
     <a href="/me" class="active">About</a>
+    <a href="/games">Games</a>
   </div>
 </nav>
 
