@@ -32,13 +32,9 @@
   .cursor.big{width:46px;height:46px;background:#fff}
   @media (hover:none){.cursor{display:none}}
 
-  nav{position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:1.5rem clamp(1.25rem,5vw,3.5rem);mix-blend-mode:difference;color:#fff}
+  nav{position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;justify-content:flex-start;align-items:center;padding:1.5rem clamp(1.25rem,5vw,3.5rem);mix-blend-mode:difference;color:#fff}
   nav .brand{font-family:var(--serif);font-size:1.35rem;letter-spacing:.01em}
   nav .brand em{font-style:italic}
-  nav .links{display:flex;gap:1.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}
-  nav .links a{position:relative;padding-bottom:2px}
-  nav .links a::after{content:"";position:absolute;left:0;bottom:0;width:0;height:1px;background:currentColor;transition:width .3s ease}
-  nav .links a:hover::after{width:100%}
 
   header.top{max-width:1100px;margin:0 auto;padding:9rem clamp(1.25rem,5vw,3.5rem) 2.5rem}
   header.top .kicker{margin-bottom:1.25rem}
@@ -75,34 +71,42 @@
   .card:hover .icon{transform:scale(1.06) rotate(-2deg)}
   .card .art{padding-bottom:18%}
 
-  /* snow rider mini art: an original slope drawing, not the game's artwork */
-  .art-snow{width:46%;aspect-ratio:1;border-radius:22%;overflow:hidden;position:relative;
-    background:linear-gradient(#cfd8e0,#eef2f5);
-    box-shadow:0 18px 36px -18px rgba(24,22,15,.55),0 0 0 1px rgba(24,22,15,.08);
-    transition:transform .5s cubic-bezier(.2,.8,.2,1)}
-  .art-snow .slope{position:absolute;inset:0;background:var(--paper);
-    clip-path:polygon(0 62%,100% 30%,100% 100%,0 100%)}
-  .art-snow .rider{position:absolute;left:38%;top:44%;width:13%;aspect-ratio:1;border-radius:50%;
-    background:var(--accent);box-shadow:0 6px 0 -2px rgba(24,22,15,.18)}
-  .art-snow .flake{position:absolute;width:5%;aspect-ratio:1;border-radius:50%;background:#fff;opacity:.9}
-  .art-snow .f1{left:18%;top:18%}.art-snow .f2{left:66%;top:12%}.art-snow .f3{left:80%;top:30%}
-  .card:hover .art-snow{transform:scale(1.06) rotate(-2deg)}
-
-  /* mimstris mini art: my own stack of blocks in the site palette */
-  .art-blocks{width:46%;aspect-ratio:1;border-radius:22%;overflow:hidden;position:relative;background:#18160f;
-    box-shadow:0 18px 36px -18px rgba(24,22,15,.55),0 0 0 1px rgba(24,22,15,.08);
-    transition:transform .5s cubic-bezier(.2,.8,.2,1);display:grid;
-    grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:6%;padding:16%}
-  .art-blocks i{border-radius:3px;background:#2b2820}
-  .art-blocks i.on{background:var(--accent)}
-  .art-blocks i.pale{background:#e6d8bd}
-  .card:hover .art-blocks{transform:scale(1.06) rotate(-2deg)}
-
   footer{border-top:1px solid var(--line);padding:clamp(3rem,6vw,4rem) clamp(1.25rem,5vw,3.5rem)}
   .footer-in{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem}
   .footer-in a{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:color .3s}
   .footer-in a:hover{color:var(--ink)}
   .colophon{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+  /* hollow knight mini art */
+  .art-hollow{width:46%;aspect-ratio:1;border-radius:22%;overflow:hidden;position:relative;
+    background:#0a0805;
+    box-shadow:0 18px 36px -18px rgba(24,22,15,.55),0 0 0 1px rgba(24,22,15,.08);
+    transition:transform .5s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;justify-content:center}
+  .art-hollow svg{width:60%;height:60%}
+  .card:hover .art-hollow{transform:scale(1.06) rotate(-2deg)}
+
+  /* game request box */
+  .ask{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,8rem)}
+  .ask-in{border-top:1px solid var(--line);padding-top:clamp(2.5rem,5vw,3.5rem);display:grid;grid-template-columns:1fr;gap:1.75rem}
+  @media(min-width:860px){.ask-in{grid-template-columns:1fr 1.15fr;gap:3rem;align-items:start}}
+  .ask h2{font-family:var(--serif);font-weight:400;font-size:clamp(2.2rem,5vw,3.4rem);line-height:1;margin:.9rem 0 .9rem}
+  .ask h2 em{font-style:italic;color:var(--accent)}
+  .ask p{color:#3a362c;line-height:1.6;max-width:38ch}
+  .ask form{display:grid;gap:.8rem}
+  .ask label{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  .ask input,.ask textarea{width:100%;font:inherit;font-size:1rem;color:var(--ink);background:#fbf8f2;border:1px solid var(--line);
+    border-radius:10px;padding:.85rem 1rem;transition:border-color .25s,box-shadow .25s}
+  .ask textarea{min-height:5.5rem;resize:vertical}
+  .ask input:focus,.ask textarea:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(162,73,47,.12)}
+  .ask .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+  .ask .row{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:.3rem}
+  .ask button{font:inherit;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--paper);
+    background:var(--ink);border:0;border-radius:999px;padding:.9rem 1.6rem;cursor:pointer;transition:background .25s,transform .25s}
+  .ask button:hover{background:var(--accent)}
+  .ask button:disabled{opacity:.55;cursor:default}
+  .ask .msg{font-size:.9rem;color:var(--muted)}
+  .ask .msg.ok{color:#3f6b3a}
+  .ask .msg.err{color:var(--accent)}
 
   .reveal{opacity:0;transform:translateY(24px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.8,.2,1)}
   .reveal.in{opacity:1;transform:none}
@@ -113,10 +117,6 @@
 
 <nav>
   <a href="/" class="brand">Nicholas <em>Lin</em></a>
-  <div class="links">
-    <a href="/">Home</a>
-    <a href="/me">About</a>
-  </div>
 </nav>
 
 <header class="top">
@@ -126,14 +126,6 @@
 </header>
 
 <section class="grid">
-  <a class="card reveal" href="/games/2048/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/2048.png" alt="2048 icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">2048</div><div class="sub">Puzzle · Keyboard & touch</div></div>
-  </a>
-
   <a class="card reveal" href="/games/celeste/" data-cursor>
     <div class="art">
       <div class="icon px pad"><img src="/img/games/celeste.png" alt="Celeste icon"></div>
@@ -141,6 +133,15 @@
     <span class="tag">Play</span>
     <div class="meta"><div class="name">Celeste</div><div class="sub">Precision platformer · Keyboard &amp; controller</div></div>
   </a>
+
+  <a class="card reveal" href="/games/hollow-knight/" data-cursor>
+    <div class="art">
+      <div class="icon"><img src="/img/games/hollow-knight.png?v=2" alt="Hollow Knight icon"></div>
+    </div>
+    <span class="tag">Play</span>
+    <div class="meta"><div class="name">Hollow Knight</div><div class="sub">Platformer · Keyboard & mouse</div></div>
+  </a>
+
   <a class="card reveal" href="/games/pokerogue/" data-cursor>
     <div class="art">
       <div class="icon px"><img src="/img/games/pokerogue.png" alt="PokeRogue icon"></div>
@@ -148,36 +149,10 @@
     <span class="tag">Play</span>
     <div class="meta"><div class="name">PokeRogue</div><div class="sub">Roguelite · saves in your browser</div></div>
   </a>
-  <a class="card reveal" href="/games/snow-rider/" data-cursor>
-    <div class="art">
-      <div class="art-snow">
-        <span class="flake f1"></span><span class="flake f2"></span><span class="flake f3"></span>
-        <div class="slope"></div>
-        <span class="rider"></span>
-      </div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Snow Rider 3D</div><div class="sub">Downhill · Keyboard</div></div>
-  </a>
-  <a class="card reveal" href="/games/blocks/" data-cursor>
-    <div class="art">
-      <div class="art-blocks"><i></i><i class="on"></i><i class="on"></i><i></i><i></i><i class="on"></i><i class="on"></i><i></i><i class="pale"></i><i></i><i></i><i></i><i class="pale"></i><i class="pale"></i><i></i><i></i></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Mimstris</div><div class="sub">Falling blocks · Keyboard</div></div>
-  </a>
-
-  <a class="card reveal" href="/games/hollow-knight/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/hollow-knight.png" alt="Hollow Knight icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Hollow Knight</div><div class="sub">Metroidvania · Keyboard & mouse</div></div>
-  </a>
 
   <a class="card reveal" href="/games/clustertruck/" data-cursor>
     <div class="art">
-      <div class="icon"><img src="/img/games/clustertruck.png" alt="Clustertruck icon"></div>
+      <div class="icon"><img src="/img/games/clustertruck.png?v=2" alt="Clustertruck icon"></div>
     </div>
     <span class="tag">Play</span>
     <div class="meta"><div class="name">Clustertruck</div><div class="sub">Platformer · Keyboard & mouse</div></div>
@@ -185,18 +160,18 @@
 
   <a class="card reveal" href="/games/omori/" data-cursor>
     <div class="art">
-      <div class="icon"><img src="/img/games/omori.png" alt="OMORI icon"></div>
+      <div class="icon"><img src="/img/games/omori.png?v=2" alt="OMORI icon"></div>
     </div>
     <span class="tag">Play</span>
     <div class="meta"><div class="name">OMORI</div><div class="sub">RPG · Keyboard & mouse</div></div>
   </a>
 
-  <a class="card reveal" href="/games/ultrakill/" data-cursor>
+  <a class="card reveal" href="/games/2048/" data-cursor>
     <div class="art">
-      <div class="icon"><img src="/img/games/ultrakill.png" alt="ULTRAKILL icon"></div>
+      <div class="icon"><img src="/img/games/2048.png?v=3" alt="2048 icon"></div>
     </div>
     <span class="tag">Play</span>
-    <div class="meta"><div class="name">ULTRAKILL</div><div class="sub">FPS · Keyboard & mouse</div></div>
+    <div class="meta"><div class="name">2048</div><div class="sub">Puzzle · Keyboard & touch</div></div>
   </a>
 
   <a class="card reveal" href="/games/tetris/" data-cursor>
@@ -204,7 +179,15 @@
       <div class="icon"><img src="/img/games/tetris.png" alt="Tetris icon"></div>
     </div>
     <span class="tag">Play</span>
-    <div class="meta"><div class="name">Tetris</div><div class="sub">Puzzle · Keyboard</div></div>
+    <div class="meta"><div class="name">Tetris</div><div class="sub">Falling blocks · Keyboard</div></div>
+  </a>
+
+  <a class="card reveal" href="/games/ultrakill/" data-cursor>
+    <div class="art">
+      <div class="icon"><img src="/img/games/ultrakill.png?v=2" alt="ULTRAKILL icon"></div>
+    </div>
+    <span class="tag">Play</span>
+    <div class="meta"><div class="name">ULTRAKILL</div><div class="sub">FPS · Keyboard & mouse</div></div>
   </a>
 
   <a class="card reveal" href="/games/pacman/" data-cursor>
@@ -212,21 +195,44 @@
       <div class="icon"><img src="/img/games/pacman.png" alt="Pac-Man icon"></div>
     </div>
     <span class="tag">Play</span>
-    <div class="meta"><div class="name">Pac-Man</div><div class="sub">Arcade · Keyboard & arrow keys</div></div>
+    <div class="meta"><div class="name">Pac-Man</div><div class="sub">Maze · Keyboard & touch</div></div>
   </a>
 
   <a class="card reveal" href="/games/forager/" data-cursor>
     <div class="art">
-      <div class="icon"><img src="/img/games/forager.png" alt="Forager icon"></div>
+      <div class="icon"><img src="/img/games/forager.png?v=2" alt="Forager icon"></div>
     </div>
     <span class="tag">Play</span>
-    <div class="meta"><div class="name">Forager</div><div class="sub">Idle · Browser saves</div></div>
+    <div class="meta"><div class="name">Forager</div><div class="sub">Adventure · Keyboard & mouse</div></div>
   </a>
+
+</section>
+
+<section class="ask" id="request">
+  <div class="ask-in reveal">
+    <div>
+      <div class="kicker">Requests</div>
+      <h2>Want a <em>game</em> here?</h2>
+      <p>Name a game you'd play on this site and I'll look into adding it.</p>
+    </div>
+    <form id="ask-form" novalidate>
+      <label for="ask-game">Game</label>
+      <input id="ask-game" name="game" maxlength="80" autocomplete="off" placeholder="Terraria, Hades, Minecraft..." required>
+      <label for="ask-note">Anything else? (optional)</label>
+      <textarea id="ask-note" name="note" maxlength="400" placeholder="Why you want it, or a link to it"></textarea>
+      <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <div class="row">
+        <button type="submit" data-cursor>Send request</button>
+        <span class="msg" id="ask-msg" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+  </div>
 </section>
 
 <footer>
   <div class="footer-in reveal">
     <a href="/">← Back home</a>
+
     <span class="colophon">© <span id="yr"></span> Nicholas Lin</span>
   </div>
 </footer>
@@ -246,6 +252,25 @@
   (function(){
     var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
     document.querySelectorAll('.reveal').forEach(function(el,i){el.style.transitionDelay=(i%4)*0.06+'s';io.observe(el)});
+  })();
+  (function(){
+    var f=document.getElementById('ask-form'),msg=document.getElementById('ask-msg'),btn=f.querySelector('button');
+    function say(t,cls){msg.textContent=t;msg.className='msg'+(cls?' '+cls:'')}
+    f.addEventListener('submit',function(e){
+      e.preventDefault();
+      var game=f.game.value.trim();
+      if(game.length<2){say('Tell me which game.','err');f.game.focus();return}
+      btn.disabled=true;say('Sending...');
+      fetch('/games/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({game:game,note:f.note.value.trim(),website:f.website.value})})
+        .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+        .then(function(x){
+          if(x.ok){f.reset();say('Got it. Thanks for the idea.','ok')}
+          else say((x.d&&x.d.error)||'That did not go through. Try again.','err')
+        })
+        .catch(function(){say('That did not go through. Try again.','err')})
+        .then(function(){btn.disabled=false});
+    });
   })();
   document.getElementById('yr').textContent=new Date().getFullYear();
 </script>
