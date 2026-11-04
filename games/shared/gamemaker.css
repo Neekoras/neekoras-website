@@ -1,0 +1,87 @@
+/*
+ * Site styling for the parts of GameMaker web exports that are not the game: the pause menu, and on
+ * the Deltarune launcher the "launching" screen and the mobile touch controls. Colors match the
+ * shared loading screen (loader.js). Link it after the page's own <style> so these rules win.
+ */
+@font-face { font-family: "Instrument Serif"; font-weight: 400; font-display: swap;
+  src: url("/games/shared/fonts/instrument-serif-400.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; font-display: swap;
+  src: url("/games/shared/fonts/inter-400.woff2") format("woff2"); }
+
+/* Pause menu: shown when the tab is hidden, with Resume (and Quit only inside Opera GX). */
+#pauseMenuContainer {
+  position: fixed; inset: 0; z-index: 1000; padding: 24px;
+  background: rgba(18, 16, 17, .55);
+}
+#pauseMenuBorder {
+  background: none; padding: 0; border-radius: 0; clip-path: none;
+  width: 100%; max-width: 360px;
+}
+#pauseMenu {
+  padding: 34px 32px 32px; border-radius: 14px; clip-path: none;
+  background: radial-gradient(ellipse at 50% 30%, #2c2729 0%, #1a1718 70%, #121011 100%);
+  border: 1px solid rgba(236, 230, 218, .12);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .85);
+  color: #ece6da; font-family: Inter, system-ui, sans-serif; text-align: left;
+  animation: gm-rise .45s cubic-bezier(.2, .8, .2, 1);
+}
+#pauseMenu::before {
+  content: "Paused"; display: block; margin: 0 0 26px;
+  font-family: "Instrument Serif", Georgia, serif; font-size: 48px; line-height: 1; letter-spacing: -.01em;
+}
+#pauseMenu button {
+  font: 400 12px/1 Inter, system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase;
+  color: #1a1718; background: #ece6da; border: 1px solid #ece6da; border-radius: 999px;
+  padding: 15px 24px; margin: 0; cursor: pointer; filter: none;
+  transition: background .25s, border-color .25s, color .25s;
+}
+#pauseMenu button + button { margin-top: 10px; }
+#pauseMenu button:hover { background: #d0714f; border-color: #d0714f; color: #fff; filter: none; }
+#pauseMenu button:active { filter: brightness(.92); }
+#pauseMenu button:focus-visible { outline: 2px solid #d0714f; outline-offset: 3px; }
+#pauseMenu button#quitButton { background: none; color: #ece6da; border-color: rgba(236, 230, 218, .35); }
+#pauseMenu button#quitButton:hover { background: none; border-color: #ece6da; }
+#pauseMenu button[hidden] { display: none; }
+@keyframes gm-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #pauseMenu { animation: none; } }
+
+/* Deltarune launcher: the moment between picking a chapter and its loading screen. */
+#loader-screen { background: radial-gradient(ellipse at 50% 40%, #2c2729 0%, #1a1718 60%, #121011 100%); }
+#loader-screen p { display: none; }
+
+/* Deltarune launcher: mobile touch controls. */
+#hud-layer .btn, #hud-layer .dpad-btn {
+  background: rgba(26, 23, 24, .45); color: #ece6da; border: 1px solid rgba(236, 230, 218, .45);
+  font-family: Inter, system-ui, sans-serif; font-weight: 400;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+#hud-layer .btn { font-size: 1.25rem; }
+#hud-layer .dpad-btn { border-radius: 12px; font-size: 18px; }
+#hud-layer .btn.active { background: rgba(208, 113, 79, .85); border-color: #d0714f; color: #fff; }
+body.edit-mode .touch-group { border: 1px dashed #d0714f !important; background: rgba(208, 113, 79, .15) !important; }
+
+#settings-bar button, #settings-panel #reset-pos {
+  font: 400 11px/1 Inter, system-ui, sans-serif !important; letter-spacing: .16em; text-transform: uppercase;
+  border-radius: 999px !important; padding: 12px 18px !important; cursor: pointer;
+}
+#settings-bar button {
+  color: #ece6da; background: rgba(26, 23, 24, .8); border: 1px solid rgba(236, 230, 218, .35);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+#settings-bar button:hover { border-color: #ece6da; }
+#settings-panel {
+  background: radial-gradient(ellipse at 50% 30%, #2c2729 0%, #1a1718 80%); color: #ece6da;
+  border: 1px solid rgba(236, 230, 218, .12); border-radius: 14px; width: 240px;
+  font-family: Inter, system-ui, sans-serif; box-shadow: 0 24px 48px -24px rgba(0, 0, 0, .85);
+}
+#settings-panel label {
+  display: block; margin-bottom: 10px;
+  font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: #8f877b;
+}
+#settings-panel input[type="range"] { display: block; margin: 0; background: rgba(236, 230, 218, .15) !important; height: 3px; }
+#settings-panel input[type="range"]::-webkit-slider-thumb { background: #d0714f !important; }
+#settings-panel input[type="range"]::-moz-range-thumb { background: #d0714f; border: 0; width: 16px; height: 16px; border-radius: 50%; }
+#settings-panel #reset-pos {
+  background: none !important; color: #ece6da !important; border: 1px solid rgba(236, 230, 218, .35) !important;
+}
+#settings-panel #reset-pos:hover { border-color: #d0714f !important; color: #d0714f !important; }

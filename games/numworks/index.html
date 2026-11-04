@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NumWorks games · Nicholas Lin</title>
+<meta name="description" content="Games for the NumWorks calculator, free to download.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<meta property="og:title" content="NumWorks games · Nicholas Lin">
+<meta property="og:description" content="Games for the NumWorks calculator.">
+<meta property="og:image" content="https://neekoras.com/img/photo1.jpg">
+<meta property="og:url" content="https://neekoras.com/games/numworks/">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3efe6;--ink:#18160f;--muted:#8a8375;--line:#d9d2c4;--accent:#a2492f;
+    --serif:'Instrument Serif', Georgia, serif;--sans:'Inter', system-ui, sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  a{color:inherit;text-decoration:none}
+  .kicker{font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);font-weight:500}
+
+  .cursor{position:fixed;top:0;left:0;width:9px;height:9px;border-radius:50%;background:var(--ink);pointer-events:none;z-index:10000;transform:translate(-50%,-50%);transition:width .25s,height .25s,background .25s,opacity .25s;mix-blend-mode:difference}
+  .cursor.big{width:46px;height:46px;background:#fff}
+  @media (hover:none){.cursor{display:none}}
+
+  nav{position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;justify-content:flex-start;align-items:center;padding:1.5rem clamp(1.25rem,5vw,3.5rem);mix-blend-mode:difference;color:#fff}
+  nav .brand{font-family:var(--serif);font-size:1.35rem;letter-spacing:.01em}
+  nav .brand em{font-style:italic}
+
+  header.top{max-width:1100px;margin:0 auto;padding:9rem clamp(1.25rem,5vw,3.5rem) 2.5rem}
+  header.top .kicker{margin-bottom:1.25rem}
+  header.top h1{font-family:var(--serif);font-weight:400;line-height:.95;font-size:clamp(3rem,9vw,6rem);letter-spacing:-.01em;margin-bottom:1.25rem}
+  header.top h1 em{font-style:italic;color:var(--accent)}
+  header.top p{font-size:clamp(1rem,1.4vw,1.1rem);line-height:1.6;color:#3a362c;max-width:44ch}
+  header.top{display:grid;grid-template-columns:1fr;gap:2rem}
+  @media(min-width:860px){header.top{grid-template-columns:1fr auto;align-items:end;gap:3rem}}
+  .nw-jump{display:grid;grid-template-columns:1fr auto;align-items:center;gap:1.25rem;max-width:320px;padding:1.1rem 1.25rem;
+    border:1px solid var(--line);border-radius:12px;background:#efe9dc;transition:transform .4s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .4s}
+  .nw-jump:hover{transform:translateY(-3px);border-color:var(--ink);box-shadow:0 14px 30px -20px rgba(24,22,15,.5)}
+  .nw-jump .kicker{font-size:.62rem;margin-bottom:.45rem}
+  .nw-jump strong{display:block;font-family:var(--serif);font-weight:400;font-size:1.5rem;line-height:1.05}
+  .nw-jump strong em{font-style:italic;color:var(--accent)}
+  .nw-jump span.nw-jump-sub{display:block;margin-top:.35rem;font-size:.82rem;color:var(--muted);line-height:1.45}
+  .nw-jump .nw-arrow{width:2.4rem;height:2.4rem;border-radius:50%;background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:center;
+    font-size:1.05rem;transition:background .25s,transform .4s cubic-bezier(.2,.8,.2,1)}
+  .nw-jump:hover .nw-arrow{background:var(--accent);transform:translateY(3px)}
+
+  .grid{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,9rem);
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:clamp(1rem,3vw,2rem)}
+  .card{position:relative;display:block;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    background:#efe9dc;aspect-ratio:4/5;transition:transform .5s cubic-bezier(.2,.8,.2,1),border-color .4s,box-shadow .5s}
+  .card:hover{transform:translateY(-6px);border-color:var(--ink);box-shadow:0 18px 40px -24px rgba(24,22,15,.55)}
+  .card .art{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .card .meta{position:absolute;left:0;bottom:0;width:100%;padding:1.25rem 1.35rem;
+    background:linear-gradient(to top,rgba(24,22,15,.82),rgba(24,22,15,0));color:var(--paper)}
+  .card .meta .name{font-family:var(--serif);font-size:1.9rem;line-height:1;margin-bottom:.25rem}
+  .card .meta .sub{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;opacity:.8}
+  .card .tag{position:absolute;top:1rem;right:1rem;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;
+    background:var(--paper);color:var(--ink);padding:.35rem .6rem;border-radius:20px;font-weight:600}
+  .card.soon{cursor:default}
+  .card.soon:hover{transform:none;border-color:var(--line);box-shadow:none}
+  .card.soon .art,.card.soon .meta .name{opacity:.55}
+  .card .tag.soon-tag{background:var(--accent);color:#fff}
+
+
+  /* official game icons */
+  .icon{width:46%;aspect-ratio:1;border-radius:22%;overflow:hidden;background:#fff;
+    box-shadow:0 18px 36px -18px rgba(24,22,15,.55),0 0 0 1px rgba(24,22,15,.08);
+    transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .icon img{width:100%;height:100%;object-fit:cover;display:block}
+  .icon.px img{image-rendering:pixelated}
+  .icon.pad{background:#fdf6ec;display:flex;align-items:center;justify-content:center}
+  .icon.pad img{width:62%;height:auto}
+  .card:hover .icon{transform:scale(1.06) rotate(-2deg)}
+  .card .art{padding-bottom:18%}
+
+  footer{border-top:1px solid var(--line);padding:clamp(3rem,6vw,4rem) clamp(1.25rem,5vw,3.5rem)}
+  .footer-in{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem}
+  .footer-in a{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:color .3s}
+  .footer-in a:hover{color:var(--ink)}
+  .colophon{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+  /* hollow knight mini art */
+  .art-hollow{width:46%;aspect-ratio:1;border-radius:22%;overflow:hidden;position:relative;
+    background:#0a0805;
+    box-shadow:0 18px 36px -18px rgba(24,22,15,.55),0 0 0 1px rgba(24,22,15,.08);
+    transition:transform .5s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;justify-content:center}
+  .art-hollow svg{width:60%;height:60%}
+  .card:hover .art-hollow{transform:scale(1.06) rotate(-2deg)}
+
+  /* game request box */
+  .ask{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,8rem)}
+  .ask-in{border-top:1px solid var(--line);padding-top:clamp(2.5rem,5vw,3.5rem);display:grid;grid-template-columns:1fr;gap:1.75rem}
+  @media(min-width:860px){.ask-in{grid-template-columns:1fr 1.15fr;gap:3rem;align-items:start}}
+  .ask h2{font-family:var(--serif);font-weight:400;font-size:clamp(2.2rem,5vw,3.4rem);line-height:1;margin:.9rem 0 .9rem}
+  .ask h2 em{font-style:italic;color:var(--accent)}
+  .ask p{color:#3a362c;line-height:1.6;max-width:38ch}
+  .ask form{display:grid;gap:.8rem}
+  .ask label{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  .ask input,.ask textarea{width:100%;font:inherit;font-size:1rem;color:var(--ink);background:#fbf8f2;border:1px solid var(--line);
+    border-radius:10px;padding:.85rem 1rem;transition:border-color .25s,box-shadow .25s}
+  .ask textarea{min-height:5.5rem;resize:vertical}
+  .ask input:focus,.ask textarea:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(162,73,47,.12)}
+  .ask .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+  .ask .row{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:.3rem}
+  .ask button{font:inherit;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--paper);
+    background:var(--ink);border:0;border-radius:999px;padding:.9rem 1.6rem;cursor:pointer;transition:background .25s,transform .25s}
+  .ask button:hover{background:var(--accent)}
+  .ask button:disabled{opacity:.55;cursor:default}
+  .ask .msg{font-size:.9rem;color:var(--muted)}
+  .ask .msg.ok{color:#3f6b3a}
+  .ask .msg.err{color:var(--accent)}
+
+  /* NumWorks calculator downloads */
+  .nw{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,8rem)}
+  .nw-in{border-top:1px solid var(--line);padding-top:clamp(2.5rem,5vw,3.5rem)}
+  .nw-top{display:grid;grid-template-columns:1fr;gap:1.75rem;margin-bottom:2.5rem}
+  @media(min-width:860px){.nw-top{grid-template-columns:1fr 1.15fr;gap:3rem;align-items:start}}
+  .nw h2{font-family:var(--serif);font-weight:400;font-size:clamp(2.2rem,5vw,3.4rem);line-height:1;margin:.9rem 0 .9rem}
+  .nw h2 em{font-style:italic;color:var(--accent)}
+  .nw p{color:#3a362c;line-height:1.6;max-width:44ch}
+  .nw-steps{list-style:none;counter-reset:s;display:grid;gap:.85rem}
+  .nw-steps li{counter-increment:s;display:grid;grid-template-columns:2rem 1fr;gap:.5rem;line-height:1.55;color:#3a362c}
+  .nw-steps li::before{content:counter(s);font-family:var(--serif);font-size:1.5rem;line-height:1;color:var(--accent)}
+  .nw-steps a{color:var(--ink);border-bottom:1px solid var(--line)}
+  .nw-steps a:hover{border-color:var(--accent)}
+  .nw-dl{display:inline-flex;align-items:center;gap:.5rem;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
+    color:var(--paper);background:var(--ink);border-radius:999px;padding:.75rem 1.25rem;transition:background .25s;white-space:nowrap}
+  .nw-dl:hover{background:var(--accent)}
+  .nw-dl small{font-size:.68rem;letter-spacing:.06em;opacity:.7;font-weight:500;text-transform:none}
+  .nw-feature{display:grid;gap:1.25rem;border:1px solid var(--line);border-radius:12px;background:#efe9dc;padding:clamp(1.25rem,3vw,2rem);margin-bottom:2.75rem}
+  @media(min-width:760px){.nw-feature{grid-template-columns:1fr auto;align-items:center}}
+  .nw-feature h3{font-family:var(--serif);font-weight:400;font-size:2rem;line-height:1;margin-bottom:.4rem}
+  .nw-feature .nw-list{font-size:.9rem;line-height:1.6;color:var(--muted);max-width:none}
+  .nw-label{font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:1.1rem}
+  .nw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:clamp(.9rem,2.5vw,1.5rem)}
+  .nw-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#efe9dc;display:flex;flex-direction:column;transition:border-color .3s,transform .4s cubic-bezier(.2,.8,.2,1)}
+  .nw-card:hover{border-color:var(--ink);transform:translateY(-3px)}
+  .nw-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;image-rendering:pixelated;background:#18160f}
+  .nw-card .nw-body{padding:1rem 1.1rem 1.1rem;display:flex;flex-direction:column;gap:.45rem;flex:1}
+  .nw-card h4{font-family:var(--serif);font-weight:400;font-size:1.45rem;line-height:1.05}
+  .nw-card p{font-size:.85rem;line-height:1.5;color:var(--muted);flex:1}
+  .nw-card .nw-dl{align-self:flex-start;margin-top:.35rem;padding:.6rem 1rem}
+  .nw-fine{margin-top:2rem;font-size:.82rem;color:var(--muted);max-width:70ch}
+  .nw-fine a{color:var(--ink);border-bottom:1px solid var(--line)}
+  .nw-fine a:hover{border-color:var(--accent)}
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.8,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  .nw{padding-top:0}
+  .nw-in{border-top:0;padding-top:0}
+  .nw-back{display:inline-block;margin-top:1.5rem;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}
+  .nw-back:hover{color:var(--ink);border-color:var(--ink)}
+
+  /* installer */
+  .nw-panel{display:grid;gap:1.25rem;border:1px solid var(--ink);border-radius:12px;background:#fbf8f2;padding:clamp(1.25rem,3vw,2rem);margin-bottom:1.25rem}
+  @media(min-width:760px){.nw-panel{grid-template-columns:1fr auto;align-items:center}}
+  .nw-panel h3{font-family:var(--serif);font-weight:400;font-size:2rem;line-height:1;margin-bottom:.4rem}
+  .nw-panel p{font-size:.92rem;max-width:56ch}
+  .nw-panel p.err{color:var(--accent)}
+  .nw-panel p.ok{color:#3f6b3a}
+  .nw-panel-actions{display:flex;gap:.6rem;flex-wrap:wrap}
+  .nw-btn{font:inherit;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--paper);
+    background:var(--ink);border:0;border-radius:999px;padding:.9rem 1.6rem;cursor:pointer;transition:background .25s;white-space:nowrap}
+  .nw-btn:hover{background:var(--accent)}
+  .nw-btn:disabled{opacity:.5;cursor:default;background:var(--ink)}
+  .nw-btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+  .nw-btn.ghost:hover{box-shadow:inset 0 0 0 1px var(--ink);background:transparent}
+  .nw-meter{height:8px;border-radius:99px;background:#e6dfd0;overflow:hidden;margin-top:1rem;max-width:440px}
+  .nw-meter-fill{height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .3s}
+  .nw-meter.over .nw-meter-fill{background:#18160f}
+  .nw-meter-text{margin-top:.5rem;font-size:.8rem!important;color:var(--muted)!important}
+  .nw-pick{align-self:flex-start;margin-top:.35rem;font:inherit;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
+    border:0;border-radius:999px;padding:.6rem 1rem;cursor:pointer;color:var(--ink);background:transparent;box-shadow:inset 0 0 0 1px var(--ink);transition:background .25s,color .25s}
+  .nw-pick small{font-size:.68rem;letter-spacing:.06em;opacity:.7;font-weight:500;text-transform:none;margin-left:.35rem}
+  .nw-pick:hover{background:var(--ink);color:var(--paper)}
+  .nw-pick.on{background:var(--accent);color:#fff;box-shadow:none}
+  .nw-pick:disabled{opacity:.4;cursor:default;background:transparent;color:var(--ink)}
+  .nw-feature .nw-pick{align-self:center;margin:0;padding:.75rem 1.25rem}
+  .nw-card.on{border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+
+<nav>
+  <a href="/games" class="brand">Nicholas <em>Lin</em></a>
+</nav>
+
+<header class="top">
+  <div>
+    <div class="kicker reveal">Calculator</div>
+    <h1 class="reveal">NumWorks <em>games</em></h1>
+    <p class="reveal">Games for the NumWorks graphing calculator. Plug yours in, pick some games and install them right from this page.</p>
+    <a class="nw-back reveal" href="/games">Back to the arcade</a>
+  </div>
+  <ol class="nw-steps reveal" id="nw-steps">
+        <li><span>Plug your calculator into this computer with its USB cable.</span></li>
+        <li><span>Click Connect and choose NumWorks Calculator from the list.</span></li>
+        <li><span>Pick your games, then click Install. Keep it plugged in until it says done.</span></li>
+      </ol>
+</header>
+
+<section class="nw" id="numworks">
+  <div class="nw-in">
+    <div class="nw-panel reveal" id="nw-panel">
+      <div class="nw-panel-main">
+        <div class="nw-label" id="nw-p-label">Your calculator</div>
+        <h3 id="nw-p-title">Not connected</h3>
+        <p id="nw-p-text">Use Chrome or Edge on a computer. Leave the calculator on the screen it shows when you plug it in.</p>
+        <div class="nw-meter" id="nw-meter" hidden><div class="nw-meter-fill" id="nw-meter-fill"></div></div>
+        <p class="nw-meter-text" id="nw-meter-text" hidden></p>
+      </div>
+      <div class="nw-panel-actions">
+        <button class="nw-btn" id="nw-connect" type="button" data-cursor>Connect calculator</button>
+        <button class="nw-btn" id="nw-install" type="button" hidden data-cursor>Install</button>
+      </div>
+    </div>
+
+    <div class="nw-feature reveal">
+      <div>
+        <div class="nw-label">Start here</div>
+        <h3>NumPlay</h3>
+        <p class="nw-list" id="nw-numplay-list">A pack of games in one app.</p>
+      </div>
+      <a class="nw-dl" id="nw-numplay-dl" href="/games/numworks/files/NumPlay.nwa" download data-cursor>Download NumPlay</a>
+    </div>
+
+    <div class="nw-label reveal" id="nw-big-label">Big games, one per download</div>
+    <div class="nw-grid" id="nw-grid"></div>
+
+    <p class="nw-fine reveal" id="nw-fine">Needs a NumWorks N0110, N0115 or N0120 running Epsilon 23.2 or newer.</p>
+  </div>
+</section>
+
+<script>
+  (function(){
+    var c=document.getElementById('cursor'),x=0,y=0,cx=0,cy=0;
+    if(matchMedia('(hover:hover)').matches){
+      addEventListener('mousemove',function(e){x=e.clientX;y=e.clientY});
+      (function loop(){cx+=(x-cx)*.2;cy+=(y-cy)*.2;c.style.left=cx+'px';c.style.top=cy+'px';requestAnimationFrame(loop)})();
+      document.querySelectorAll('[data-cursor],a').forEach(function(el){
+        el.addEventListener('mouseenter',function(){c.classList.add('big')});
+        el.addEventListener('mouseleave',function(){c.classList.remove('big')});
+      });
+    }
+  })();
+  (function(){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(el,i){el.style.transitionDelay=(i%4)*0.06+'s';io.observe(el)});
+  })();
+</script>
+<script src="/games/numworks/install.js?v=3"></script>
+<script>
+  (function(){
+    var base = '/games/numworks/release/';
+    var SECTOR = 65536;
+    var usb = window.NWInstall && NWInstall.supported;
+    var apps = [], picked = {}, cal = null, busy = false;
+    function $(id){ return document.getElementById(id); }
+    function mb(n){ return n >= 1e6 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+    function el(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+    function norm(s){ return String(s).toLowerCase().replace(/\.nwa$/, '').replace(/[^a-z0-9]/g, ''); }
+    function room(a){ return Math.ceil((a.flash + 64) / SECTOR) * SECTOR; }
+    function chosen(){ return apps.filter(function(a){ return picked[a.file]; }); }
+    function used(){ return chosen().reduce(function(n, a){ return n + room(a); }, 0); }
+
+    function say(title, text, cls){
+      $('nw-p-title').textContent = title;
+      var p = $('nw-p-text'); p.textContent = text; p.className = cls || '';
+    }
+    function meter(frac, text, over){
+      $('nw-meter').hidden = $('nw-meter-text').hidden = false;
+      $('nw-meter').classList.toggle('over', !!over);
+      $('nw-meter-fill').style.width = Math.min(100, frac * 100) + '%';
+      $('nw-meter-text').textContent = text;
+    }
+
+    function refresh(){
+      var u = used(), n = chosen().length;
+      apps.forEach(function(a){
+        var on = !!picked[a.file];
+        a.btn.classList.toggle('on', on);
+        if (a.card) a.card.classList.toggle('on', on);
+        a.btn.firstChild.nodeValue = on ? 'Added ' : 'Add ';
+        a.btn.disabled = busy || (!on && cal && u + room(a) > cal.space);
+      });
+      var ib = $('nw-install');
+      ib.textContent = n ? 'Install ' + (n === 1 ? '1 game' : n + ' games') : 'Remove all games';
+      ib.disabled = busy || (!n && !(cal && cal.apps.length)) || (cal && u > cal.space);
+      if (cal && !busy) meter(u / cal.space, mb(u) + ' of ' + mb(cal.space) + ' picked' + (n ? '' : '. Pick games to install.'), u > cal.space);
+    }
+
+    function connected(info){
+      cal = info;
+      var have = info.apps.map(function(a){ return norm(a.name); });
+      if (have.length) {
+        picked = {};
+        apps.forEach(function(a){ if (have.indexOf(norm(a.title)) >= 0 || have.indexOf(norm(a.file)) >= 0) picked[a.file] = true; });
+      }
+      $('nw-p-label').textContent = 'Connected';
+      say(info.model + ', software ' + info.version,
+        (info.apps.length ? 'On it now: ' + info.apps.map(function(a){ return a.name; }).join(', ') + '. ' : 'No games on it yet. ') +
+        'Installing replaces what is on it with the games you pick.');
+      $('nw-connect').textContent = 'Reconnect';
+      $('nw-connect').classList.add('ghost');
+      $('nw-install').hidden = false;
+      refresh();
+    }
+
+    function setup(){
+      if (!usb) {
+        $('nw-steps').innerHTML = '<li><span>Download a game below. It saves as a file ending in .nwa.</span></li>' +
+          '<li><span>Plug your calculator in and open <a href="https://my.numworks.com/apps" target="_blank" rel="noopener">my.numworks.com/apps</a> in Chrome or Edge.</span></li>' +
+          '<li><span>Add the files and click Install. Keep the calculator plugged in until it finishes.</span></li>';
+        say('Use Chrome or Edge to install from here', 'This browser cannot talk to a calculator over USB. Open this page in Chrome or Edge on a computer to install with one click, or download the games below.');
+        $('nw-connect').hidden = true;
+        return;
+      }
+      $('nw-numplay-dl').style.display = 'none';
+      $('nw-big-label').textContent = 'Big games, one app each';
+      $('nw-connect').addEventListener('click', function(){
+        if (busy) return;
+        say('Connecting', 'Pick NumWorks Calculator in the box your browser shows.');
+        NWInstall.connect().then(function(info){
+          if (info) connected(info);
+          else if (!cal) say('Not connected', 'No calculator picked. Plug it in with its USB cable, then click Connect again.');
+          else connected(cal);
+        }, function(e){ cal = null; $('nw-install').hidden = true; say('Could not connect', e.message, 'err'); });
+      });
+      $('nw-install').addEventListener('click', function(){
+        if (busy || !cal) return;
+        var list = chosen();
+        if (cal.space < used()) return;
+        busy = true; refresh();
+        $('nw-p-label').textContent = 'Installing';
+        say('Installing', 'Keep the calculator plugged in.');
+        NWInstall.install(list.map(function(a){ return a.file; }), function(phase, done, total){
+          if (phase === 'fetch') meter(done / Math.max(total, 1) * .05, 'Getting the games ready');
+          else if (phase === 'erase') meter(.05 + done / Math.max(total, 1) * .25, 'Making room');
+          else meter(.3 + done / Math.max(total, 1) * .7, 'Writing ' + Math.round(done / total * 100) + '%');
+        }).then(function(info){
+          busy = false; cal = info;
+          $('nw-p-label').textContent = 'Done';
+          say(list.length ? 'Installed' : 'Removed',
+            list.length ? 'Unplug the calculator and scroll to the end of its home screen to find ' + (list.length === 1 ? list[0].title : 'your games') +
+              '. If it warns about apps not made by NumWorks, press OK. Resetting the calculator removes them, so come back here to put them on again.'
+              : 'The calculator has no games from here on it now.', 'ok');
+          meter(1, mb(used()) + ' of ' + mb(cal.space) + ' used');
+          refresh();
+        }, function(e){
+          busy = false; refresh();
+          $('nw-p-label').textContent = 'Stopped';
+          say('Install did not finish', e.message, 'err');
+        });
+      });
+      NWInstall.onDisconnect(function(){
+        cal = null;
+        if (!busy) {
+          $('nw-p-label').textContent = 'Your calculator';
+          $('nw-install').hidden = true;
+          $('nw-connect').textContent = 'Connect calculator';
+          $('nw-connect').classList.remove('ghost');
+          $('nw-meter').hidden = $('nw-meter-text').hidden = true;
+          if ($('nw-p-title').textContent !== 'Installed') say('Not connected', 'Plug the calculator in, then click Connect.');
+        }
+        refresh();
+      });
+    }
+
+    function pickButton(a){
+      var b = el('button', 'nw-pick'); b.type = 'button'; b.setAttribute('data-cursor', '');
+      b.appendChild(document.createTextNode('Add '));
+      b.appendChild(el('small', '', mb(a.flash)));
+      b.addEventListener('click', function(){ if (picked[a.file]) delete picked[a.file]; else picked[a.file] = true; refresh(); });
+      a.btn = b;
+      return b;
+    }
+
+    fetch(base + 'games.json').then(function(r){ return r.json(); }).then(function(d){
+      var list = $('nw-numplay-list');
+      list.textContent = d.numplay.games.length + ' games in one app: ' + d.numplay.games.join(', ') + '.';
+      var dl = $('nw-numplay-dl');
+      dl.href = base + 'files/' + d.numplay.file;
+      dl.innerHTML = 'Download NumPlay <small>' + mb(d.numplay.size) + '</small>';
+      var np = { file: d.numplay.file, title: 'NumPlay', flash: d.numplay.flash || d.numplay.size };
+      apps.push(np);
+      if (usb) { dl.parentNode.appendChild(pickButton(np)); picked[np.file] = true; }
+      var grid = $('nw-grid');
+      d.big.forEach(function(g){
+        var card = el('div', 'nw-card');
+        var img = el('img'); img.src = base + g.thumb; img.alt = g.title + ' on a NumWorks'; img.loading = 'lazy';
+        var body = el('div', 'nw-body');
+        body.appendChild(el('h4', '', g.title));
+        body.appendChild(el('p', '', g.desc));
+        var a = { file: g.file, title: g.title, flash: g.flash || g.size, card: card };
+        if (usb) { body.appendChild(pickButton(a)); apps.push(a); }
+        else {
+          var link = el('a', 'nw-dl'); link.href = base + 'files/' + g.file; link.setAttribute('download', '');
+          link.innerHTML = 'Download <small>' + mb(g.size) + '</small>';
+          body.appendChild(link);
+        }
+        card.appendChild(img); card.appendChild(body); grid.appendChild(card);
+      });
+      var fine = $('nw-fine');
+      fine.innerHTML = 'Works on the NumWorks N0110, N0115 and N0120 with their own software. A calculator in exam mode hides the games until exam mode ends.' +
+        (usb ? ' Rather have the files? <a href="' + base + 'files/' + d.numplay.file + '" download>Download NumPlay</a> and add it at <a href="https://my.numworks.com/apps" target="_blank" rel="noopener">my.numworks.com/apps</a>.' : '') +
+        (d.upsilon ? ' On Upsilon instead? <a href="' + base + 'files/' + d.upsilon.file + '" download>Get NumPlay for Upsilon</a> (' + mb(d.upsilon.size) + ').' : '') +
+        ' NumPlay ' + d.version + ' is free software under the ' + d.license + ' license: <a href="' + base + d.source + '" download>source code</a>.';
+      setup();
+      refresh();
+      var c = $('cursor');
+      if (c && matchMedia('(hover:hover)').matches) document.querySelectorAll('#numworks a, #numworks button').forEach(function(x){
+        x.addEventListener('mouseenter', function(){ c.classList.add('big'); });
+        x.addEventListener('mouseleave', function(){ c.classList.remove('big'); });
+      });
+    }).catch(function(){
+      $('nw-grid').textContent = 'The game list could not load. Reload to try again.';
+    });
+  })();
+</script>
+</body>
+</html>

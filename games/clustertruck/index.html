@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+    <title>Clustertruck</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <style>
+      /* Overrides TemplateData/style.css, which is what draws the bordered 960x600 box and the
+         grey footer bar. Loaded after it so these win without editing that file. */
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #000;
+      }
+
+      #unity-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform: none;
+      }
+
+      #unity-canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        outline: none;
+      }
+
+      /* The Unity logo / fullscreen button / build title strip. */
+      #unity-footer { display: none; }
+
+      /* Unity's own logo + bar; the shared loading screen replaces it. */
+      #unity-loading-bar { display: none !important; }
+
+      #unity-status {
+        margin-top: 12px;
+        width: 154px;
+        text-align: center;
+        font-family: arial, sans-serif;
+        font-size: 12px;
+        color: #bbb;
+        white-space: nowrap;
+      }
+
+      #unity-warning {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: transparent;
+      }
+
+      #unity-error {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: none;
+        max-width: 80%;
+        padding: 16px 20px;
+        background: #2a1414;
+        border: 1px solid #a33;
+        color: #f4d5d5;
+        font-family: arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="/games/shared/tabpause.js?v=2"></script>
+    <script src="/games/shared/loader.js?v=2"></script>
+    <script>
+      var gameLoader = GameLoader({
+        title: "Clustertruck",
+        note: "The first load is about 180 MB, so give it a few minutes on a slow connection.",
+      });
+    </script>
+    <div id="unity-container">
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+        <div id="unity-status"></div>
+      </div>
+      <div id="unity-warning"> </div>
+      <div id="unity-error"></div>
+    </div>
+    <script src="cloudsave.js?v=7"></script>
+    <script>
+
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingBar = document.querySelector("#unity-loading-bar");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var statusText = document.querySelector("#unity-status");
+      var warningBanner = document.querySelector("#unity-warning");
+      var errorBox = document.querySelector("#unity-error");
+
+      function showError(msg) {
+        loadingBar.style.display = "none";
+        gameLoader.fail(msg);
+      }
+
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      function unityShowBanner(msg, type) {
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/ClusterTruckWEB.loader.js";
+      var dataUrl = buildUrl + "/ClusterTruckWEB.data";
+      var wasmUrl = buildUrl + "/ClusterTruckWEB.wasm";
+
+      // ---------------------------------------------------------------------------------------
+      // Split-file reassembly.
+      //
+      // ClusterTruckWEB.data (103 MB) and ClusterTruckWEB.wasm (84 MB) are each too big for hosts
+      // that cap individual files (GitHub's limit is 100 MB), so they are uploaded as sequential
+      // byte-range chunks named  <file>.part1, .part2, ...  This downloads the chunks in order,
+      // concatenates them into a Blob, and hands Unity a blob: URL instead of the real path.
+      //
+      // If no .part1 exists next to a file, that file is used directly and untouched -- so this
+      // same page works both on a host with only the split parts and locally with the whole files.
+      //
+      // The wasm Blob MUST carry type "application/wasm": blob: URLs report their Blob's type as
+      // the Content-Type, and WebAssembly.instantiateStreaming rejects anything else.
+      // ---------------------------------------------------------------------------------------
+
+      // The exact pieces and their sizes. Listing them (instead of probing .part1, .part2, ... until one
+      // is missing) means a network that answers a missing file with some other page can never slip
+      // that page into the game. Update these numbers if the build is ever replaced.
+      var PARTS = {
+        data: [17182650, 17182650, 17182650, 17182650, 17182650, 17182645],
+        wasm: [16918036, 16918036, 16918036, 16918036, 16918034],
+      };
+      function partList(url, sizes) {
+        return sizes.map(function (size, i) { return { url: url + ".part" + (i + 1), size: size }; });
+      }
+
+      // Streams one piece, reporting bytes as they arrive so the bar moves during a long chunk. A piece
+      // that comes back the wrong size (cut off, or a filter's page) is fetched again.
+      async function fetchPart(part, onBytes) {
+        var lastError;
+        for (var attempt = 1; attempt <= 3; attempt++) {
+          var got = 0;
+          try {
+            var res = await fetch(part.url, { cache: attempt > 1 ? "reload" : "default" });
+            if (!res.ok || res.redirected) throw new Error("HTTP " + res.status);
+            var chunks = [];
+            if (res.body) {
+              var reader = res.body.getReader();
+              for (;;) {
+                var step = await reader.read();
+                if (step.done) break;
+                chunks.push(step.value);
+                got += step.value.length;
+                onBytes(step.value.length);
+              }
+            } else {
+              var buf = new Uint8Array(await res.arrayBuffer());
+              chunks.push(buf); got = buf.length; onBytes(got);
+            }
+            if (got !== part.size) throw new Error("got " + got + " of " + part.size + " bytes");
+            return chunks;
+          } catch (e) {
+            lastError = e;
+            onBytes(-got);
+            await new Promise(function (r) { setTimeout(r, 1000 * attempt); });
+          }
+        }
+        throw new Error("Could not download " + part.url.split("/").pop() + " (" + lastError.message + ")");
+      }
+
+      var objectUrls = [];
+
+      async function resolveUrl(parts, mimeType, label, onBytes) {
+        var chunks = [];
+        for (var i = 0; i < parts.length; i++) {
+          statusText.textContent = "Downloading " + label + " (" + (i + 1) + "/" + parts.length + ")";
+          chunks = chunks.concat(await fetchPart(parts[i], onBytes));
+        }
+        var blob = new Blob(chunks, { type: mimeType });
+        var objUrl = URL.createObjectURL(blob);
+        objectUrls.push(objUrl);
+        return objUrl;
+      }
+
+      async function boot() {
+        loadingBar.style.display = "block";
+        statusText.textContent = "Checking files...";
+
+        var dataParts = partList(dataUrl, PARTS.data), wasmParts = partList(wasmUrl, PARTS.wasm);
+        var totalBytes = dataParts.concat(wasmParts).reduce(function (n, p) { return n + p.size; }, 0);
+        var loadedBytes = 0;
+        function onBytes(n) {
+          loadedBytes += n;
+          gameLoader.download(loadedBytes, totalBytes);
+        }
+
+        var resolvedData = await resolveUrl(dataParts, "application/octet-stream", "game data", onBytes);
+        var resolvedWasm = await resolveUrl(wasmParts, "application/wasm", "engine", onBytes);
+
+        statusText.textContent = "Starting...";
+        gameLoader.starting();
+
+        var config = {
+          dataUrl: resolvedData,
+          frameworkUrl: buildUrl + "/ClusterTruckWEB.framework.js",
+          codeUrl: resolvedWasm,
+          streamingAssetsUrl: "StreamingAssets",
+          companyName: "Landfall",
+          productName: "Clustertruck",
+          productVersion: "1.0",
+          showBanner: unityShowBanner,
+        };
+
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          container.className = "unity-mobile";
+          canvas.className = "unity-mobile";
+          // Uncomment to lower render resolution on mobile for performance:
+          // config.devicePixelRatio = 1;
+        } else {
+          // On Retina screens Unity would render at twice the window size (about 5 million pixels on a
+          // MacBook), which makes busy levels stutter. Cap the render width near 1920 pixels.
+          config.devicePixelRatio = Math.min(window.devicePixelRatio || 1, Math.max(1, 1920 / window.innerWidth));
+        }
+
+        // The canvas is sized by CSS to fill the window. Unity keeps the WebGL render target matched
+        // to the canvas DOM size (scaled by devicePixelRatio) on its own, so the game renders at the
+        // full window resolution and follows window resizes with no extra code.
+
+        await new Promise(function (resolve, reject) {
+          var script = document.createElement("script");
+          script.src = loaderUrl;
+          script.onload = resolve;
+          script.onerror = function () { reject(new Error("Failed to load " + loaderUrl)); };
+          document.body.appendChild(script);
+        });
+
+        var unityInstance = await createUnityInstance(canvas, config, function () {
+          gameLoader.starting();
+        });
+
+        loadingBar.style.display = "none";
+        gameLoader.done();
+        TabPause.attach(unityInstance.Module);
+
+        // The Blobs are ~190 MB combined; releasing them once Unity has read them hands that memory
+        // back rather than holding it for the whole session.
+        objectUrls.forEach(function (u) { URL.revokeObjectURL(u); });
+        objectUrls = [];
+
+        // The footer's fullscreen button is gone, so expose real (F11-style) fullscreen on a key
+        // instead. The canvas already fills the page without it.
+        window.addEventListener("keydown", function (e) {
+          if (e.key === "F" || e.key === "f") {
+            if (e.target === document.body || e.target === canvas) {
+              unityInstance.SetFullscreen(1);
+            }
+          }
+        });
+      }
+
+      boot().catch(function (err) {
+        showError("Clustertruck failed to start (" + (err && err.message ? err.message : err) + "). Reload to try again.");
+        console.error(err);
+      });
+
+    </script>
+  </body>
+</html>

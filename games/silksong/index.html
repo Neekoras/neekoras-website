@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+    <base href="https://cdn.jsdelivr.net/gh/web-ports/hollow-knight-silksong@bcbe014765f2f6ca4b1d82ac25755a0299a600ab/">
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Hollow Knight Silksong</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/instrument-serif@5/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/400.css">
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #231F20;
+        }
+
+        #unity-container {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        #unity-canvas { background: #231F20; }
+        #unity-mobile-warning { display: none; position: fixed; left: 50%; top: 5%; transform: translate(-50%); background: #fff3c4; padding: 10px; color: #231F20; font-family: Inter, system-ui, sans-serif; }
+
+        #sk-loader { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(ellipse at 50% 40%, #2c2729 0%, #1a1718 60%, #121011 100%);
+            color: #ece6da; font-family: Inter, system-ui, sans-serif; transition: opacity .6s ease; padding: 24px; box-sizing: border-box; }
+        #sk-loader.sk-gone { opacity: 0; pointer-events: none; }
+        .sk-inner { width: 100%; max-width: 440px; }
+        .sk-kicker { font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: #8f877b; margin-bottom: 14px; }
+        .sk-title { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; font-size: clamp(44px, 9vw, 64px); line-height: 1; margin: 0 0 34px; letter-spacing: -.01em; }
+        .sk-bar { position: relative; height: 3px; background: rgba(236, 230, 218, .12); border-radius: 3px; overflow: hidden; }
+        .sk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #d0714f; border-radius: 3px; transition: width .35s linear; }
+        .sk-bar.sk-busy .sk-fill { width: 35% !important; transition: none; animation: sk-slide 1.3s ease-in-out infinite; }
+        @keyframes sk-slide { 0% { left: -35%; } 100% { left: 100%; } }
+        @media (prefers-reduced-motion: reduce) { .sk-bar.sk-busy .sk-fill { animation: none; width: 100% !important; opacity: .5; } }
+        .sk-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
+        .sk-muted { color: #8f877b; font-size: 13px; margin-top: 6px; }
+        .sk-note { margin: 34px 0 0; font-size: 13px; line-height: 1.6; color: #8f877b; }
+        .sk-retry { margin-top: 18px; font: inherit; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #ece6da;
+            background: none; border: 1px solid rgba(236, 230, 218, .35); border-radius: 999px; padding: 9px 18px; cursor: pointer; }
+        .sk-retry:hover { border-color: #ece6da; }
+    </style>
+</head>
+
+<body>
+    <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
+    <script src="https://neekoras.com/games/silksong/cloudsave.js?v=1"></script>
+    <div id="sk-loader" role="status" aria-live="polite">
+        <div class="sk-inner">
+            <div class="sk-kicker">Now loading</div>
+            <h1 class="sk-title">Silksong</h1>
+            <div class="sk-bar sk-busy" id="sk-bar" role="progressbar" aria-label="Loading Silksong" aria-valuemin="0" aria-valuemax="100"><div class="sk-fill" id="sk-fill"></div></div>
+            <div class="sk-row"><span id="sk-phase">Getting ready</span><span id="sk-pct"></span></div>
+            <div class="sk-row sk-muted"><span id="sk-mb"></span><span id="sk-eta"></span></div>
+            <p class="sk-note" id="sk-note">The first load is about 2 GB. After that the game is stored in your browser and opens much faster.</p>
+        </div>
+    </div>
+    <div hidden id="unity-container" class="unity-desktop">
+        <canvas id="unity-canvas" tabindex="-1"></canvas>
+        <div id="unity-mobile-warning">WebGL builds are not supported on mobile devices.</div>
+    </div>
+    <script>
+        const ui = (() => {
+            const $ = (id) => document.getElementById(id);
+            let start = 0, bytes = 0, total = 1, raf = 0, phase = "";
+            function busy(on) { $("sk-bar").classList.toggle("sk-busy", on); }
+            function eta() {
+                const secs = (performance.now() - start) / 1000;
+                if (secs < 3 || bytes <= 0) return "";
+                const left = (total - bytes) / (bytes / secs);
+                if (left < 60) return "Under a minute left";
+                return "About " + Math.round(left / 60) + " min left";
+            }
+            function render() {
+                raf = 0;
+                let frac = Math.min(bytes / total, 1);
+                if (frac > 0.999) frac = 1;
+                const pct = Math.floor(frac * 100);
+                if (frac === 1) $("sk-phase").textContent = "Saving to your browser";
+                $("sk-fill").style.width = (frac * 100) + "%";
+                $("sk-bar").setAttribute("aria-valuenow", pct);
+                $("sk-pct").textContent = pct + "%";
+                $("sk-mb").textContent = Math.round(bytes / 1048576) + " of " + Math.round(total / 1048576) + " MB";
+                $("sk-eta").textContent = frac === 1 ? "" : eta();
+            }
+            return {
+                download(done, all) {
+                    if (phase !== "download") { phase = "download"; start = performance.now(); busy(false); $("sk-phase").textContent = "Downloading game files"; }
+                    bytes = done; total = all;
+                    if (!raf) raf = requestAnimationFrame(render);
+                },
+                cached() {
+                    if (phase === "download") return;
+                    phase = "cached";
+                    $("sk-phase").textContent = "Loading from your browser";
+                    $("sk-note").textContent = "The game is already saved in this browser, so no download is needed.";
+                },
+                starting() {
+                    if (phase === "starting") return;
+                    phase = "starting";
+                    busy(true);
+                    $("sk-phase").textContent = "Starting the game";
+                    $("sk-pct").textContent = "";
+                    $("sk-mb").textContent = "";
+                    $("sk-eta").textContent = "This can take a few seconds";
+                },
+                done() {
+                    const el = $("sk-loader");
+                    el.classList.add("sk-gone");
+                    setTimeout(() => el.remove(), 700);
+                },
+                fail(msg) {
+                    busy(false);
+                    $("sk-fill").style.width = "0";
+                    $("sk-phase").textContent = "The download stopped";
+                    $("sk-pct").textContent = "";
+                    $("sk-mb").textContent = "";
+                    $("sk-eta").textContent = "";
+                    $("sk-note").textContent = msg || "Check your connection, then reload the page to try again. Files that already finished are kept.";
+                    if (!document.querySelector(".sk-retry")) {
+                        const b = document.createElement("button");
+                        b.className = "sk-retry";
+                        b.textContent = "Reload";
+                        b.onclick = () => location.reload();
+                        $("sk-note").after(b);
+                    }
+                }
+            };
+        })();
+    </script>
+    <script>
+        // Game files come from the web-ports repo through jsDelivr, pinned to one commit.
+        // Twenty-one of its asset bundles are too big for the CDN, so the repo stores them
+        // as one 2 GB zip cut into 100 parts. This page downloads the parts a few at a time,
+        // inflates each bundle as its bytes arrive and keeps it in Cache Storage.
+        // The zip never has to be built in memory.
+        const SHA = "bcbe014765f2f6ca4b1d82ac25755a0299a600ab";
+        const HOSTS = ["https://cdn.jsdelivr.net", "https://fastly.jsdelivr.net", "https://gcore.jsdelivr.net"];
+        const repoUrl = (host, path) => host + "/gh/web-ports/hollow-knight-silksong@" + SHA + "/" + path;
+        const PART_SIZE = 20866662;
+        const CACHE_NAME = "silksong-v2";
+        const OLD_CACHES = ["silksong-v1"];
+        const CHUNK = 32 * 1048576;
+        const PARTS_AHEAD = 6;
+        // [file name, offset of its data in the zip, compressed size, expanded size]
+        const ENTRIES = [["packed-audio-voices_assets_all_4e4d5ad29d42bd4abdd5eadfce410be2.bundle", 100, 23888339, 23923429], ["packed-sprites-effects_assets_all_2e7bed7c909427b371b79d647bf138ee.bundle", 23888542, 21077768, 23619876], ["packed-scenes-hornet_scenes_all_c907e217c56bc36e9412cc713b6511b0.bundle", 44966411, 343949358, 504314372], ["packed-collections_assets_all_40fc2899a4bf13e2fdf4877fac117bfe.bundle", 388915868, 305936266, 349892025], ["packed-cinematics_assets_all_5ec2ac5cfb98b69438cb91f6e253bbbc.bundle", 694852232, 227298827, 228270727], ["packed-sprites-scenery_assets_all_39cc8fd6577083e676edf1e1a61fcaa9.bundle", 922151162, 177302834, 200750305], ["packed-audio-hornetmusic_assets_all_d7258aa531c7adbb862ab1f75c0a4758.bundle", 1099454101, 182954452, 183736066], ["packed-prefabs_assets_all_b19c0cf6b825f4cf18264a6c8f5765a6.bundle", 1282408648, 131206876, 147105252], ["packed-animations-props_assets_all_4d32c5a2554f1011290a2a758b19c15d.bundle", 1413615628, 112582650, 126271488], ["packed-sprites-ui_assets_all_f9a8ef56ecdd0a4b95785438aefb0b1a.bundle", 1526198376, 15721649, 117783892], ["packed-audio-hornetvoices_assets_all_6253ed781850c4087eb825002e1b63a0.bundle", 1541920131, 113615744, 113773103], ["packed-audio-sfx_assets_all_64a9c47145f1a68e9023751b5a4c32dd.bundle", 1655535972, 99941006, 100095084], ["packed-animations-hornet_assets_all_df96eceebcc563fac0a4c4d756348ec8.bundle", 1755477083, 79998592, 89583978], ["packed-fonts_assets_all_80af17da7b187150e3e4ec5346115b67.bundle", 1835475768, 48966670, 53402313], ["packed-sprites-hero_assets_all_038a432da5e4c2c15b9327d215fd7f32.bundle", 1884442538, 35649394, 40027523], ["packed-sprites-hornet_bosses_assets_all_4e40e4fa5157ac9fa9cbb2b12d9205fd.bundle", 1920092041, 34114295, 39051317], ["packed-animations-hornetnpcs_assets_all_b07b6c9740de43a1fa7c0ceef545d3a9.bundle", 1954206445, 29090015, 32653598], ["packed-animations-hornetenemies_assets_all_9f3d5906ad5a54b6c762e508aea802c3.bundle", 1983296572, 29055449, 32488514], ["packed-animations-effects_assets_all_9aab0f3b6b8f8c05cd2d618598948eea.bundle", 2012352127, 26832441, 30037913], ["packed-sprites-hornet_enemies_assets_all_1dc5e3e9aee3b4d2599cfacc771aa715.bundle", 2039184678, 22382755, 25741201], ["packed-animations-cutscene_assets_all_6088ab681e63b034a1b602249209347d.bundle", 2061567540, 21568824, 24006915]];
+        // A bundle is saved as pieces of about 32 MB (browsers refuse single cache entries past a size
+        // tied to free disk space, and the biggest bundle expands to 500 MB), plus a small "done" record.
+        const keyFor = (name, part) => location.origin + "/__silksong/" + name + "/" + part;
+        // Files we serve ourselves instead of the port's: the title logo bundle with the site watermarks
+        // painted out (raw deflate), the menu scene with the logo moved back to the centre, and the catalog
+        // that carries both bundles' CRCs. A new version needs new file names (and a new tag for PATCHED,
+        // which also makes browsers replace the copy they saved).
+        const PATCH = "https://neekoras.com/games/silksong/patch/";
+        const CATALOG_URL = PATCH + "catalog.v2.bin";
+        const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v1.bundle" };
+        const PATCHED = {
+            "packed-sprites-ui_assets_all_f9a8ef56ecdd0a4b95785438aefb0b1a.bundle": { file: "sprites-ui.v1.deflate", csize: 15574360, usize: 117783912, tag: "v1" }
+        };
+        const storeName = (name) => PATCHED[name] ? name + "." + PATCHED[name].tag : name;
+
+        const realFetch = window.fetch.bind(window);
+        let cache = null;
+        let doneBytes = 0;
+        let allBytes = 1;
+
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+        // Put a saved bundle back together as one stream, piece by piece.
+        async function savedBundle(bundle) {
+            const name = storeName(bundle);
+            const meta = await cache.match(keyFor(name, "done"));
+            if (!meta) return null;
+            const { chunks, size } = await meta.json();
+            let i = 0;
+            const body = new ReadableStream({
+                async pull(controller) {
+                    if (i >= chunks) { controller.close(); return; }
+                    const hit = await cache.match(keyFor(name, i++));
+                    if (!hit) {
+                        await cache.delete(keyFor(name, "done"));
+                        controller.error(new Error("the saved copy of " + name + " is incomplete, reload to fetch it again"));
+                        return;
+                    }
+                    controller.enqueue(new Uint8Array(await hit.arrayBuffer()));
+                }
+            });
+            return new Response(body, { headers: { "Content-Type": "application/octet-stream", "Content-Length": String(size) } });
+        }
+
+        // Unity asks for the big bundles by their repo path; serve them from the saved copy.
+        const bundleNames = new Set(ENTRIES.map((e) => e[0]));
+        window.fetch = async function (resource, init) {
+            try {
+                const raw = typeof resource === "string" ? resource : (resource.url || String(resource));
+                const name = new URL(raw, location.href).pathname.split("/").pop();
+                if (name === "catalog.bin") return realFetch(CATALOG_URL, init);
+                if (SERVED[name]) return realFetch(PATCH + SERVED[name], init);
+                if (cache && bundleNames.has(name)) {
+                    const hit = await savedBundle(name);
+                    if (hit) return hit;
+                }
+            } catch (e) { /* fall through to the network */ }
+            return realFetch(resource, init);
+        };
+
+        // One whole zip part. Byte-range requests are not safe here: the CDN serves ranges of a
+        // compressed copy, so only whole files are fetched. Retried across the three jsDelivr hosts.
+        const partLen = (n) => n === 100 ? 17340100 : PART_SIZE;
+        async function fetchPart(n) {
+            const want = partLen(n);
+            for (let attempt = 1; ; attempt++) {
+                let got = 0;
+                try {
+                    const url = repoUrl(HOSTS[(attempt - 1) % HOSTS.length], "StreamingAssets/aa/WebGL.zip.part" + n);
+                    const res = await realFetch(url, { cache: attempt > 1 ? "reload" : "default" });
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    const out = new Uint8Array(want);
+                    const reader = res.body.getReader();
+                    for (;;) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        if (got + value.length > want) throw new Error("part " + n + " is longer than expected");
+                        out.set(value, got);
+                        got += value.length;
+                        doneBytes += value.length;
+                        ui.download(doneBytes, allBytes);
+                    }
+                    if (got !== want) throw new Error("part " + n + " is " + got + " bytes, expected " + want);
+                    return out;
+                } catch (e) {
+                    doneBytes -= got;
+                    ui.download(doneBytes, allBytes);
+                    if (attempt >= 5) throw e;
+                    console.warn("[loader] retrying part " + n + " (attempt " + (attempt + 1) + ")", e);
+                    await sleep(800 * attempt);
+                }
+            }
+        }
+
+        // One of our own patched bundles: a single deflate file from this server.
+        async function fetchPatched(name) {
+            const p = PATCHED[name];
+            for (let attempt = 1; ; attempt++) {
+                let got = 0;
+                try {
+                    const res = await realFetch(PATCH + p.file, { cache: attempt > 1 ? "reload" : "default" });
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    const out = new Uint8Array(p.csize);
+                    const reader = res.body.getReader();
+                    for (;;) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        if (got + value.length > p.csize) throw new Error(p.file + " is longer than expected");
+                        out.set(value, got);
+                        got += value.length;
+                        doneBytes += value.length;
+                        ui.download(doneBytes, allBytes);
+                    }
+                    if (got !== p.csize) throw new Error(p.file + " is " + got + " bytes, expected " + p.csize);
+                    await saveBundle(storeName(name), p.usize, new Blob([out]).stream().pipeThrough(new DecompressionStream("deflate-raw")));
+                    return;
+                } catch (e) {
+                    doneBytes -= got;
+                    ui.download(doneBytes, allBytes);
+                    if (attempt >= 4) throw e;
+                    console.warn("[loader] retrying " + p.file + " (attempt " + (attempt + 1) + ")", e);
+                    await sleep(800 * attempt);
+                }
+            }
+        }
+
+        // Drop a saved copy (its pieces and its "done" record).
+        async function forget(name) {
+            const meta = await cache.match(keyFor(name, "done"));
+            if (!meta) return;
+            const { chunks } = await meta.json();
+            await cache.delete(keyFor(name, "done"));
+            for (let i = 0; i < chunks; i++) await cache.delete(keyFor(name, i));
+        }
+
+        // Read the inflated bytes of one bundle and save them in pieces, then write its "done" record.
+        async function saveBundle(name, usize, readable) {
+            const reader = readable.getReader();
+            let pieces = [], held = 0, seen = 0, index = 0;
+            const save = async () => {
+                if (!held) return;
+                await cache.put(keyFor(name, index++), new Response(new Blob(pieces), { headers: { "Content-Type": "application/octet-stream" } }));
+                pieces = [];
+                held = 0;
+            };
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                pieces.push(value);
+                held += value.length;
+                seen += value.length;
+                if (held >= CHUNK) await save();
+            }
+            await save();
+            if (seen !== usize) throw new Error(name + " came out at the wrong size");
+            await cache.put(keyFor(name, "done"), new Response(JSON.stringify({ chunks: index, size: usize })));
+        }
+
+        // Walk the zip in order. Parts download a few at a time ahead of the bundle being inflated,
+        // and a bundle that is already saved is skipped (so a reload resumes where it stopped).
+        async function downloadMissing() {
+            // copies of a bundle saved before it was patched are no longer used
+            for (const name of Object.keys(PATCHED)) await forget(name);
+            let missing = [];
+            for (const e of ENTRIES) {
+                if (!(await cache.match(keyFor(storeName(e[0]), "done")))) missing.push(e);
+            }
+            if (!missing.length) { ui.cached(); return; }
+            const patched = missing.filter((e) => PATCHED[e[0]]);
+            missing = missing.filter((e) => !PATCHED[e[0]]);
+            missing.sort((a, b) => a[1] - b[1]);
+            const needed = [];
+            for (const [, start, csize] of missing) {
+                const first = Math.floor(start / PART_SIZE) + 1;
+                const last = Math.floor((start + csize - 1) / PART_SIZE) + 1;
+                for (let n = first; n <= last; n++) if (needed[needed.length - 1] !== n) needed.push(n);
+            }
+            allBytes = needed.reduce((sum, n) => sum + partLen(n), 0) + patched.reduce((sum, e) => sum + PATCHED[e[0]].csize, 0);
+            ui.download(0, allBytes);
+            for (const e of patched) await fetchPatched(e[0]);
+
+            const jobs = new Map();
+            let started = 0;
+            const keepAhead = (n) => {
+                const at = needed.indexOf(n);
+                while (started < needed.length && started < at + PARTS_AHEAD) {
+                    const job = fetchPart(needed[started]);
+                    job.catch(() => {});
+                    jobs.set(needed[started], job);
+                    started++;
+                }
+            };
+
+            for (let i = 0; i < missing.length; i++) {
+                const [name, start, csize, usize] = missing[i];
+                const inflate = new DecompressionStream("deflate-raw");
+                const writer = inflate.writable.getWriter();
+                const saving = saveBundle(storeName(name), usize, inflate.readable);
+                const feeding = (async () => {
+                    let pos = start;
+                    const end = start + csize;
+                    while (pos < end) {
+                        const p = Math.floor(pos / PART_SIZE);
+                        keepAhead(p + 1);
+                        const buf = await jobs.get(p + 1);
+                        const to = Math.min(end - p * PART_SIZE, buf.length);
+                        await writer.write(buf.subarray(pos - p * PART_SIZE, to));
+                        pos = p * PART_SIZE + to;
+                    }
+                    await writer.close();
+                })();
+                try { await Promise.all([feeding, saving]); }
+                catch (e) { writer.abort(e).catch(() => {}); throw e; }
+                // drop parts that no later bundle needs
+                const nextStart = i + 1 < missing.length ? missing[i + 1][1] : Infinity;
+                for (const n of [...jobs.keys()]) if (n * PART_SIZE <= nextStart) jobs.delete(n);
+            }
+        }
+
+        // The three engine files are gzip, and the loader in this build inflates them itself, so they
+        // are passed on untouched. They are fetched here only so a failed download can be retried
+        // against the other jsDelivr hosts.
+        async function buildFileUrl(file) {
+            for (let attempt = 1; ; attempt++) {
+                try {
+                    const res = await realFetch(repoUrl(HOSTS[(attempt - 1) % HOSTS.length], "Build/" + file));
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    const blob = await res.blob();
+                    const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+                    if (head[0] !== 0x1f || head[1] !== 0x8b) throw new Error(file + " is not the expected gzip file");
+                    return URL.createObjectURL(new Blob([blob], { type: "application/octet-stream" }));
+                } catch (e) {
+                    if (attempt >= 4) throw e;
+                    await sleep(800 * attempt);
+                }
+            }
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const s = document.createElement("script");
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = () => reject(new Error("could not load " + src));
+                document.body.appendChild(s);
+            });
+        }
+
+        (async () => {
+            try {
+                let inflates = false;
+                try { new DecompressionStream("deflate-raw"); inflates = true; } catch (e) { /* old browser */ }
+                if (!inflates || !window.caches || !window.WebAssembly) {
+                    ui.fail("This browser is too old or has storage turned off. Try a current Chrome, Edge or Firefox window that is not private.");
+                    return;
+                }
+                for (const old of OLD_CACHES) { try { await caches.delete(old); } catch (e) { /* ignore */ } }
+                cache = await caches.open(CACHE_NAME);
+                await downloadMissing();
+                ui.starting();
+
+                const [dataUrl, frameworkUrl, codeUrl] = await Promise.all([
+                    buildFileUrl("w-pt.data.unityweb"),
+                    buildFileUrl("w-pt.framework.js.unityweb"),
+                    buildFileUrl("w-pt.wasm.unityweb")
+                ]);
+                await loadScript(repoUrl(HOSTS[0], "Build/w-pt.loader.js"));
+
+                const config = {
+                    dataUrl: dataUrl,
+                    frameworkUrl: frameworkUrl,
+                    codeUrl: codeUrl,
+                    streamingAssetsUrl: repoUrl(HOSTS[0], "StreamingAssets"),
+                    // The big bundles are already kept by this page; stop the engine copying them again.
+                    cacheControl: function () { return "no-store"; }
+                };
+                const container = document.querySelector("#unity-container");
+                container.hidden = false;
+                const canvas = document.querySelector("#unity-canvas");
+                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    config.devicePixelRatio = 1;
+                    const warn = document.querySelector("#unity-mobile-warning");
+                    warn.style.display = "block";
+                    setTimeout(() => { warn.style.display = "none"; }, 5000);
+                } else {
+                    config.devicePixelRatio = Math.min(window.devicePixelRatio || 1, Math.max(1, 1920 / window.innerWidth));
+                    const resizeCanvas = () => {
+                        canvas.width = window.innerWidth;
+                        canvas.height = window.innerHeight;
+                        canvas.style.width = window.innerWidth + "px";
+                        canvas.style.height = window.innerHeight + "px";
+                    };
+                    resizeCanvas();
+                    window.addEventListener("resize", resizeCanvas);
+                }
+                const unityInstance = await createUnityInstance(canvas, config, () => {});
+                window.skUnityInstance = unityInstance;
+                if (window.TabPause) TabPause.attach(unityInstance.Module);
+                URL.revokeObjectURL(dataUrl);
+                URL.revokeObjectURL(codeUrl);
+                ui.done();
+                canvas.style.display = "block";
+            } catch (e) {
+                console.error(e);
+                if (e && e.name === "QuotaExceededError") {
+                    ui.fail("Your browser has no room left to save the game (about 2.5 GB). Free some disk space, then reload.");
+                } else {
+                    ui.fail();
+                }
+            }
+        })();
+    </script>
+</body>
+
+</html>

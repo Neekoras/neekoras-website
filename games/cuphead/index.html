@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <title>Cuphead</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+      #gameContainer { width: 100vw !important; height: 100vh !important; }
+      #gameContainer canvas { display: block; width: 100% !important; height: 100% !important; outline: none; }
+    </style>
+  </head>
+  <body>
+    <script src="/games/shared/loader.js?v=2"></script>
+    <script>
+      var gameLoader = GameLoader({
+        title: "Cuphead",
+        totalBytes: 2160435744,
+        note: "The first load is about 2 GB, so give it a while. After that it is kept in this browser and starts much faster.",
+      });
+    </script>
+    <div id="gameContainer"></div>
+    <script src="/games/shared/tabpause.js?v=2"></script>
+    <script src="cloudsave.js?v=3"></script>
+    <script>
+      // The data and wasm files are split into parts (hosts cap file size). Each is downloaded once,
+      // joined into a blob, and kept in Cache Storage so later visits skip the download.
+      var FILES = [
+        { name: "CupheadPort.data.unityweb", parts: 103, bytes: 2134335501 },
+        { name: "CupheadPort.wasm.code.unityweb", parts: 2, bytes: 26100243 },
+      ];
+      var CACHE = "cuphead-cache";
+      var loadedBytes = 0;
+
+      async function fetchOnce(url) {
+        var res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status + " for " + url);
+        var reader = res.body.getReader(), chunks = [], got = 0;
+        try {
+          for (;;) {
+            var step = await reader.read();
+            if (step.done) break;
+            chunks.push(step.value);
+            got += step.value.length;
+            loadedBytes += step.value.length;
+            gameLoader.download(loadedBytes);
+          }
+        } catch (e) {
+          loadedBytes -= got;
+          throw e;
+        }
+        return new Blob(chunks);
+      }
+
+      async function fetchPart(url) {
+        for (var attempt = 1; ; attempt++) {
+          try { return await fetchOnce(url); } catch (e) {
+            if (attempt === 3) throw e;
+            await new Promise(function (r) { setTimeout(r, 1500 * attempt); });
+          }
+        }
+      }
+
+      // A few parts at a time: opening all of them at once leaves most streams idle long enough
+      // for the connection to drop them.
+      async function fetchAll(urls) {
+        var out = new Array(urls.length), next = 0;
+        async function worker() {
+          while (next < urls.length) { var i = next++; out[i] = await fetchPart(urls[i]); }
+        }
+        await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+        return out;
+      }
+
+      async function download(file, cache) {
+        var urls = [];
+        for (var i = 1; i <= file.parts; i++) urls.push("Build/" + file.name + ".part" + i);
+        var blob = new Blob(await fetchAll(urls));
+        // Caching is a bonus: a full disk or a private window must not stop the game from loading.
+        try { await cache.put(file.name, new Response(blob)); } catch (e) { console.warn("Not cached:", e); }
+        return blob;
+      }
+
+      function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+          var s = document.createElement("script");
+          s.src = src;
+          s.onload = resolve;
+          s.onerror = function () { reject(new Error("Failed to load " + src)); };
+          document.body.appendChild(s);
+        });
+      }
+
+      (async function () {
+        var cache = await caches.open(CACHE);
+        var hits = await Promise.all(FILES.map(function (f) { return cache.match(f.name); }));
+        var missing = FILES.filter(function (f, i) { return !hits[i]; });
+        if (!missing.length) gameLoader.cached();
+        else gameLoader.download(0, missing.reduce(function (n, f) { return n + f.bytes; }, 0));
+
+        var blobs = [];
+        for (var i = 0; i < FILES.length; i++) blobs.push(hits[i] ? await hits[i].blob() : await download(FILES[i], cache));
+        var urls = {};
+        FILES.forEach(function (f, i) { urls[f.name] = URL.createObjectURL(blobs[i]); });
+
+        await loadScript("Build/UnityLoader.js");
+        gameLoader.starting();
+
+        // UnityLoader requests these by name; hand it the joined blobs instead.
+        var open = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (method, url) {
+          var args = Array.prototype.slice.call(arguments);
+          for (var name in urls) if (String(url).indexOf(name) !== -1) args[1] = urls[name];
+          return open.apply(this, args);
+        };
+
+        UnityLoader.instantiate("gameContainer", "Build/CupheadPort.json", {
+          onProgress: function (instance, progress) {
+            if (progress !== 1) return;
+            gameLoader.done();
+            TabPause.attach(instance.Module);
+            // Unity has read the blobs by now; release the ~2 GB they hold.
+            for (var name in urls) URL.revokeObjectURL(urls[name]);
+          },
+          Module: {
+            onAbort: function (what) { gameLoader.fail("Cuphead stopped while starting (" + what + "). Reload to try again."); },
+          },
+        });
+      })().catch(function (e) {
+        console.error(e);
+        gameLoader.fail();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+# Game data, other people's ports and anything secret stay on the server only.
+games/*/Build/
+games/*/StreamingAssets/
+games/*/TemplateData/
+games/*/release/
+games/*/files/
+games/*/data/
+games/*/patch/
+games/*/assets/
+games/deltarune/
+games/pacman/
+games/tetris/
+games/shared/fonts/
+*.bak*
+*.data
+*.wasm
+*.unityweb
+*.zip
+*.ogg
+*.key
+*.env
+.env*
+*secret*

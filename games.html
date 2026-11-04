@@ -41,6 +41,18 @@
   header.top h1{font-family:var(--serif);font-weight:400;line-height:.95;font-size:clamp(3rem,9vw,6rem);letter-spacing:-.01em;margin-bottom:1.25rem}
   header.top h1 em{font-style:italic;color:var(--accent)}
   header.top p{font-size:clamp(1rem,1.4vw,1.1rem);line-height:1.6;color:#3a362c;max-width:44ch}
+  header.top{display:grid;grid-template-columns:1fr;gap:2rem}
+  @media(min-width:860px){header.top{grid-template-columns:1fr auto;align-items:end;gap:3rem}}
+  .nw-jump{display:grid;grid-template-columns:1fr auto;align-items:center;gap:1.25rem;max-width:320px;padding:1.1rem 1.25rem;
+    border:1px solid var(--line);border-radius:12px;background:#efe9dc;transition:transform .4s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .4s}
+  .nw-jump:hover{transform:translateY(-3px);border-color:var(--ink);box-shadow:0 14px 30px -20px rgba(24,22,15,.5)}
+  .nw-jump .kicker{font-size:.62rem;margin-bottom:.45rem}
+  .nw-jump strong{display:block;font-family:var(--serif);font-weight:400;font-size:1.5rem;line-height:1.05}
+  .nw-jump strong em{font-style:italic;color:var(--accent)}
+  .nw-jump span.nw-jump-sub{display:block;margin-top:.35rem;font-size:.82rem;color:var(--muted);line-height:1.45}
+  .nw-jump .nw-arrow{width:2.4rem;height:2.4rem;border-radius:50%;background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:center;
+    font-size:1.05rem;transition:background .25s,transform .4s cubic-bezier(.2,.8,.2,1)}
+  .nw-jump:hover .nw-arrow{background:var(--accent);transform:translateX(3px)}
 
   .grid{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,9rem);
     display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:clamp(1rem,3vw,2rem)}
@@ -108,6 +120,39 @@
   .ask .msg.ok{color:#3f6b3a}
   .ask .msg.err{color:var(--accent)}
 
+  /* NumWorks calculator downloads */
+  .nw{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,8rem)}
+  .nw-in{border-top:1px solid var(--line);padding-top:clamp(2.5rem,5vw,3.5rem)}
+  .nw-top{display:grid;grid-template-columns:1fr;gap:1.75rem;margin-bottom:2.5rem}
+  @media(min-width:860px){.nw-top{grid-template-columns:1fr 1.15fr;gap:3rem;align-items:start}}
+  .nw h2{font-family:var(--serif);font-weight:400;font-size:clamp(2.2rem,5vw,3.4rem);line-height:1;margin:.9rem 0 .9rem}
+  .nw h2 em{font-style:italic;color:var(--accent)}
+  .nw p{color:#3a362c;line-height:1.6;max-width:44ch}
+  .nw-steps{list-style:none;counter-reset:s;display:grid;gap:.85rem}
+  .nw-steps li{counter-increment:s;display:grid;grid-template-columns:2rem 1fr;gap:.5rem;line-height:1.55;color:#3a362c}
+  .nw-steps li::before{content:counter(s);font-family:var(--serif);font-size:1.5rem;line-height:1;color:var(--accent)}
+  .nw-steps a{color:var(--ink);border-bottom:1px solid var(--line)}
+  .nw-steps a:hover{border-color:var(--accent)}
+  .nw-dl{display:inline-flex;align-items:center;gap:.5rem;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
+    color:var(--paper);background:var(--ink);border-radius:999px;padding:.75rem 1.25rem;transition:background .25s;white-space:nowrap}
+  .nw-dl:hover{background:var(--accent)}
+  .nw-dl small{font-size:.68rem;letter-spacing:.06em;opacity:.7;font-weight:500;text-transform:none}
+  .nw-feature{display:grid;gap:1.25rem;border:1px solid var(--line);border-radius:12px;background:#efe9dc;padding:clamp(1.25rem,3vw,2rem);margin-bottom:2.75rem}
+  @media(min-width:760px){.nw-feature{grid-template-columns:1fr auto;align-items:center}}
+  .nw-feature h3{font-family:var(--serif);font-weight:400;font-size:2rem;line-height:1;margin-bottom:.4rem}
+  .nw-feature .nw-list{font-size:.9rem;line-height:1.6;color:var(--muted);max-width:none}
+  .nw-label{font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:1.1rem}
+  .nw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:clamp(.9rem,2.5vw,1.5rem)}
+  .nw-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#efe9dc;display:flex;flex-direction:column;transition:border-color .3s,transform .4s cubic-bezier(.2,.8,.2,1)}
+  .nw-card:hover{border-color:var(--ink);transform:translateY(-3px)}
+  .nw-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;image-rendering:pixelated;background:#18160f}
+  .nw-card .nw-body{padding:1rem 1.1rem 1.1rem;display:flex;flex-direction:column;gap:.45rem;flex:1}
+  .nw-card h4{font-family:var(--serif);font-weight:400;font-size:1.45rem;line-height:1.05}
+  .nw-card p{font-size:.85rem;line-height:1.5;color:var(--muted);flex:1}
+  .nw-card .nw-dl{align-self:flex-start;margin-top:.35rem;padding:.6rem 1rem}
+  .nw-fine{margin-top:2rem;font-size:.82rem;color:var(--muted);max-width:70ch}
+  .nw-fine a{color:var(--ink);border-bottom:1px solid var(--line)}
+  .nw-fine a:hover{border-color:var(--accent)}
   .reveal{opacity:0;transform:translateY(24px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.8,.2,1)}
   .reveal.in{opacity:1;transform:none}
 </style>
@@ -120,9 +165,19 @@
 </nav>
 
 <header class="top">
-  <div class="kicker reveal">Play</div>
-  <h1 class="reveal">The <em>Arcade</em></h1>
-  <p class="reveal">A few browser games, hosted here. No downloads, no accounts. Pick one and go.</p>
+  <div>
+    <div class="kicker reveal">Play</div>
+    <h1 class="reveal">The <em>Arcade</em></h1>
+    <p class="reveal">A few browser games, hosted here. No downloads, no accounts. Pick one and go.</p>
+  </div>
+  <a class="nw-jump reveal" href="/games/numworks/" data-cursor>
+    <span>
+      <span class="kicker">Calculator</span>
+      <strong>Have a <em>NumWorks</em>?</strong>
+      <span class="nw-jump-sub">Games you can put on it</span>
+    </span>
+    <span class="nw-arrow" aria-hidden="true">&rarr;</span>
+  </a>
 </header>
 
 <section class="grid">
@@ -148,6 +203,14 @@
     </div>
     <span class="tag">Play</span>
     <div class="meta"><div class="name">Hollow Knight</div><div class="sub">Platformer · Keyboard & mouse</div></div>
+  </a>
+
+  <a class="card reveal" href="/games/silksong/" data-cursor>
+    <div class="art">
+      <div class="icon"><img src="/img/games/silksong.png?v=1" alt="Hollow Knight Silksong icon"></div>
+    </div>
+    <span class="tag">Play</span>
+    <div class="meta"><div class="name">Silksong</div><div class="sub">Platformer · Keyboard</div></div>
   </a>
 
   <a class="card reveal" href="/games/pokerogue/" data-cursor>
@@ -188,6 +251,30 @@
     </div>
     <span class="tag">Play</span>
     <div class="meta"><div class="name">Forager</div><div class="sub">Adventure · Keyboard & mouse</div></div>
+  </a>
+
+  <a class="card reveal" href="/games/deltarune/" data-cursor>
+    <div class="art">
+      <div class="icon"><img src="/img/games/deltarune.png?v=2" alt="Deltarune icon"></div>
+    </div>
+    <span class="tag">Play</span>
+    <div class="meta"><div class="name">Deltarune</div><div class="sub">RPG · Keyboard</div></div>
+  </a>
+
+  <a class="card reveal" href="/games/undertale/" data-cursor>
+    <div class="art">
+      <div class="icon px"><img src="/img/games/undertale.svg" alt="Undertale icon"></div>
+    </div>
+    <span class="tag">Play</span>
+    <div class="meta"><div class="name">Undertale</div><div class="sub">RPG · Keyboard</div></div>
+  </a>
+
+  <a class="card reveal" href="/games/snow-rider/" data-cursor>
+    <div class="art">
+      <div class="icon"><img src="/img/games/snow-rider.png" alt="Snow Rider 3D icon"></div>
+    </div>
+    <span class="tag">Play</span>
+    <div class="meta"><div class="name">Snow Rider 3D</div><div class="sub">Sledding · Keyboard</div></div>
   </a>
 
   <a class="card reveal" href="/games/2048/" data-cursor>
@@ -279,5 +366,6 @@
   })();
   document.getElementById('yr').textContent=new Date().getFullYear();
 </script>
+
 </body>
 </html>

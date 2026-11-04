@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+    <base href="https://cdn.jsdelivr.net/gh/aukak/hollow-knight@2fc2e7149f0d5b2609b135ab48f00fd973930635/">
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Hollow Knight</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/instrument-serif@5/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/400.css">
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #231F20;
+        }
+
+        #unity-container {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        #unity-loading-bar { display: none !important; }
+
+        #hk-loader { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(ellipse at 50% 40%, #2c2729 0%, #1a1718 60%, #121011 100%);
+            color: #ece6da; font-family: Inter, system-ui, sans-serif; transition: opacity .6s ease; padding: 24px; box-sizing: border-box; }
+        #hk-loader.hk-gone { opacity: 0; pointer-events: none; }
+        .hk-inner { width: 100%; max-width: 440px; }
+        .hk-kicker { font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: #8f877b; margin-bottom: 14px; }
+        .hk-title { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; font-size: clamp(44px, 9vw, 64px); line-height: 1; margin: 0 0 34px; letter-spacing: -.01em; }
+        .hk-bar { position: relative; height: 3px; background: rgba(236, 230, 218, .12); border-radius: 3px; overflow: hidden; }
+        .hk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #d0714f; border-radius: 3px; transition: width .35s linear; }
+        .hk-bar.hk-busy .hk-fill { width: 35% !important; transition: none; animation: hk-slide 1.3s ease-in-out infinite; }
+        @keyframes hk-slide { 0% { left: -35%; } 100% { left: 100%; } }
+        @media (prefers-reduced-motion: reduce) { .hk-bar.hk-busy .hk-fill { animation: none; width: 100% !important; opacity: .5; } }
+        .hk-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
+        .hk-muted { color: #8f877b; font-size: 13px; margin-top: 6px; }
+        .hk-note { margin: 34px 0 0; font-size: 13px; line-height: 1.6; color: #8f877b; }
+        .hk-retry { margin-top: 18px; font: inherit; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #ece6da;
+            background: none; border: 1px solid rgba(236, 230, 218, .35); border-radius: 999px; padding: 9px 18px; cursor: pointer; }
+        .hk-retry:hover { border-color: #ece6da; }
+</style>
+</head>
+
+<body>
+    <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
+    <div id="hk-loader" role="status" aria-live="polite">
+        <div class="hk-inner">
+            <div class="hk-kicker">Now loading</div>
+            <h1 class="hk-title">Hollow Knight</h1>
+            <div class="hk-bar hk-busy" id="hk-bar" role="progressbar" aria-label="Loading Hollow Knight" aria-valuemin="0" aria-valuemax="100"><div class="hk-fill" id="hk-fill"></div></div>
+            <div class="hk-row"><span id="hk-phase">Getting ready</span><span id="hk-pct"></span></div>
+            <div class="hk-row hk-muted"><span id="hk-mb"></span><span id="hk-eta"></span></div>
+            <p class="hk-note" id="hk-note">The first load is about 900 MB. After that the game is stored in your browser and opens much faster.</p>
+        </div>
+    </div>
+    <script>
+        const hkProgress = (() => {
+            const TOTAL = 912.81 * 1048576;
+            const $ = (id) => document.getElementById(id);
+            let start = 0, bytes = 0, raf = 0, phase = "";
+            function busy(on) { $("hk-bar").classList.toggle("hk-busy", on); }
+            function eta() {
+                const secs = (performance.now() - start) / 1000;
+                if (secs < 3 || bytes <= 0) return "";
+                const left = (TOTAL - bytes) / (bytes / secs);
+                if (left < 60) return "Under a minute left";
+                const m = Math.round(left / 60);
+                return "About " + m + " min left";
+            }
+            function render() {
+                raf = 0;
+                let frac = Math.min(bytes / TOTAL, 1);
+                if (frac > 0.999) frac = 1;
+                const pct = Math.floor(frac * 100);
+                if (frac === 1) $("hk-phase").textContent = "Saving to your browser";
+                $("hk-fill").style.width = (frac * 100) + "%";
+                $("hk-bar").setAttribute("aria-valuenow", pct);
+                $("hk-pct").textContent = pct + "%";
+                $("hk-mb").textContent = Math.round(bytes / 1048576) + " of " + Math.round(TOTAL / 1048576) + " MB";
+                $("hk-eta").textContent = frac === 1 ? "" : eta();
+            }
+            return {
+                download(total) {
+                    if (phase !== "download") { phase = "download"; start = performance.now(); busy(false); $("hk-phase").textContent = "Downloading game files"; }
+                    bytes = total;
+                    if (!raf) raf = requestAnimationFrame(render);
+                },
+                cached() {
+                    if (phase === "download") return;
+                    phase = "cached";
+                    $("hk-phase").textContent = "Loading from your browser";
+                    $("hk-note").textContent = "The game is already saved in this browser, so no download is needed.";
+                },
+                starting() {
+                    if (phase === "starting") return;
+                    phase = "starting";
+                    busy(true);
+                    $("hk-phase").textContent = "Starting the game";
+                    $("hk-pct").textContent = "";
+                    $("hk-mb").textContent = "";
+                    $("hk-eta").textContent = "This can take a few seconds";
+                },
+                done() {
+                    const el = $("hk-loader");
+                    el.classList.add("hk-gone");
+                    setTimeout(() => el.remove(), 700);
+                },
+                fail() {
+                    busy(false);
+                    $("hk-fill").style.width = "0";
+                    $("hk-phase").textContent = "The download stopped";
+                    $("hk-pct").textContent = "";
+                    $("hk-mb").textContent = "";
+                    $("hk-eta").textContent = "";
+                    $("hk-note").textContent = "Check your connection, then reload the page to try again.";
+                    const b = document.createElement("button");
+                    b.className = "hk-retry";
+                    b.textContent = "Reload";
+                    b.onclick = () => location.reload();
+                    $("hk-note").after(b);
+                }
+            };
+        })();
+    </script>
+    <div hidden id="unity-container" class="unity-desktop">
+        <canvas id="unity-canvas"></canvas>
+        <div id="unity-loading-bar">
+            <div id="unity-logo"></div>
+            <div id="unity-progress-bar-empty">
+                <div id="unity-progress-bar-full"></div>
+            </div>
+        </div>
+        <div id="unity-mobile-warning"> WebGL builds are not supported on mobile devices. </div>
+    </div>
+    <script>
+        const DB_NAME = "cachedb";
+        const STORE_NAME = "files";
+
+        function openCacheDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, 1);
+
+                req.onupgradeneeded = () => {
+                    const db = req.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function saveToCache(key, blob) {
+            const db = await openCacheDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).put(blob, key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function loadFromCache(key) {
+            const db = await openCacheDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, "readonly");
+                const req = tx.objectStore(STORE_NAME).get(key);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function deleteFromCache(key) {
+            const db = await openCacheDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).delete(key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+    </script>
+    <script>
+        let totalBytes = 0;
+        let loadedBytes = 0;
+
+        // The jsDelivr copy comes from a GitHub repo that no longer exists, so any file the CDN
+        // has dropped is fetched from the backup on this server instead.
+        const HK_BACKUP = "https://neekoras.com/games/hollow-knight/files/";
+        async function fetchWithProgress(url) {
+            for (let attempt = 1; ; attempt++) {
+                let received = 0;
+                try {
+                    const response = await fetch(attempt % 2 === 1 ? url : HK_BACKUP + url);
+                    if (!response.ok) {
+                        throw new Error(`Failed to download ${url} (HTTP ${response.status})`);
+                    }
+                    const reader = response.body.getReader();
+                    const chunks = [];
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        received += value.length;
+                        loadedBytes += value.length;
+                        chunks.push(value);
+                        hkProgress.download(loadedBytes);
+                    }
+                    const fullBuffer = new Uint8Array(received);
+                    let offset = 0;
+                    for (const chunk of chunks) {
+                        fullBuffer.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+                    return new Blob([fullBuffer]);
+                } catch (e) {
+                    loadedBytes -= received;
+                    hkProgress.download(loadedBytes);
+                    if (attempt >= 4) throw e;
+                    console.warn(`[loader] retrying ${url} (attempt ${attempt + 1})`, e);
+                    await new Promise(r => setTimeout(r, 1000 * attempt));
+                }
+            }
+        }
+        async function mergeFiles(fileParts, cacheKey, expectWasmMagic) {
+            const cached = await loadFromCache(cacheKey);
+            if (cached) {
+                hkProgress.cached();
+                if (expectWasmMagic) {
+                    const head = new Uint8Array(await cached.slice(0, 4).arrayBuffer());
+                    const isWasm = head[0] === 0x00 && head[1] === 0x61 && head[2] === 0x73 && head[3] === 0x6d;
+                    if (!isWasm) {
+                        await deleteFromCache(cacheKey);
+                    } else {
+                        return URL.createObjectURL(cached);
+                    }
+                } else {
+                    return URL.createObjectURL(cached);
+                }
+            }
+            const buffers = await Promise.all(
+                fileParts.map(part => fetchWithProgress(part))
+            );
+            const mergedBlob = new Blob(buffers);
+            if (expectWasmMagic) {
+                const head = new Uint8Array(await mergedBlob.slice(0, 4).arrayBuffer());
+                const isWasm = head[0] === 0x00 && head[1] === 0x61 && head[2] === 0x73 && head[3] === 0x6d;
+                if (!isWasm) {
+                    throw new Error("Downloaded game data looked corrupted (bad magic bytes). Please reload.");
+                }
+            }
+            await saveToCache(cacheKey, mergedBlob);
+            return URL.createObjectURL(mergedBlob);
+        }
+
+        // Cutscene videos are bundled inside .resource files in the game data (often after
+        // sound clips), but the game asks the browser to load them by file name, which only
+        // resolves to a missing CDN URL. Cut the WebM out of the in-memory copy instead.
+        const hkVideoUrls = {};
+        const hkVideoUses = {};
+        window.hkResolveVideo = function (str, FS) {
+            try {
+                const name = str.split(/[?#]/)[0].split("/").pop();
+                const path = "/" + name;
+                if (!/\.resource$/.test(name) || !FS.analyzePath(path).exists) return str;
+                if (!hkVideoUrls[name]) {
+                    const data = FS.readFile(path);
+                    const starts = [];
+                    for (let i = 0; i + 3 < data.length; i++) {
+                        if (data[i] === 0x1a && data[i + 1] === 0x45 && data[i + 2] === 0xdf && data[i + 3] === 0xa3) starts.push(i);
+                    }
+                    hkVideoUrls[name] = starts.length
+                        ? starts.map((s, k) => URL.createObjectURL(new Blob([data.subarray(s, k + 1 < starts.length ? starts[k + 1] : data.length)], { type: "video/webm" })))
+                        : [URL.createObjectURL(new Blob([data], { type: "video/mp4" }))];
+                }
+                const list = hkVideoUrls[name];
+                const n = hkVideoUses[name] = (hkVideoUses[name] || 0) + 1;
+                const url = list[(n - 1) % list.length];
+                console.info("[video] " + name + " -> clip " + ((n - 1) % list.length + 1) + " of " + list.length);
+                return url;
+            } catch (e) {
+                console.warn("[video] could not resolve " + str, e);
+                return str;
+            }
+        };
+
+        function getParts(file, start, end) {
+            let parts = [];
+            for (let i = start; i <= end; i++) {
+                parts.push(file + ".part" + i);
+            }
+            return parts;
+        }
+        (async () => {
+          try {
+            const [dataUrl, wasmurl] = await Promise.all([
+                mergeFiles(getParts("Build/hktruffled.data", 1, 45), "hktruffled.data.v2", false),
+                mergeFiles(getParts("Build/hktruffled.wasm", 1, 2), "hktruffled.wasm.v2", true),
+            ]);
+            hkProgress.starting();
+            var buildUrl = "Build";
+            var loaderUrl = buildUrl + "/hktruffled.loader.js";
+            // Expose the game's in-memory file system so cloudsave.js can see save writes as they happen.
+            var frameworkUrl = buildUrl + "/hktruffled.framework.js";
+            try {
+                let res = await fetch(frameworkUrl).catch(() => null);
+                if (!res || !res.ok) res = await fetch(HK_BACKUP + frameworkUrl);
+                const src = await res.text();
+                const marker = "FS.staticInit();";
+                const videoHook = "function _JS_Video_Create(url){var str=UTF8ToString(url);";
+                if (src.includes(marker)) {
+                    let patched = src.replace(marker, marker + 'Module["FS"]=FS;');
+                    patched = patched.replace(videoHook, videoHook + "if(window.hkResolveVideo)str=window.hkResolveVideo(str,FS);");
+                    frameworkUrl = URL.createObjectURL(new Blob([patched], { type: "text/javascript" }));
+                }
+            } catch (e) {
+                console.warn("[loader] could not patch framework", e);
+            }
+            var config = {
+                dataUrl: dataUrl,
+                frameworkUrl: frameworkUrl,
+                codeUrl: wasmurl,
+                streamingAssetsUrl: "StreamingAssets",
+                companyName: "Team Cherry & Truffled",
+                productName: "Hollow Knight",
+                productVersion: "1.1",
+            };
+            var container = document.querySelector("#unity-container");
+            container.hidden = false;
+            var canvas = document.querySelector("#unity-canvas");
+            var loadingBar = document.querySelector("#unity-loading-bar");
+            var progressBarFull = document.querySelector("#unity-progress-bar-full");
+            var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+            var mobileWarning = document.querySelector("#unity-mobile-warning");
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                container.className = "unity-mobile";
+                config.devicePixelRatio = 1;
+                mobileWarning.style.display = "block";
+                setTimeout(() => {
+                    mobileWarning.style.display = "none";
+                }, 5000);
+            } else {
+                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    var meta = document.createElement('meta');
+                    meta.name = 'viewport';
+                    meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+                    document.getElementsByTagName('head')[0].appendChild(meta);
+                    container.className = "unity-mobile";
+                    canvas.className = "unity-mobile";
+                } else {
+                    config.devicePixelRatio = Math.min(window.devicePixelRatio || 1, Math.max(1, 1920 / window.innerWidth));
+                    function resizeCanvas() {
+                        canvas.width = window.innerWidth;
+                        canvas.height = window.innerHeight;
+                        canvas.style.width = window.innerWidth + "px";
+                        canvas.style.height = window.innerHeight + "px";
+                    }
+                    resizeCanvas();
+                    window.addEventListener('resize', resizeCanvas);
+                }
+            }
+            const onLoaderReady = () => {
+                createUnityInstance(canvas, config, () => {}).then((unityInstance) => {
+                    window.hkUnityInstance = unityInstance;
+                    if (window.TabPause) TabPause.attach(unityInstance.Module);
+                    URL.revokeObjectURL(dataUrl);
+                    URL.revokeObjectURL(wasmurl);
+                    hkProgress.done();
+                    canvas.style.display = "block";
+                    if (window.hkCloudSaveInit) window.hkCloudSaveInit(unityInstance);
+                }).catch(async (message) => {
+                    await deleteFromCache("hktruffled.wasm.v2");
+                    hkProgress.fail();
+                    alert(message);
+                });
+
+            };
+            // A script tag never re-runs after a failed load, so the backup needs a fresh tag.
+            const addLoader = (src, isBackup) => {
+                const script = document.createElement("script");
+                script.src = src;
+                script.onload = onLoaderReady;
+                script.onerror = () => isBackup ? hkProgress.fail() : addLoader(HK_BACKUP + loaderUrl, true);
+                document.body.appendChild(script);
+            };
+            addLoader(loaderUrl, false);
+          } catch (e) {
+            console.error(e);
+            hkProgress.fail();
+          }
+        })();
+    </script>
+    <script src="https://neekoras.com/games/hollow-knight/cloudsave.js?v=12"></script>
+
+</body>
+
+</html>
