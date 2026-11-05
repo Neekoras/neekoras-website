@@ -83,7 +83,10 @@
                 const lines = LOG.map((l) => "[" + (l.t / 1000).toFixed(1) + "s] " + l.level.toUpperCase() + " " + l.text + (l.n > 1 ? "  (x" + l.n + ")" : ""));
                 const body = ("reason: " + why + "\nwhen: " + new Date().toISOString() + "\nbrowser: " + navigator.userAgent +
                     "\nscreen: " + screen.width + "x" + screen.height + " @" + (window.devicePixelRatio || 1) + "\n\n" + lines.join("\n")).slice(-400000);
-                return fetch("https://neekoras.com/games/silksong/api/reports?u=" + code, { method: "POST", body: body })
+                // a crash report may be the last thing this tab does: keepalive survives closing it (64 KB limit)
+                const crash = /^(crash|startup)/.test(why);
+                return fetch("https://neekoras.com/games/silksong/api/reports?u=" + code,
+                    crash ? { method: "POST", body: body.slice(-60000), keepalive: true } : { method: "POST", body: body })
                     .then((r) => r.ok).catch(() => false);
             };
             const origAlert = window.alert.bind(window);
@@ -91,6 +94,31 @@
                 if (/error occurred running the Unity content/i.test(String(msg))) window.skSendReport("crash: " + String(msg).slice(0, 400));
                 return origAlert(msg);
             };
+            // Frame timing and memory every 10 s, so a report shows where the frames drop. The browser's own frame
+            // callbacks are counted (the engine draws on the same callbacks), plus the game's memory size.
+            (function () {
+                const raf = window.requestAnimationFrame.bind(window);
+                let last = 0, frames = 0, worst = 0, slow = 0, windowStart = 0;
+                function tick(t) {
+                    if (last) {
+                        const dt = t - last;
+                        frames++;
+                        if (dt > worst) worst = dt;
+                        if (dt > 50) slow++;
+                    } else windowStart = t;
+                    last = t;
+                    if (t - windowStart >= 10000 && !document.hidden) {
+                        const M = window.skUnityInstance && window.skUnityInstance.Module;
+                        const heap = M && M.HEAPU8 ? Math.round(M.HEAPU8.length / 1048576) : 0;
+                        if (window.skUnityInstance) add("info", ["[perf] " + Math.round(frames * 1000 / (t - windowStart)) + " fps, worst frame " +
+                            Math.round(worst) + " ms, " + slow + " frames over 50 ms, game memory " + heap + " MB"]);
+                        frames = 0; worst = 0; slow = 0; windowStart = t;
+                    }
+                    raf(tick);
+                }
+                document.addEventListener("visibilitychange", () => { last = 0; });
+                raf(tick);
+            })();
             // a "Report a problem" button at the bottom of the cloud save panel
             (function addButton(tries) {
                 const panel = document.getElementById("cloudsave-panel");
@@ -109,7 +137,7 @@
         })();
     </script>
     <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
-    <script src="https://neekoras.com/games/silksong/cloudsave.js?v=1"></script>
+    <script src="https://neekoras.com/games/silksong/cloudsave.js?v=2"></script>
     <div id="sk-loader" role="status" aria-live="polite">
         <div class="sk-inner">
             <div class="sk-kicker">Now loading</div>
@@ -117,7 +145,7 @@
             <div class="sk-bar sk-busy" id="sk-bar" role="progressbar" aria-label="Loading Silksong" aria-valuemin="0" aria-valuemax="100"><div class="sk-fill" id="sk-fill"></div></div>
             <div class="sk-row"><span id="sk-phase">Getting ready</span><span id="sk-pct"></span></div>
             <div class="sk-row sk-muted"><span id="sk-mb"></span><span id="sk-eta"></span></div>
-            <p class="sk-note" id="sk-note">The first load is about 2 GB. After that the game is stored in your browser and opens much faster.</p>
+            <p class="sk-note" id="sk-note">The game downloads as you play, about 2 GB in all, and is kept in this browser so the next visit opens much faster.</p>
         </div>
     </div>
     <div hidden id="unity-container" class="unity-desktop">
@@ -196,8 +224,9 @@
     <script>
         // Game files come from the web-ports repo through jsDelivr, pinned to one commit.
         // Twenty-one of its asset bundles are too big for the CDN, so the repo stores them
-        // as one 2 GB zip cut into 100 parts. This page downloads the parts a few at a time,
-        // inflates each bundle as its bytes arrive and keeps it in Cache Storage.
+        // as one 2 GB zip cut into 100 parts. A bundle is fetched the first time the game asks
+        // for it (only the zip parts it spans), inflated as its bytes arrive and kept in Cache
+        // Storage; once the game is running the rest download in the background, one at a time.
         // The zip never has to be built in memory.
         const SHA = "bcbe014765f2f6ca4b1d82ac25755a0299a600ab";
         const HOSTS = ["https://cdn.jsdelivr.net", "https://fastly.jsdelivr.net", "https://gcore.jsdelivr.net"];
@@ -206,7 +235,14 @@
         const CACHE_NAME = "silksong-v2";
         const OLD_CACHES = ["silksong-v1"];
         const CHUNK = 32 * 1048576;
-        const PARTS_AHEAD = 6;
+        const PARTS_AHEAD = 3;      // zip parts read ahead per bundle
+        const MAX_INSTALLS = 4;     // bundles downloading at once
+        // the scene bundle is needed as soon as a game starts, so the background download takes it first
+        const FIRST = ["packed-scenes-hornet_scenes_all_c907e217c56bc36e9412cc713b6511b0.bundle"];
+        // big bundles the engine asks for before the title screen: fetched straight away, next to the engine files
+        const TITLE = ["packed-fonts", "packed-sprites-hornet_enemies", "packed-audio-sfx", "packed-sprites-effects",
+            "packed-sprites-hornet_bosses", "packed-sprites-ui", "packed-sprites-hero", "packed-prefabs", "packed-sprites-scenery"];
+        const QUIET_MS = 20000;     // the background download waits until the game has asked for nothing this long
         // [file name, offset of its data in the zip, compressed size, expanded size]
         const ENTRIES = [["packed-audio-voices_assets_all_4e4d5ad29d42bd4abdd5eadfce410be2.bundle", 100, 23888339, 23923429], ["packed-sprites-effects_assets_all_2e7bed7c909427b371b79d647bf138ee.bundle", 23888542, 21077768, 23619876], ["packed-scenes-hornet_scenes_all_c907e217c56bc36e9412cc713b6511b0.bundle", 44966411, 343949358, 504314372], ["packed-collections_assets_all_40fc2899a4bf13e2fdf4877fac117bfe.bundle", 388915868, 305936266, 349892025], ["packed-cinematics_assets_all_5ec2ac5cfb98b69438cb91f6e253bbbc.bundle", 694852232, 227298827, 228270727], ["packed-sprites-scenery_assets_all_39cc8fd6577083e676edf1e1a61fcaa9.bundle", 922151162, 177302834, 200750305], ["packed-audio-hornetmusic_assets_all_d7258aa531c7adbb862ab1f75c0a4758.bundle", 1099454101, 182954452, 183736066], ["packed-prefabs_assets_all_b19c0cf6b825f4cf18264a6c8f5765a6.bundle", 1282408648, 131206876, 147105252], ["packed-animations-props_assets_all_4d32c5a2554f1011290a2a758b19c15d.bundle", 1413615628, 112582650, 126271488], ["packed-sprites-ui_assets_all_f9a8ef56ecdd0a4b95785438aefb0b1a.bundle", 1526198376, 15721649, 117783892], ["packed-audio-hornetvoices_assets_all_6253ed781850c4087eb825002e1b63a0.bundle", 1541920131, 113615744, 113773103], ["packed-audio-sfx_assets_all_64a9c47145f1a68e9023751b5a4c32dd.bundle", 1655535972, 99941006, 100095084], ["packed-animations-hornet_assets_all_df96eceebcc563fac0a4c4d756348ec8.bundle", 1755477083, 79998592, 89583978], ["packed-fonts_assets_all_80af17da7b187150e3e4ec5346115b67.bundle", 1835475768, 48966670, 53402313], ["packed-sprites-hero_assets_all_038a432da5e4c2c15b9327d215fd7f32.bundle", 1884442538, 35649394, 40027523], ["packed-sprites-hornet_bosses_assets_all_4e40e4fa5157ac9fa9cbb2b12d9205fd.bundle", 1920092041, 34114295, 39051317], ["packed-animations-hornetnpcs_assets_all_b07b6c9740de43a1fa7c0ceef545d3a9.bundle", 1954206445, 29090015, 32653598], ["packed-animations-hornetenemies_assets_all_9f3d5906ad5a54b6c762e508aea802c3.bundle", 1983296572, 29055449, 32488514], ["packed-animations-effects_assets_all_9aab0f3b6b8f8c05cd2d618598948eea.bundle", 2012352127, 26832441, 30037913], ["packed-sprites-hornet_enemies_assets_all_1dc5e3e9aee3b4d2599cfacc771aa715.bundle", 2039184678, 22382755, 25741201], ["packed-animations-cutscene_assets_all_6088ab681e63b034a1b602249209347d.bundle", 2061567540, 21568824, 24006915]];
         // A bundle is saved as pieces of about 32 MB (browsers refuse single cache entries past a size
@@ -229,6 +265,34 @@
         let cache = null;
         let doneBytes = 0;
         let allBytes = 1;
+        let gameShown = false;
+        let titleBytes = 1;
+        let lastUrgent = Date.now();
+
+        // Download progress: on the loading screen until the game shows, then a small note in the corner.
+        const note = (() => {
+            let el = null, hideTimer = 0;
+            function box() {
+                if (el) return el;
+                el = document.createElement("div");
+                el.id = "sk-dl";
+                el.setAttribute("role", "status");
+                el.style.cssText = "position:fixed;left:14px;bottom:14px;z-index:99980;padding:7px 12px;border-radius:8px;" +
+                    "background:#16161fe0;color:#d8d2c6;font:12px/1.4 Inter,system-ui,sans-serif;pointer-events:none;transition:opacity .4s;opacity:0";
+                document.body.appendChild(el);
+                return el;
+            }
+            return {
+                show(text) { clearTimeout(hideTimer); const b = box(); b.textContent = text; b.style.opacity = "1"; },
+                hide(after) { clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (el) el.style.opacity = "0"; }, after || 0); }
+            };
+        })();
+        let waiting = 0;    // bundles the game is waiting for right now
+        function progress() {
+            if (!gameShown) { ui.download(Math.min(doneBytes, titleBytes), titleBytes); return; }
+            const mb = (n) => Math.round(n / 1048576);
+            note.show((waiting ? "Loading game files" : "Downloading the rest of the game") + "  " + mb(doneBytes) + " of " + mb(allBytes) + " MB");
+        }
 
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -245,6 +309,7 @@
                     const hit = await cache.match(keyFor(name, i++));
                     if (!hit) {
                         await cache.delete(keyFor(name, "done"));
+                        installs.delete(bundle);
                         controller.error(new Error("the saved copy of " + name + " is incomplete, reload to fetch it again"));
                         return;
                     }
@@ -277,17 +342,56 @@
             throw last;
         }
 
+        // Files from this site (patched catalog and menu scene), with the same retries as the CDN.
+        async function ownFetch(url, init) {
+            let last = null;
+            for (let attempt = 1; attempt <= 4; attempt++) {
+                try {
+                    const res = await realFetch(url, attempt > 1 ? Object.assign({}, init, { cache: "reload" }) : init);
+                    if (res.ok) return res;
+                    last = res;
+                } catch (e) {
+                    if (init && init.signal && init.signal.aborted) throw e;
+                    last = e;
+                }
+                await sleep(600 * attempt);
+            }
+            if (last instanceof Response) return last;
+            throw last;
+        }
+
         // Unity asks for the big bundles by their repo path; serve them from the saved copy.
         const bundleNames = new Set(ENTRIES.map((e) => e[0]));
         window.fetch = async function (resource, init) {
             try {
                 const raw = typeof resource === "string" ? resource : (resource.url || String(resource));
                 const name = new URL(raw, location.href).pathname.split("/").pop();
-                if (name === "catalog.bin") return realFetch(CATALOG_URL, init);
-                if (SERVED[name]) return realFetch(PATCH + SERVED[name], init);
+                if (name === "catalog.bin") return ownFetch(CATALOG_URL, init);
+                if (SERVED[name]) return ownFetch(PATCH + SERVED[name], init);
                 if (cache && bundleNames.has(name)) {
-                    const hit = await savedBundle(name);
-                    if (hit) return hit;
+                    let hit = await savedBundle(name);
+                    if (!hit) {
+                        waiting++;
+                        lastUrgent = Date.now();
+                        progress();
+                        try {
+                            for (let t = 0; t < 2 && !hit; t++) {
+                                try { await ensureBundle(name, true); }
+                                catch (e) { console.warn("[loader] could not get " + name, e); }
+                                hit = await savedBundle(name);
+                                if (!hit) installs.delete(name);
+                            }
+                        } finally {
+                            waiting--;
+                            lastUrgent = Date.now();
+                            if (!waiting && gameShown && !running && !queue.length) note.hide(1500);
+                        }
+                        if (!hit) {
+                            note.show("Could not load game files. Check your connection, then reload the page.");
+                            return new Response(null, { status: 503 });
+                        }
+                    }
+                    return hit;
                 }
                 if (typeof resource === "string" && raw.indexOf(REPO_PATH) !== -1 && /\.jsdelivr\.net$/.test(new URL(raw, location.href).hostname)) {
                     return cdnFetch(raw, init);
@@ -316,13 +420,13 @@
                         out.set(value, got);
                         got += value.length;
                         doneBytes += value.length;
-                        ui.download(doneBytes, allBytes);
+                        progress();
                     }
                     if (got !== want) throw new Error("part " + n + " is " + got + " bytes, expected " + want);
                     return out;
                 } catch (e) {
                     doneBytes -= got;
-                    ui.download(doneBytes, allBytes);
+                    progress();
                     if (attempt >= 5) throw e;
                     console.warn("[loader] retrying part " + n + " (attempt " + (attempt + 1) + ")", e);
                     await sleep(800 * attempt);
@@ -347,14 +451,14 @@
                         out.set(value, got);
                         got += value.length;
                         doneBytes += value.length;
-                        ui.download(doneBytes, allBytes);
+                        progress();
                     }
                     if (got !== p.csize) throw new Error(p.file + " is " + got + " bytes, expected " + p.csize);
                     await saveBundle(storeName(name), p.usize, new Blob([out]).stream().pipeThrough(new DecompressionStream("deflate-raw")));
                     return;
                 } catch (e) {
                     doneBytes -= got;
-                    ui.download(doneBytes, allBytes);
+                    progress();
                     if (attempt >= 4) throw e;
                     console.warn("[loader] retrying " + p.file + " (attempt " + (attempt + 1) + ")", e);
                     await sleep(800 * attempt);
@@ -381,78 +485,167 @@
                 pieces = [];
                 held = 0;
             };
-            for (;;) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                pieces.push(value);
-                held += value.length;
-                seen += value.length;
-                if (held >= CHUNK) await save();
+            try {
+                for (;;) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    pieces.push(value);
+                    held += value.length;
+                    seen += value.length;
+                    if (held >= CHUNK) await save();
+                }
+                await save();
+                if (seen !== usize) throw new Error(name + " came out at the wrong size");
+                await cache.put(keyFor(name, "done"), new Response(JSON.stringify({ chunks: index, size: usize })));
+            } catch (e) {
+                pieces = [];
+                for (let i = 0; i < index; i++) cache.delete(keyFor(name, i)).catch(() => {});
+                throw e;
             }
-            await save();
-            if (seen !== usize) throw new Error(name + " came out at the wrong size");
-            await cache.put(keyFor(name, "done"), new Response(JSON.stringify({ chunks: index, size: usize })));
         }
 
-        // Walk the zip in order. Parts download a few at a time ahead of the bundle being inflated,
-        // and a bundle that is already saved is skipped (so a reload resumes where it stopped).
-        async function downloadMissing() {
+        // Zip parts in flight or still wanted. Neighbouring bundles share the part at their boundary: a part
+        // stays while any running install still needs it, and the last two released are kept a moment longer.
+        const parts = new Map();          // part number -> download promise
+        const wants = new Map();          // part number -> running installs that still need it
+        const recent = [];
+        function wantPart(n) { wants.set(n, (wants.get(n) || 0) + 1); }
+        function getPart(n) {
+            let job = parts.get(n);
+            if (!job) {
+                job = fetchPart(n);
+                const mine = job;
+                job.catch(() => { if (parts.get(n) === mine) parts.delete(n); });
+                parts.set(n, job);
+            }
+            return job;
+        }
+        function releasePart(n) {
+            const left = (wants.get(n) || 1) - 1;
+            if (left > 0) { wants.set(n, left); return; }
+            wants.delete(n);
+            recent.push(n);
+            while (recent.length > 2) {
+                const old = recent.shift();
+                if (!wants.has(old)) parts.delete(old);
+            }
+        }
+
+        // Inflate one bundle straight out of the zip parts it spans and save it.
+        async function installFromZip(entry) {
+            const [name, start, csize, usize] = entry;
+            const first = Math.floor(start / PART_SIZE) + 1;
+            const last = Math.floor((start + csize - 1) / PART_SIZE) + 1;
+            const inflate = new DecompressionStream("deflate-raw");
+            const writer = inflate.writable.getWriter();
+            const saving = saveBundle(storeName(name), usize, inflate.readable);
+            for (let n = first; n <= last; n++) wantPart(n);
+            let released = first;             // parts before this one are no longer needed by this install
+            const feeding = (async () => {
+                let pos = start;
+                const end = start + csize;
+                while (pos < end) {
+                    const n = Math.floor(pos / PART_SIZE) + 1;
+                    for (let k = n; k <= last && k < n + PARTS_AHEAD; k++) getPart(k);
+                    const buf = await getPart(n);
+                    const off = (n - 1) * PART_SIZE;
+                    const to = Math.min(end - off, buf.length);
+                    await writer.write(buf.subarray(pos - off, to));
+                    pos = off + to;
+                    releasePart(n);
+                    released = n + 1;
+                }
+                await writer.close();
+            })();
+            try { await Promise.all([feeding, saving]); }
+            catch (e) {
+                writer.abort(e).catch(() => {});
+                for (let n = released; n <= last; n++) releasePart(n);
+                throw e;
+            }
+        }
+
+        // One bundle at a time per name, a few names at a time; what the game is waiting for goes first.
+        const installs = new Map();       // name -> promise
+        const queue = [];
+        let running = 0;
+        function pump() {
+            while (running < MAX_INSTALLS && queue.length) {
+                const job = queue.shift();
+                running++;
+                job.run().then(job.resolve, job.reject).finally(() => { running--; pump(); });
+            }
+        }
+        async function isSaved(name) {
+            return !!(await cache.match(keyFor(storeName(name), "done")));
+        }
+        function ensureBundle(name, urgent) {
+            let p = installs.get(name);
+            if (p) {
+                if (urgent) {                 // move a queued background job to the front
+                    const i = queue.findIndex((j) => j.name === name);
+                    if (i > 0) queue.unshift(queue.splice(i, 1)[0]);
+                }
+                return p;
+            }
+            p = new Promise((resolve, reject) => {
+                const entry = ENTRIES.find((e) => e[0] === name);
+                const job = {
+                    name, resolve, reject,
+                    run: async () => {
+                        if (await isSaved(name)) return;
+                        if (PATCHED[name]) await fetchPatched(name);
+                        else await installFromZip(entry);
+                    }
+                };
+                if (urgent) queue.unshift(job); else queue.push(job);
+                pump();
+            });
+            p.catch(() => installs.delete(name));   // a failed bundle can be tried again
+            installs.set(name, p);
+            return p;
+        }
+
+        // Count what is still missing, so progress can show "x of y MB".
+        async function missingEntries() {
             // copies of a bundle saved before it was patched are no longer used
             for (const name of Object.keys(PATCHED)) await forget(name);
-            let missing = [];
-            for (const e of ENTRIES) {
-                if (!(await cache.match(keyFor(storeName(e[0]), "done")))) missing.push(e);
-            }
-            if (!missing.length) { ui.cached(); return; }
-            const patched = missing.filter((e) => PATCHED[e[0]]);
-            missing = missing.filter((e) => !PATCHED[e[0]]);
-            missing.sort((a, b) => a[1] - b[1]);
-            const needed = [];
-            for (const [, start, csize] of missing) {
-                const first = Math.floor(start / PART_SIZE) + 1;
-                const last = Math.floor((start + csize - 1) / PART_SIZE) + 1;
-                for (let n = first; n <= last; n++) if (needed[needed.length - 1] !== n) needed.push(n);
-            }
-            allBytes = needed.reduce((sum, n) => sum + partLen(n), 0) + patched.reduce((sum, e) => sum + PATCHED[e[0]].csize, 0);
-            ui.download(0, allBytes);
-            for (const e of patched) await fetchPatched(e[0]);
+            const out = [];
+            for (const e of ENTRIES) if (!(await isSaved(e[0]))) out.push(e);
+            return out;
+        }
+        function sizeOf(entry) {
+            return PATCHED[entry[0]] ? PATCHED[entry[0]].csize : entry[2];
+        }
 
-            const jobs = new Map();
-            let started = 0;
-            const keepAhead = (n) => {
-                const at = needed.indexOf(n);
-                while (started < needed.length && started < at + PARTS_AHEAD) {
-                    const job = fetchPart(needed[started]);
-                    job.catch(() => {});
-                    jobs.set(needed[started], job);
-                    started++;
-                }
-            };
-
-            for (let i = 0; i < missing.length; i++) {
-                const [name, start, csize, usize] = missing[i];
-                const inflate = new DecompressionStream("deflate-raw");
-                const writer = inflate.writable.getWriter();
-                const saving = saveBundle(storeName(name), usize, inflate.readable);
-                const feeding = (async () => {
-                    let pos = start;
-                    const end = start + csize;
-                    while (pos < end) {
-                        const p = Math.floor(pos / PART_SIZE);
-                        keepAhead(p + 1);
-                        const buf = await jobs.get(p + 1);
-                        const to = Math.min(end - p * PART_SIZE, buf.length);
-                        await writer.write(buf.subarray(pos - p * PART_SIZE, to));
-                        pos = p * PART_SIZE + to;
+        // Once the game is running, fetch everything still missing, one bundle after another.
+        async function downloadRest(missing) {
+            const order = missing.slice().sort((a, b) => {
+                const fa = FIRST.indexOf(a[0]), fb = FIRST.indexOf(b[0]);
+                if (fa !== fb) return (fa === -1 ? 99 : fa) - (fb === -1 ? 99 : fb);
+                return a[1] - b[1];
+            });
+            let failed = 0;
+            for (const e of order) {
+                // leave the connection to the game while it is still asking for files
+                while (waiting || Date.now() - lastUrgent < QUIET_MS) await sleep(2000);
+                let ok = false;
+                for (let attempt = 1; attempt <= 3 && !ok; attempt++) {
+                    try { await ensureBundle(e[0], false); ok = true; }
+                    catch (err) {
+                        console.warn("[loader] background download of " + e[0] + " failed (attempt " + attempt + ")", err);
+                        if (err && err.name === "QuotaExceededError") {
+                            note.show("Your browser has no room left to save the rest of the game. Free some disk space.");
+                            return;
+                        }
+                        await sleep(5000 * attempt);
                     }
-                    await writer.close();
-                })();
-                try { await Promise.all([feeding, saving]); }
-                catch (e) { writer.abort(e).catch(() => {}); throw e; }
-                // drop parts that no later bundle needs
-                const nextStart = i + 1 < missing.length ? missing[i + 1][1] : Infinity;
-                for (const n of [...jobs.keys()]) if (n * PART_SIZE <= nextStart) jobs.delete(n);
+                }
+                if (!ok) failed++;
             }
+            if (failed) note.show("Some game files could not be downloaded. They will be fetched when the game needs them.");
+            else note.show("The whole game is saved in this browser");
+            note.hide(6000);
         }
 
         // The three engine files are gzip, and the loader in this build inflates them itself, so they
@@ -474,6 +667,35 @@
             }
         }
 
+        // The game's GCManager runs a full collection plus Resources.UnloadUnusedAssets every 15 s whenever the
+        // managed heap is over its WebGL threshold (384 to 512 MB), which a running game always is: a 330 ms
+        // freeze every 15 s. Raise that threshold in the game's memory to 1024 MB (the game clamps it back down,
+        // so it is rewritten every 2 s). Addresses found by disassembling this exact build (build-guid 34f66b5d).
+        function tuneGC(M) {
+            const CLASS_SLOT = 8636420;
+            return setInterval(() => {
+                try {
+                    if (!M || !M.HEAPU8) return;
+                    const dv = new DataView(M.HEAPU8.buffer);
+                    const klass = dv.getUint32(CLASS_SLOT, true);
+                    if (!klass || (klass & 1) || !dv.getUint32(klass + 116, true)) return;   // class not set up yet
+                    const statics = dv.getUint32(klass + 92, true);
+                    if (statics && dv.getFloat64(statics + 24, true) < 1024) dv.setFloat64(statics + 24, 1024, true);
+                } catch (e) { /* leave the game alone */ }
+            }, 2000);
+        }
+
+        // ?fps=30 caps the frame rate (the engine schedules frames with the page's requestAnimationFrame).
+        function capFrameRate(fps) {
+            const raf = window.requestAnimationFrame.bind(window);
+            const minDt = 1000 / fps - 2;
+            let last = 0;
+            window.requestAnimationFrame = function (cb) {
+                const step = (t) => { if (t - last >= minDt) { last = t; cb(t); } else raf(step); };
+                return raf(step);
+            };
+        }
+
         function loadScript(src) {
             return new Promise((resolve, reject) => {
                 const s = document.createElement("script");
@@ -492,10 +714,23 @@
                     ui.fail("This browser is too old or has storage turned off. Try a current Chrome, Edge or Firefox window that is not private.");
                     return;
                 }
+                // One game tab at a time: two running Unity games rewrite the shared save store over each other.
+                if (navigator.locks) {
+                    const got = await new Promise((r) => navigator.locks.request("neekoras-unity", { ifAvailable: true },
+                        (lock) => { r(!!lock); return lock ? new Promise(() => {}) : undefined; }));
+                    if (!got) { ui.fail("The game is already open in another tab. Close that tab, then reload this one."); return; }
+                }
+                // Ask the browser not to clear this site's storage (game files, saves and the save code) when space runs low.
+                try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* ignore */ }
                 for (const old of OLD_CACHES) { try { await caches.delete(old); } catch (e) { /* ignore */ } }
                 cache = await caches.open(CACHE_NAME);
-                await downloadMissing();
-                ui.starting();
+                const missing = await missingEntries();
+                allBytes = missing.reduce((n, e) => n + sizeOf(e), 0) || 1;
+                const titleMissing = missing.filter((e) => TITLE.some((p) => e[0].startsWith(p + "_")));
+                titleBytes = titleMissing.reduce((n, e) => n + sizeOf(e), 0) || 1;
+                const titleReady = Promise.all(titleMissing.map((e) => ensureBundle(e[0], true).catch(() => {})));
+                if (!missing.length) ui.cached();
+                if (!titleMissing.length) ui.starting(); else titleReady.then(() => ui.starting());
 
                 const [dataUrl, frameworkUrl, codeUrl] = await Promise.all([
                     buildFileUrl("w-pt.data.unityweb"),
@@ -508,6 +743,8 @@
                 if (/[?&]webgl\b/.test(location.search)) {
                     try { Object.defineProperty(Navigator.prototype, "gpu", { get: () => undefined, configurable: true }); } catch (e) { /* keep WebGPU */ }
                 }
+                const fps = parseInt((location.search.match(/[?&]fps=([0-9]+)/) || [])[1], 10);
+                if (fps >= 15 && fps <= 60) capFrameRate(fps);
                 await loadScript(repoUrl(HOSTS[0], "Build/w-pt.loader.js"));
 
                 const config = {
@@ -518,7 +755,12 @@
                     // The big bundles are already kept by this page; stop the engine copying them again.
                     cacheControl: function () { return "no-store"; },
                     // write saves to the browser as soon as the game makes them, not on the game's own later sync
-                    autoSyncPersistentDataPath: true
+                    autoSyncPersistentDataPath: true,
+                    // every engine crash (out of memory included) sends the error log; returning false keeps Unity's alert
+                    errorHandler: function (message) {
+                        if (window.skSendReport) window.skSendReport("crash: " + String(message).slice(0, 400));
+                        return false;
+                    }
                 };
                 const container = document.querySelector("#unity-container");
                 container.hidden = false;
@@ -529,7 +771,11 @@
                     warn.style.display = "block";
                     setTimeout(() => { warn.style.display = "none"; }, 5000);
                 } else {
-                    config.devicePixelRatio = Math.min(window.devicePixelRatio || 1, Math.max(1, 1920 / window.innerWidth));
+                    // Draw at the window's size, not the screen's pixel density (a Retina screen would be 4 times the
+                    // pixels and a lot slower). ?scale=0.75 draws smaller still for slow computers.
+                    // By default draw at most about 1440 pixels wide; bigger windows are scaled up by the browser.
+                    const scale = parseFloat((location.search.match(/[?&]scale=([0-9.]+)/) || [])[1]);
+                    config.devicePixelRatio = scale > 0.3 && scale <= 2 ? scale : Math.min(1, 1440 / window.innerWidth);
                     const resizeCanvas = () => {
                         canvas.width = window.innerWidth;
                         canvas.height = window.innerHeight;
@@ -539,15 +785,22 @@
                     resizeCanvas();
                     window.addEventListener("resize", resizeCanvas);
                 }
+                if (window.csReady) await window.csReady;      // a cloud restore is written before the game reads saves
                 const unityInstance = await createUnityInstance(canvas, config, () => {});
+                await titleReady;
                 window.skUnityInstance = unityInstance;
+                tuneGC(unityInstance.Module);
                 if (window.TabPause) TabPause.attach(unityInstance.Module);
                 URL.revokeObjectURL(dataUrl);
                 URL.revokeObjectURL(codeUrl);
                 ui.done();
                 canvas.style.display = "block";
+                gameShown = true;
+                lastUrgent = Date.now();
+                if (missing.length) { progress(); downloadRest(missing); }
             } catch (e) {
                 console.error(e);
+                if (window.skSendReport) window.skSendReport("startup: " + (e && (e.stack || e.message) || e));
                 if (e && e.name === "QuotaExceededError") {
                     ui.fail("Your browser has no room left to save the game (about 2.5 GB). Free some disk space, then reload.");
                 } else {

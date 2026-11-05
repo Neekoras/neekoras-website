@@ -254,6 +254,15 @@
     await new Promise((resolve, reject) => {
       const tx = db.transaction("FILE_DATA", "readwrite");
       const os = tx.objectStore("FILE_DATA");
+      // files in this game's folder that the snapshot does not have would mix two saves together: remove them
+      const keep = new Set(files.map((f) => "/idbfs/" + f.name));
+      const all = os.getAllKeys();
+      all.onsuccess = () => {
+        for (const k of all.result) if (isSaveKey(k) && !keep.has(k)) {
+          const g = os.get(k);
+          g.onsuccess = () => { if (g.result && g.result.mode === FILE_MODE) os.delete(k); };
+        }
+      };
       for (const f of files) {
         const key = "/idbfs/" + f.name;
         // make sure every parent directory entry exists too (saves can sit in sub-folders)
@@ -263,10 +272,11 @@
             if (!e.target.result) os.put({ timestamp: new Date(), mode: 16877, contents: undefined }, d);
           };
         }
-        os.put({ timestamp: new Date(), mode: FILE_MODE, contents: f.data }, key);
+        os.put({ timestamp: new Date(), mode: FILE_MODE, contents: f.data.slice() }, key);
       }
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("restore was cancelled by the browser"));
     });
     db.close();
   }
@@ -297,6 +307,8 @@
   let uploadTimer = null;
   let uploading = false;
   let uploadQueued = false;
+  let manualQueued = false;
+  let failStreak = 0, retryAfter = 0;      // back off while the server keeps failing
   let uploadDeadline = 0;
   let lastCheck = Date.now();
   let lastSyncSeen = 0;
@@ -306,7 +318,12 @@
   function setStatus(text) { if (statusEl) statusEl.textContent = text; }
 
   async function uploadSnapshot(manual) {
-    if (uploading) { uploadQueued = true; return; }
+    if (uploading) { if (manual) manualQueued = true; else uploadQueued = true; return; }
+    if (!manual && Date.now() < retryAfter) {
+      clearTimeout(uploadTimer);
+      uploadTimer = setTimeout(() => uploadSnapshot(), retryAfter - Date.now() + 100);
+      return;
+    }
     uploading = true;
     try {
       await migrated;
@@ -343,6 +360,7 @@
       lastUploadAt = Date.now();
       lastSyncSeen = Date.now();
       lastResult = "uploaded";
+      failStreak = 0; retryAfter = 0;
       const at = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       setStatus("cloud: saved " + at);
       toast((manual ? "Saved to cloud · " : "Game saved to cloud · ") + at);
@@ -351,11 +369,14 @@
       if (panelOpen) refreshList();
     } catch (e) {
       setStatus("cloud: save failed");
+      failStreak++;
+      retryAfter = Date.now() + Math.min(30000 * 2 ** failStreak, 10 * 60 * 1000);
       console.warn("[cloudsave] upload failed:", e);
     } finally {
       uploading = false;
       uploadDeadline = 0;
-      if (uploadQueued) { uploadQueued = false; scheduleUpload(); }
+      if (manualQueued) { manualQueued = false; uploadSnapshot(true); }
+      else if (uploadQueued) { uploadQueued = false; scheduleUpload(); }
     }
   }
   function scheduleUpload() {
@@ -424,16 +445,44 @@
     uploadSnapshot();
   }, 30000);
 
+  // ---- a restore chosen in the panel is written here, on the load after it, before the game starts ----
+  const PENDING_KEY = "silksong-pending-restore";
+  window.csReady = (async () => {
+    let b64 = null;
+    try { b64 = sessionStorage.getItem(PENDING_KEY); } catch {}
+    if (!b64) return;
+    try {
+      const bin = atob(b64), zip = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) zip[i] = bin.charCodeAt(i);
+      const files = parseZip(zip).filter((f) => isSaveKey("/idbfs/" + f.name));
+      restoring = true;
+      await writeSaveFiles(files);
+      localStorage.setItem(LASTHASH_KEY, await hashFiles(files));
+      setTimeout(() => toast("Save restored from the cloud", { icon: "&#9729;", ms: 5000 }), 2500);
+    } catch (e) {
+      console.warn("[cloudsave] restore failed:", e);
+      setTimeout(() => alert("The cloud save could not be restored: " + e.message), 500);
+    } finally {
+      restoring = false;
+      try { sessionStorage.removeItem(PENDING_KEY); } catch {}
+    }
+  })();
+
   // ---- restore ----
   async function restore(name) {
     if (!confirm("Replace the current save with this cloud snapshot? The page will reload.")) return;
     const resp = await fetch(`${API}/saves/${name}?u=${viewUID}`);
     if (!resp.ok) { alert("Could not fetch snapshot (HTTP " + resp.status + ")"); return; }
-    const files = parseZip(new Uint8Array(await resp.arrayBuffer())).filter((f) => isSaveKey("/idbfs/" + f.name));
+    const zip = new Uint8Array(await resp.arrayBuffer());
+    const files = parseZip(zip).filter((f) => isSaveKey("/idbfs/" + f.name));
     if (!files.length) { alert("That snapshot has no game save in it."); return; }
+    // The running game would overwrite the restored files with its next save, so the snapshot is kept for this
+    // tab and written on the next load, before the game starts (the page waits for window.csReady).
+    let b64 = "";
+    for (let i = 0; i < zip.length; i += 32768) b64 += String.fromCharCode.apply(null, zip.subarray(i, i + 32768));
+    try { sessionStorage.setItem(PENDING_KEY, btoa(b64)); }
+    catch (e) { alert("Could not hold the save for the restore: " + e.message); return; }
     restoring = true;
-    await writeSaveFiles(files);
-    localStorage.setItem(LASTHASH_KEY, await hashFiles(files));
     location.reload();
   }
 
