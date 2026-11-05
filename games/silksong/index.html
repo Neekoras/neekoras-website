@@ -51,6 +51,63 @@
 </head>
 
 <body>
+    <script>
+        // Error log: keeps the game's recent console messages so a report can show what happened. It is sent to
+        // this site's server with the player's save code when the game crashes (Unity's error alert), or when the
+        // player presses "Report a problem" in the cloud panel. Repeated lines are folded into one with a count.
+        (function () {
+            const LOG = [], MAX = 600, start = Date.now();
+            let last = null, sent = 0;
+            function add(level, args) {
+                let text;
+                try {
+                    text = Array.from(args).map((a) => a instanceof Error ? (a.stack || String(a)) : typeof a === "string" ? a : JSON.stringify(a)).join(" ");
+                } catch (e) { text = String(args[0]); }
+                text = text.slice(0, 2000);
+                if (last && last.level === level && last.text === text) { last.n++; return; }
+                last = { t: Date.now() - start, level, text, n: 1 };
+                LOG.push(last);
+                if (LOG.length > MAX) LOG.shift();
+            }
+            for (const level of ["log", "info", "warn", "error"]) {
+                const orig = console[level].bind(console);
+                console[level] = function () { add(level, arguments); return orig.apply(null, arguments); };
+            }
+            window.addEventListener("error", (e) => add("error", [(e.message || "error") + " @ " + (e.filename || "") + ":" + (e.lineno || "")]));
+            window.addEventListener("unhandledrejection", (e) => add("error", ["unhandled rejection: " + (e.reason && (e.reason.stack || e.reason))]));
+            window.skSendReport = function (why) {
+                let code = "";
+                try { code = localStorage.getItem("neekoras-save-code") || ""; } catch (e) { /* storage blocked */ }
+                if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(code) || sent >= 5) return Promise.resolve(false);
+                sent++;
+                const lines = LOG.map((l) => "[" + (l.t / 1000).toFixed(1) + "s] " + l.level.toUpperCase() + " " + l.text + (l.n > 1 ? "  (x" + l.n + ")" : ""));
+                const body = ("reason: " + why + "\nwhen: " + new Date().toISOString() + "\nbrowser: " + navigator.userAgent +
+                    "\nscreen: " + screen.width + "x" + screen.height + " @" + (window.devicePixelRatio || 1) + "\n\n" + lines.join("\n")).slice(-400000);
+                return fetch("https://neekoras.com/games/silksong/api/reports?u=" + code, { method: "POST", body: body })
+                    .then((r) => r.ok).catch(() => false);
+            };
+            const origAlert = window.alert.bind(window);
+            window.alert = function (msg) {
+                if (/error occurred running the Unity content/i.test(String(msg))) window.skSendReport("crash: " + String(msg).slice(0, 400));
+                return origAlert(msg);
+            };
+            // a "Report a problem" button at the bottom of the cloud save panel
+            (function addButton(tries) {
+                const panel = document.getElementById("cloudsave-panel");
+                if (!panel) { if (tries < 60) setTimeout(() => addButton(tries + 1), 1000); return; }
+                const b = document.createElement("button");
+                b.textContent = "Report a problem";
+                b.style.cssText = "width:100%;margin-top:10px";
+                b.onclick = async () => {
+                    b.disabled = true; b.textContent = "Sending...";
+                    const ok = await window.skSendReport("player report");
+                    b.textContent = ok ? "Sent. Thanks!" : "Could not send";
+                    setTimeout(() => { b.disabled = false; b.textContent = "Report a problem"; }, 4000);
+                };
+                panel.appendChild(b);
+            })(0);
+        })();
+    </script>
     <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
     <script src="https://neekoras.com/games/silksong/cloudsave.js?v=1"></script>
     <div id="sk-loader" role="status" aria-live="polite">
@@ -157,10 +214,11 @@
         const keyFor = (name, part) => location.origin + "/__silksong/" + name + "/" + part;
         // Files we serve ourselves instead of the port's: the title logo bundle with the site watermarks
         // painted out (raw deflate), the menu scene with the logo moved back to the centre, and the catalog
-        // that carries both bundles' CRCs. A new version needs new file names (and a new tag for PATCHED,
+        // that carries both bundles' CRCs and answers the "ReferencesData" key the game asks for (the port's
+        // catalog only had it as "ReferencesData.asset", so every scene loaded without its defaults). A new version needs new file names (and a new tag for PATCHED,
         // which also makes browsers replace the copy they saved).
         const PATCH = "https://neekoras.com/games/silksong/patch/";
-        const CATALOG_URL = PATCH + "catalog.v2.bin";
+        const CATALOG_URL = PATCH + "catalog.v3.bin";
         const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v1.bundle" };
         const PATCHED = {
             "packed-sprites-ui_assets_all_f9a8ef56ecdd0a4b95785438aefb0b1a.bundle": { file: "sprites-ui.v1.deflate", csize: 15574360, usize: 117783912, tag: "v1" }
@@ -196,6 +254,29 @@
             return new Response(body, { headers: { "Content-Type": "application/octet-stream", "Content-Length": String(size) } });
         }
 
+        // The engine fetches the smaller bundles, catalog data and videos itself, straight from the CDN and
+        // with no retry, so one dropped connection used to leave the game stuck. Retry those across the hosts.
+        const REPO_PATH = "/gh/web-ports/hollow-knight-silksong@" + SHA + "/";
+        async function cdnFetch(raw, init) {
+            const path = raw.slice(raw.indexOf(REPO_PATH) + REPO_PATH.length);
+            let last = null;
+            for (let attempt = 1; attempt <= 4; attempt++) {
+                try {
+                    const opts = attempt > 1 ? Object.assign({}, init, { cache: "reload" }) : init;
+                    const res = await realFetch(repoUrl(HOSTS[(attempt - 1) % HOSTS.length], path), opts);
+                    if (res.ok || res.status === 404) return res;
+                    last = res;
+                } catch (e) {
+                    if (init && init.signal && init.signal.aborted) throw e;
+                    last = e;
+                }
+                console.warn("[loader] retrying " + path + " (attempt " + (attempt + 1) + ")");
+                await sleep(600 * attempt);
+            }
+            if (last instanceof Response) return last;
+            throw last;
+        }
+
         // Unity asks for the big bundles by their repo path; serve them from the saved copy.
         const bundleNames = new Set(ENTRIES.map((e) => e[0]));
         window.fetch = async function (resource, init) {
@@ -207,6 +288,9 @@
                 if (cache && bundleNames.has(name)) {
                     const hit = await savedBundle(name);
                     if (hit) return hit;
+                }
+                if (typeof resource === "string" && raw.indexOf(REPO_PATH) !== -1 && /\.jsdelivr\.net$/.test(new URL(raw, location.href).hostname)) {
+                    return cdnFetch(raw, init);
                 }
             } catch (e) { /* fall through to the network */ }
             return realFetch(resource, init);
@@ -418,6 +502,10 @@
                     buildFileUrl("w-pt.framework.js.unityweb"),
                     buildFileUrl("w-pt.wasm.unityweb")
                 ]);
+                // Use the engine's WebGL 2 renderer, not its experimental WebGPU one: the loader only picks
+                // WebGPU when navigator.gpu exists. (Players saw a white screen after the Silkspear and a crash
+                // on Save & Quit while it ran on WebGPU.)
+                try { Object.defineProperty(Navigator.prototype, "gpu", { get: () => undefined, configurable: true }); } catch (e) { /* keep WebGPU */ }
                 await loadScript(repoUrl(HOSTS[0], "Build/w-pt.loader.js"));
 
                 const config = {
@@ -426,7 +514,9 @@
                     codeUrl: codeUrl,
                     streamingAssetsUrl: repoUrl(HOSTS[0], "StreamingAssets"),
                     // The big bundles are already kept by this page; stop the engine copying them again.
-                    cacheControl: function () { return "no-store"; }
+                    cacheControl: function () { return "no-store"; },
+                    // write saves to the browser as soon as the game makes them, not on the game's own later sync
+                    autoSyncPersistentDataPath: true
                 };
                 const container = document.querySelector("#unity-container");
                 container.hidden = false;

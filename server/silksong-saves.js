@@ -38,6 +38,18 @@ if (!db.prepare("SELECT 1 FROM pragma_table_info('saves') WHERE name = 'pinned'"
 }
 const MAX_PINNED = 5;
 
+// Error reports from the page (its recent console log), sent on a crash or from "Report a problem".
+db.exec(`CREATE TABLE IF NOT EXISTS reports (
+  id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid  TEXT NOT NULL,
+  time TEXT NOT NULL,
+  text TEXT NOT NULL
+)`);
+const MAX_REPORT = 512 * 1024;
+const KEEP_REPORTS = 100;
+const stReport = db.prepare("INSERT INTO reports (uid, time, text) VALUES (?, ?, ?)");
+const stPruneReports = db.prepare("DELETE FROM reports WHERE id NOT IN (SELECT id FROM reports ORDER BY id DESC LIMIT ?)");
+
 const stListSaves = db.prepare(
   "SELECT name, length(data) AS size, time, pinned FROM saves WHERE uid = ? ORDER BY name DESC");
 const stGetSave = db.prepare("SELECT data FROM saves WHERE uid = ? AND name = ?");
@@ -82,6 +94,24 @@ const server = http.createServer((req, res) => {
   if (!UUID_RE.test(u)) return send(res, 400, { error: "bad or missing user id" });
 
   const parts = url.pathname.split("/").filter(Boolean); // ["saves"] or ["saves", name]
+
+  // POST /reports?u=<uuid> -> store one error report (plain text)
+  if (parts[0] === "reports" && parts.length === 1 && req.method === "POST") {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (c) => {
+      size += c.length;
+      if (size > MAX_REPORT) { send(res, 413, { error: "too large" }); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on("end", () => {
+      if (res.writableEnded) return;
+      stReport.run(u, new Date().toISOString(), Buffer.concat(chunks).toString("utf8"));
+      stPruneReports.run(KEEP_REPORTS);
+      return send(res, 200, { ok: true });
+    });
+    return;
+  }
   if (parts[0] !== "saves") return send(res, 404, { error: "not found" });
 
   // GET /saves -> list
