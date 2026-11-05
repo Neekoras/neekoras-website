@@ -64,6 +64,8 @@
                     text = Array.from(args).map((a) => a instanceof Error ? (a.stack || String(a)) : typeof a === "string" ? a : JSON.stringify(a)).join(" ");
                 } catch (e) { text = String(args[0]); }
                 text = text.slice(0, 2000);
+                // the intro scene has started (first lines the engine logs once a scene is up)
+                if (!window.skSceneReady && /Couldn't find a Game Manager|^Unloading \d+ Unused Serialized files/.test(text)) window.skSceneReady = Date.now();
                 if (last && last.level === level && last.text === text) { last.n++; return; }
                 last = { t: Date.now() - start, level, text, n: 1 };
                 LOG.push(last);
@@ -136,6 +138,328 @@
             })(0);
         })();
     </script>
+    <script>
+/*
+ * MemGuard for the Silksong Unity 6 WebGPU port (neekoras.com/games/silksong).
+ *
+ * The wasm heap can never shrink, and Unity keeps loaded bundles in it, so a long session ends in
+ * "Could not allocate memory: System out of memory!" followed ~1.4 s later by a "table index is out of
+ * bounds" trap (malloc returned null). The only real fix is a page reload. This guard picks the moment:
+ * right after the game has written a save file (bench, death, Save & Quit), when nothing is lost.
+ *
+ *   level "ok"    : nothing
+ *   level "soft"  : after the next save, a small prompt offers a reload
+ *   level "hard"  : after the next save, the page reloads by itself; until then a banner says to rest at a bench
+ *
+ * It also: learns the heap level a device died at, catches WebGPU device loss / WebGL context loss / fatal
+ * engine errors (an overlay with Reload instead of Unity's alert), warns when a save could not be written,
+ * and logs a memory line every 2 minutes so crash reports show the curve.
+ *
+ * Load it BEFORE w-pt.loader.js (it wraps GPUAdapter.requestDevice and IDBObjectStore.put).
+ * After createUnityInstance resolves: MemGuard.attach(unityInstance).
+ * In config.errorHandler: return MemGuard.onEngineError(message) (true = it showed its own overlay).
+ */
+(function (root) {
+  "use strict";
+  const MB = 1048576;
+  const CFG = {
+    saveDir: "/idbfs/f4bbfc2459fd6f7ca49076cea7369b2c/",
+    saveFile: /\/user\d+\.dat$/,       // the game's save slots (not PlayerPrefs, not Restore_Points)
+    heapMaxMB: 4080,                   // wasm memory maximum of this build (65280 pages)
+    softFrac: 0.74,                    // of the limit, in Unity "used" MB:  4080 -> 3019
+    hardFrac: 0.83,                    //                                    4080 -> 3386
+    crashMargin: 400,                  // hard level sits this far below a "used" value we died at
+    sampleMs: 120000,                  // GetMetricsInfo walks every dlmalloc chunk: keep it rare (it is also read at every save)
+    slowSampleMs: 300000,              // used when one call took more than 25 ms
+    logEveryMs: 120000,
+    quietMs: 700,                      // no save transaction for this long = the save is finished
+    minSessionMs: 5 * 60000,           // never auto-reload a session younger than this (no loops)
+    precise: 3300,                     // heap MB from which the exact (slow) usage figure is read
+    learnKey: "silksong-memguard-crash",
+    flagKey: "silksong-memguard-reloaded",
+  };
+
+  // ---------- pure decision logic (tested in Node) ----------
+  function limits(learned, deviceMemory, now) {
+    // the limit only drops below the wasm maximum once this device has actually run out of memory (learned below)
+    let limit = CFG.heapMaxMB;
+    let soft = Math.round(limit * CFG.softFrac), hard = Math.round(limit * CFG.hardFrac);
+    if (learned && now - learned.at < 21 * 864e5) {
+      if (learned.heapMB && learned.heapMB < CFG.heapMaxMB - 64) {   // died below the wasm max: browser/device limit
+        limit = learned.heapMB;
+        soft = Math.round(limit * CFG.softFrac); hard = Math.round(limit * CFG.hardFrac);
+      }
+      if (learned.usedMB) hard = Math.min(hard, learned.usedMB - CFG.crashMargin);
+      soft = Math.min(soft, hard - 250);
+    }
+    return { limit, soft, hard };
+  }
+  function levelFor(sample, lim) {
+    if (!sample) return "ok";
+    if (sample.usedMB != null) return sample.usedMB >= lim.hard ? "hard" : sample.usedMB >= lim.soft ? "soft" : "ok";
+    // no Unity metrics: the heap length alone only says "near the end"
+    return sample.heapMB >= Math.min(lim.limit, CFG.heapMaxMB) - 8 ? "soft" : "ok";
+  }
+  // Unity's out-of-memory text: "[ ALLOC_DEFAULT ] used: 3708943756B | ... reserved: 3789235267B"
+  function parseOom(text) {
+    const used = /ALLOC_DEFAULT \] used: (\d+)B/.exec(text), want = /Trying to allocate: (\d+)B/.exec(text);
+    return { usedMB: used ? Math.round(+used[1] / MB) : 0, wantMB: want ? Math.round(+want[1] / MB) : 0 };
+  }
+
+  // ---------- environment ----------
+  const hasDom = typeof document !== "undefined";
+  const store = {
+    get(k, s) { try { const v = (s ? sessionStorage : localStorage).getItem(k); return v && JSON.parse(v); } catch (e) { return null; } },
+    set(k, v, s) { try { (s ? sessionStorage : localStorage).setItem(k, JSON.stringify(v)); } catch (e) { /* blocked */ } },
+    del(k, s) { try { (s ? sessionStorage : localStorage).removeItem(k); } catch (e) { /* blocked */ } },
+  };
+  const log = (...a) => { try { console.log("[memguard]", ...a); } catch (e) { /* */ } };
+
+  let inst = null, M = null, started = Date.now(), timer = 0, lastLog = 0, sampleCost = 0;
+  let last = null, lim = limits(store.get(CFG.learnKey), root.navigator && navigator.deviceMemory, Date.now());
+  let lastSaveAt = 0, pendingTx = 0, lastTxAt = 0, reloading = false, fatal = false, reported = false;
+  let objects = 0;
+
+  function sample() {
+    if (!M || !M.HEAPU8) return null;
+    const s = { heapMB: Math.round(M.HEAPU8.length / MB), usedMB: null, at: Date.now() };
+    try {
+      // GetMetricsInfo walks the whole heap (a full second on slow machines): only pay for it once the heap
+      // has grown into the range where running out is possible; below that the heap length says enough.
+      if (inst && typeof inst.GetMetricsInfo === "function" && s.heapMB >= Math.min(lim.soft, CFG.precise)) {
+        const t = performance.now();
+        const m = inst.GetMetricsInfo();           // usedWASMHeapSize = sbrk top - dlmalloc free bytes (mallinfo walk)
+        sampleCost = performance.now() - t;
+        if (m && m.usedWASMHeapSize > 0 && m.usedWASMHeapSize <= M.HEAPU8.length) s.usedMB = Math.round(m.usedWASMHeapSize / MB);
+      }
+    } catch (e) { /* metrics unavailable: heap length only */ }
+    last = s;
+    return s;
+  }
+
+  function tick() {
+    if (fatal || reloading) return;
+    const paused = root.TabPause && TabPause.isPaused && TabPause.isPaused();
+    if (!paused) {
+      const s = sample(), lvl = levelFor(s, lim);
+      if (s && Date.now() - lastLog > CFG.logEveryMs) {
+        lastLog = Date.now();
+        log("heap " + s.heapMB + " MB, used " + s.usedMB + " MB, objects " + objects + ", level " + lvl +
+          " (soft " + lim.soft + ", hard " + lim.hard + ", call " + sampleCost.toFixed(1) + " ms)");
+      }
+      if (lvl === "hard") ui.banner("Memory is almost full. Rest at a bench: the game will save and reload itself.");
+      else ui.banner(null);
+    }
+    timer = setTimeout(tick, sampleCost > 25 ? CFG.slowSampleMs : CFG.sampleMs);
+  }
+
+  // ---------- the safe moment: a save file landed in IndexedDB ----------
+  function onSaveWritten() {
+    lastSaveAt = Date.now();
+    if (!M || fatal || reloading) return;
+    const lvl = levelFor(sample(), lim);
+    if (lvl === "ok") return;
+    log("save written at level " + lvl + " (used " + (last && last.usedMB) + " MB, heap " + (last && last.heapMB) + " MB)");
+    if (lvl === "hard" && Date.now() - started > CFG.minSessionMs) whenQuiet(() => reloadNow("auto after save"));
+    else ui.prompt("Memory is running low. Reload to keep playing smoothly (your progress is saved).", () => whenQuiet(() => reloadNow("player after save")));
+  }
+  function whenQuiet(fn) {
+    const wait = () => {
+      if (pendingTx || Date.now() - lastTxAt < CFG.quietMs) return setTimeout(wait, 150);
+      fn();
+    };
+    wait();
+  }
+  function reloadNow(why) {
+    if (reloading) return;
+    reloading = true;
+    store.set(CFG.flagKey, { at: Date.now(), why, usedMB: last && last.usedMB }, true);
+    log("reloading: " + why);
+    ui.overlay("Progress saved. Reloading to free memory...", false);
+    try { if (M && M.pauseMainLoop) M.pauseMainLoop(); } catch (e) { /* */ }
+    setTimeout(() => location.reload(), 400);
+  }
+
+  function hookIdb() {
+    const P = root.IDBObjectStore && IDBObjectStore.prototype;
+    if (!P || P.__memguard) return;
+    const orig = P.put;
+    P.put = function (value, key) {
+      const req = orig.apply(this, arguments);
+      try {
+        if (this.name === "FILE_DATA" && this.transaction.db.name === "/idbfs" && typeof key === "string" && key.startsWith(CFG.saveDir)) {
+          const tx = this.transaction, isSave = CFG.saveFile.test(key) && value && value.contents;
+          if (!tx.__memguard) {
+            tx.__memguard = { save: false };
+            pendingTx++;
+            const end = (ok) => () => {
+              pendingTx--; lastTxAt = Date.now();
+              if (!ok && tx.__memguard.save) {
+                log("save write FAILED: " + (tx.error && tx.error.name));
+                ui.prompt("Your browser could not write the save (" + ((tx.error && tx.error.name) || "error") + "). Free some disk space; progress since the last save may be lost.", null);
+                if (root.skSendReport) skSendReport("save write failed: " + (tx.error && tx.error.name));
+              } else if (ok && tx.__memguard.save) onSaveWritten();
+            };
+            tx.addEventListener("complete", end(true));
+            tx.addEventListener("abort", end(false));
+            tx.addEventListener("error", end(false));
+          }
+          if (isSave) tx.__memguard.save = true;
+          lastTxAt = Date.now();
+        }
+      } catch (e) { /* never break the game's save */ }
+      return req;
+    };
+    P.put.__memguard = P.__memguard = true;
+  }
+
+  // ---------- console: OOM line, loaded-object counts ----------
+  function hookConsole() {
+    for (const level of ["log", "error", "warn"]) {
+      const orig = console[level];
+      console[level] = function () {
+        try {
+          const t = typeof arguments[0] === "string" ? arguments[0] : "";
+          if (t.indexOf("Could not allocate memory") !== -1) onOom(t);
+          else if (t.indexOf("Loaded Objects now: ") !== -1) objects = parseInt(t.split("Loaded Objects now: ")[1], 10) || objects;
+          else if (t === "Halting program.") fatal = true;
+        } catch (e) { /* */ }
+        return orig.apply(this, arguments);
+      };
+    }
+  }
+  function onOom(text) {
+    if (fatal) return;
+    const o = parseOom(text), heapMB = M && M.HEAPU8 ? Math.round(M.HEAPU8.length / MB) : 0;
+    const prev = store.get(CFG.learnKey);
+    // keep the lowest level seen; a single desktop crash at 4080 still lowers "hard" via usedMB
+    const rec = { at: Date.now(), heapMB: Math.min(heapMB || 1e9, prev && prev.heapMB || 1e9), usedMB: Math.min(o.usedMB || 1e9, prev && prev.usedMB || 1e9), wantMB: o.wantMB };
+    if (rec.heapMB === 1e9) rec.heapMB = 0;
+    if (rec.usedMB === 1e9) rec.usedMB = 0;
+    store.set(CFG.learnKey, rec);
+    log("out of memory: heap " + heapMB + " MB, unity used " + o.usedMB + " MB, wanted " + o.wantMB + " MB, last save " +
+      (lastSaveAt ? Math.round((Date.now() - lastSaveAt) / 1000) + " s ago" : "none this session"));
+  }
+
+  // ---------- GPU / context loss ----------
+  function hookGpu() {
+    const A = root.GPUAdapter && GPUAdapter.prototype;
+    if (!A || A.__memguard) return;
+    const orig = A.requestDevice;
+    A.requestDevice = function () {
+      return orig.apply(this, arguments).then((dev) => {
+        try {
+          dev.lost.then((info) => {
+            if (reloading || (info && info.reason === "destroyed")) return;   // our reload, Quit, or page unload
+            lost("WebGPU device lost: " + (info && info.message));
+          });
+          let ooms = 0;
+          dev.addEventListener("uncapturederror", (e) => {
+            const err = e.error;
+            if (root.GPUOutOfMemoryError && err instanceof GPUOutOfMemoryError && ++ooms <= 3) log("GPU out of memory: " + err.message);
+          });
+        } catch (e) { /* */ }
+        return dev;
+      });
+    };
+    A.__memguard = true;
+  }
+  function lost(why) {
+    if (fatal) return;
+    fatal = true;
+    log(why);
+    report("crash: " + why);
+    ui.overlay("The graphics stopped (" + why.split(":")[0] + "). Reload to keep playing." + saveNote(), true);
+  }
+  function saveNote() {
+    return lastSaveAt ? " Your last save was " + Math.max(1, Math.round((Date.now() - lastSaveAt) / 60000)) + " min ago." : " Progress is kept up to your last bench.";
+  }
+  function report(why) {
+    if (reported || !root.skSendReport) return;
+    reported = true;
+    skSendReport(why);
+  }
+
+  // Unity's errorHandler (loader.js) and the framework's main-loop catch both call it; return true to suppress the alert.
+  function onEngineError(message) {
+    const text = String(message && (message.stack || message.message) || message);
+    const isFatal = fatal || /RuntimeError|Aborted\(|out of bounds|unreachable|out of memory/i.test(text);
+    if (!isFatal) {                     // a wasm-stack error the engine may survive: report once, keep Unity's alert
+      if (!api.__nonFatal && root.skSendReport) { api.__nonFatal = true; skSendReport("error: " + text.slice(0, 400)); }
+      return false;
+    }
+    fatal = true;
+    report("crash: " + text.slice(0, 400));
+    const oom = /out of bounds|out of memory/i.test(text) || (store.get(CFG.learnKey) || {}).at > Date.now() - 10000;
+    ui.overlay((oom ? "The game ran out of memory and stopped." : "The game hit an error and stopped.") + saveNote() +
+      " Reloading usually fixes it.", true);
+    return true;
+  }
+
+  // ---------- UI (inline styles, matches the page's note box) ----------
+  const ui = (() => {
+    const css = "position:fixed;z-index:99990;font:13px/1.45 Inter,system-ui,sans-serif;color:#ece6da;background:#16161fe8;border-radius:10px;";
+    const btn = "font:inherit;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#ece6da;background:none;border:1px solid rgba(236,230,218,.35);border-radius:999px;padding:6px 14px;margin-left:8px;cursor:pointer;";
+    let p = null, b = null, o = null;
+    function el(style, html) { const d = document.createElement("div"); d.style.cssText = css + style; d.setAttribute("role", "status"); d.innerHTML = html; document.body.appendChild(d); return d; }
+    const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+    return {
+      prompt(text, onReload) {
+        if (!hasDom || o) return;
+        if (p) p.remove();
+        p = el("left:50%;top:16px;transform:translateX(-50%);max-width:min(560px,calc(100vw - 32px));padding:10px 14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;",
+          "<span style='flex:1 1 220px'>" + esc(text) + "</span>" + (onReload ? "<button data-a='r' style='" + btn + "border-color:#d0714f'>Reload now</button>" : "") + "<button data-a='x' style='" + btn + "'>" + (onReload ? "Later" : "OK") + "</button>");
+        const me = p;
+        me.addEventListener("click", (e) => { const a = e.target.getAttribute("data-a"); if (!a) return; me.remove(); if (p === me) p = null; if (a === "r" && onReload) onReload(); });
+        setTimeout(() => { if (p === me) { me.remove(); p = null; } }, 30000);
+      },
+      banner(text) {
+        if (!hasDom) return;
+        if (!text) { if (b) { b.remove(); b = null; } return; }
+        if (!b) b = el("right:14px;bottom:14px;padding:7px 12px;font-size:12px;pointer-events:none;border:1px solid #d0714f80;", "");
+        b.textContent = text;
+      },
+      overlay(text, withButton) {
+        if (!hasDom) return;
+        if (p) { p.remove(); p = null; }
+        if (b) { b.remove(); b = null; }
+        if (!o) o = el("inset:0;border-radius:0;background:#121011ee;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:15px;", "");
+        o.innerHTML = "<div style='max-width:440px'><p>" + esc(text) + "</p>" + (withButton ? "<button style='" + btn + "margin:14px 0 0;padding:9px 18px'>Reload</button>" : "") + "</div>";
+        const k = o.querySelector("button");
+        if (k) k.onclick = () => { reloading = true; location.reload(); };
+      },
+    };
+  })();
+
+  // ---------- wiring ----------
+  function attach(unityInstance) {
+    inst = unityInstance; M = unityInstance && unityInstance.Module;
+    started = Date.now();
+    const canvas = M && M.canvas;
+    if (canvas) canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); lost("WebGL context lost"); });
+    const flag = store.get(CFG.flagKey, true);
+    if (flag) {
+      store.del(CFG.flagKey, true);
+      setTimeout(() => ui.prompt("The game reloaded to free memory. Choose Continue to pick up from your save.", null), 1500);
+    }
+    try { if (document.wasDiscarded) log("this tab was discarded by the browser while in the background (low memory)"); } catch (e) { /* */ }
+    log("attached: limit " + lim.limit + " MB, soft " + lim.soft + " MB, hard " + lim.hard + " MB" + (store.get(CFG.learnKey) ? " (learned from a crash)" : ""));
+    clearTimeout(timer);
+    timer = setTimeout(tick, 5000);
+  }
+
+  if (hasDom) { hookIdb(); hookConsole(); hookGpu(); }
+  const api = {
+    attach, onEngineError, config: CFG,
+    state: () => ({ last, limits: lim, lastSaveAt, pendingTx, objects, fatal, reloading, sampleCostMs: sampleCost }),
+    reloadAtNextSave: () => { lim = Object.assign({}, lim, { hard: 0, soft: 0 }); },   // for testing in the console
+    _test: { limits, levelFor, parseOom, hookIdb, onSaveWritten, setModule(i) { inst = i; M = i.Module; }, setStarted(t) { started = t; } },
+  };
+  root.MemGuard = api;
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+    </script>
     <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
     <script src="https://neekoras.com/games/silksong/cloudsave.js?v=2"></script>
     <div id="sk-loader" role="status" aria-live="polite">
@@ -188,6 +512,13 @@
                     $("sk-phase").textContent = "Loading from your browser";
                     $("sk-note").textContent = "The game is already saved in this browser, so no download is needed.";
                 },
+                phase(text) {
+                    busy(true);
+                    $("sk-phase").textContent = text;
+                    $("sk-pct").textContent = "";
+                    $("sk-mb").textContent = "";
+                    $("sk-eta").textContent = "";
+                },
                 starting() {
                     if (phase === "starting") return;
                     phase = "starting";
@@ -202,10 +533,10 @@
                     el.classList.add("sk-gone");
                     setTimeout(() => el.remove(), 700);
                 },
-                fail(msg) {
+                fail(msg, title, button) {
                     busy(false);
                     $("sk-fill").style.width = "0";
-                    $("sk-phase").textContent = "The download stopped";
+                    $("sk-phase").textContent = title || "The download stopped";
                     $("sk-pct").textContent = "";
                     $("sk-mb").textContent = "";
                     $("sk-eta").textContent = "";
@@ -213,8 +544,8 @@
                     if (!document.querySelector(".sk-retry")) {
                         const b = document.createElement("button");
                         b.className = "sk-retry";
-                        b.textContent = "Reload";
-                        b.onclick = () => location.reload();
+                        b.textContent = button ? button.label : "Reload";
+                        b.onclick = button ? button.onClick : () => location.reload();
                         $("sk-note").after(b);
                     }
                 }
@@ -254,10 +585,16 @@
         // catalog only had it as "ReferencesData.asset", so every scene loaded without its defaults). A new version needs new file names (and a new tag for PATCHED,
         // which also makes browsers replace the copy they saved).
         const PATCH = "https://neekoras.com/games/silksong/patch/";
-        const CATALOG_URL = PATCH + "catalog.v3.bin";
+        const CATALOG_URL = PATCH + "catalog.v3c.bin";
         const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v1.bundle" };
+        // sprites-ui: site watermarks painted out of the title logo, and the WebGPU logo the port put in place of
+        // Team Cherry's (intro and Chinese variant) replaced with Team Cherry's own logo from the credits.
+        // prefabs: the full-screen "Contrast Plane" of the Weaver ability shrines switched off (its screen-copy
+        // shader turned the whole screen white after the Silkspear on WebGPU, upside down on WebGL 2), and the
+        // intro's logo fade and starting quote played at 4x and 2x speed (about 7.7 s less before the title).
         const PATCHED = {
-            "packed-sprites-ui_assets_all_f9a8ef56ecdd0a4b95785438aefb0b1a.bundle": { file: "sprites-ui.v1.deflate", csize: 15574360, usize: 117783912, tag: "v1" }
+            "packed-sprites-ui_assets_all_f9a8ef56ecdd0a4b95785438aefb0b1a.bundle": { file: "sprites-ui.v2.deflate", csize: 15603265, usize: 117783912, tag: "v2", old: ["v1"] },
+            "packed-prefabs_assets_all_b19c0cf6b825f4cf18264a6c8f5765a6.bundle": { file: "prefabs.v2.deflate", csize: 131402983, usize: 147105257, tag: "v2", old: ["v1"] }
         };
         const storeName = (name) => PATCHED[name] ? name + "." + PATCHED[name].tag : name;
 
@@ -268,6 +605,7 @@
         let gameShown = false;
         let titleBytes = 1;
         let lastUrgent = Date.now();
+        let lastServed = 0;         // when the engine last received a big bundle (the title waits for many)
 
         // Download progress: on the loading screen until the game shows, then a small note in the corner.
         const note = (() => {
@@ -369,6 +707,7 @@
                 if (name === "catalog.bin") return ownFetch(CATALOG_URL, init);
                 if (SERVED[name]) return ownFetch(PATCH + SERVED[name], init);
                 if (cache && bundleNames.has(name)) {
+                    lastServed = Date.now();
                     let hit = await savedBundle(name);
                     if (!hit) {
                         waiting++;
@@ -391,6 +730,7 @@
                             return new Response(null, { status: 503 });
                         }
                     }
+                    lastServed = Date.now();
                     return hit;
                 }
                 if (typeof resource === "string" && raw.indexOf(REPO_PATH) !== -1 && /\.jsdelivr\.net$/.test(new URL(raw, location.href).hostname)) {
@@ -532,7 +872,7 @@
         }
 
         // Inflate one bundle straight out of the zip parts it spans and save it.
-        async function installFromZip(entry) {
+        async function installFromZip(entry, background) {
             const [name, start, csize, usize] = entry;
             const first = Math.floor(start / PART_SIZE) + 1;
             const last = Math.floor((start + csize - 1) / PART_SIZE) + 1;
@@ -546,7 +886,8 @@
                 const end = start + csize;
                 while (pos < end) {
                     const n = Math.floor(pos / PART_SIZE) + 1;
-                    for (let k = n; k <= last && k < n + PARTS_AHEAD; k++) getPart(k);
+                    // in the background, one part at a time with a short rest, so the game keeps its frame rate
+                    for (let k = n; k <= last && k < n + (background && !waiting ? 1 : PARTS_AHEAD); k++) getPart(k);
                     const buf = await getPart(n);
                     const off = (n - 1) * PART_SIZE;
                     const to = Math.min(end - off, buf.length);
@@ -554,6 +895,7 @@
                     pos = off + to;
                     releasePart(n);
                     released = n + 1;
+                    if (background && !waiting) await sleep(400);
                 }
                 await writer.close();
             })();
@@ -595,7 +937,7 @@
                     run: async () => {
                         if (await isSaved(name)) return;
                         if (PATCHED[name]) await fetchPatched(name);
-                        else await installFromZip(entry);
+                        else await installFromZip(entry, !urgent && !waiting);
                     }
                 };
                 if (urgent) queue.unshift(job); else queue.push(job);
@@ -608,8 +950,11 @@
 
         // Count what is still missing, so progress can show "x of y MB".
         async function missingEntries() {
-            // copies of a bundle saved before it was patched are no longer used
-            for (const name of Object.keys(PATCHED)) await forget(name);
+            // copies of a bundle saved before it was patched (or under an older patch) are no longer used
+            for (const name of Object.keys(PATCHED)) {
+                await forget(name);
+                for (const tag of PATCHED[name].old || []) await forget(name + "." + tag);
+            }
             const out = [];
             for (const e of ENTRIES) if (!(await isSaved(e[0]))) out.push(e);
             return out;
@@ -651,10 +996,14 @@
         // The three engine files are gzip, and the loader in this build inflates them itself, so they
         // are passed on untouched. They are fetched here only so a failed download can be retried
         // against the other jsDelivr hosts.
+        // Our own engine code: the port's wasm with 11 bytes changed (GCManager's 15 s cleanup cycle at most every
+        // 60 s and its WebGL heap threshold 1024 MB instead of 384-512; SceneLoad skips its pre-load memory clear,
+        // keeping the one after the new room is up, which removes one of the two freezes on every room change).
+        const ENGINE_PATCH = { "w-pt.wasm.unityweb": PATCH + "w-pt.wasm.v1.unityweb" };
         async function buildFileUrl(file) {
             for (let attempt = 1; ; attempt++) {
                 try {
-                    const res = await realFetch(repoUrl(HOSTS[(attempt - 1) % HOSTS.length], "Build/" + file));
+                    const res = await realFetch(ENGINE_PATCH[file] || repoUrl(HOSTS[(attempt - 1) % HOSTS.length], "Build/" + file));
                     if (!res.ok) throw new Error("HTTP " + res.status);
                     const blob = await res.blob();
                     const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
@@ -683,6 +1032,77 @@
                     if (statics && dv.getFloat64(statics + 24, true) < 1024) dv.setFloat64(statics + 24, 1024, true);
                 } catch (e) { /* leave the game alone */ }
             }, 2000);
+        }
+
+        // Fast mode: lighter graphics settings written into the game's own PlayerPrefs before it starts
+        // (keys from GameSettings.LoadVideoSettings in this build, all int32). Applied once per browser, so a
+        // player's later choices in Options stick; ?fast=2 also switches the blurred-background effect off.
+        // Only an existing PlayerPrefs file is edited (every other entry is kept); on a first visit the blur level
+        // is set in the running game instead.
+        const PREFS_PATH = "/idbfs/f4bbfc2459fd6f7ca49076cea7369b2c/PlayerPrefs";
+        const FAST_KEY = "silksong-fast-v1";
+        function prefsUpsert(b, values) {
+            if (!b || b.length < 16 || String.fromCharCode(...b.subarray(0, 8)) !== "UnityPrf") return null;
+            const dv = new DataView(b.buffer, b.byteOffset, b.byteLength), dec = new TextDecoder(), enc = new TextEncoder();
+            const entries = [];
+            let p = 16;
+            const len = () => { const n = b[p++]; if (n < 0x80) return n; if (n === 0x80) { const v = dv.getUint32(p, true); p += 4; return v; } throw new Error("length"); };
+            try {
+                while (p < b.length) {
+                    const kl = len(), k = dec.decode(b.subarray(p, p + kl)); p += kl;
+                    const start = p, tag = b[p];
+                    if (tag === 0xfe || tag === 0xfd) p += 5; else { const sl = len(); p += sl; }
+                    if (p > b.length) return null;
+                    entries.push([k, b.slice(start, p)]);
+                }
+            } catch (e) { return null; }
+            const intVal = (v) => { const a = new Uint8Array(5); a[0] = 0xfe; new DataView(a.buffer).setInt32(1, v, true); return a; };
+            for (const [k, v] of Object.entries(values)) {
+                const i = entries.findIndex(([kk]) => kk === k);
+                if (i >= 0) entries[i][1] = intVal(v); else entries.push([k, intVal(v)]);
+            }
+            const L = (n) => { if (n < 0x80) return Uint8Array.of(n); const a = new Uint8Array(5); a[0] = 0x80; new DataView(a.buffer).setUint32(1, n, true); return a; };
+            const parts = [b.subarray(0, 16)];
+            for (const [k, v] of entries) { const kb = enc.encode(k); parts.push(L(kb.length), kb, v); }
+            const out = new Uint8Array(parts.reduce((s, x) => s + x.length, 0));
+            let o = 0;
+            for (const x of parts) { out.set(x, o); o += x.length; }
+            return out;
+        }
+        function applyFastMode(values) {
+            return new Promise((resolve) => {
+                const req = indexedDB.open("/idbfs");
+                req.onupgradeneeded = () => req.transaction.abort();      // no game data yet
+                req.onerror = () => resolve(false);
+                req.onsuccess = () => {
+                    const db = req.result;
+                    if (!db.objectStoreNames.contains("FILE_DATA")) { db.close(); return resolve(false); }
+                    let wrote = false;
+                    const tx = db.transaction("FILE_DATA", "readwrite"), os = tx.objectStore("FILE_DATA");
+                    const g = os.get(PREFS_PATH);
+                    g.onsuccess = () => {
+                        const cur = g.result && g.result.contents ? new Uint8Array(g.result.contents) : null;
+                        const next = cur && prefsUpsert(cur, values);
+                        if (next) { os.put({ timestamp: new Date(), mode: 33206, contents: next }, PREFS_PATH); wrote = true; }
+                    };
+                    tx.oncomplete = () => { db.close(); resolve(wrote); };
+                    tx.onerror = tx.onabort = () => { db.close(); resolve(false); };
+                };
+            });
+        }
+        // In the running game: GameManager._instance -> gameSettings (+96) -> shaderQuality (+84), which the
+        // BlurManager reads every frame. Class slot 9103020 is specific to this build.
+        function setShaderQualityLive(M, q) {
+            try {
+                const dv = new DataView(M.HEAPU8.buffer), klass = dv.getUint32(9103020, true);
+                if (!klass || (klass & 1) || !dv.getUint32(klass + 116, true)) return false;
+                const gm = dv.getUint32(dv.getUint32(klass + 92, true), true);
+                if (!gm) return false;
+                const gs = dv.getUint32(gm + 96, true);
+                if (!gs) return false;
+                dv.setInt32(gs + 84, q, true);
+                return true;
+            } catch (e) { return false; }
         }
 
         // ?fps=30 caps the frame rate (the engine schedules frames with the page's requestAnimationFrame).
@@ -715,10 +1135,35 @@
                     return;
                 }
                 // One game tab at a time: two running Unity games rewrite the shared save store over each other.
+                // A page being reloaded can still hold the lock for a moment, so wait for it a few seconds first;
+                // if another tab really has the game, offer to move it here (that tab stops its game).
                 if (navigator.locks) {
-                    const got = await new Promise((r) => navigator.locks.request("neekoras-unity", { ifAvailable: true },
-                        (lock) => { r(!!lock); return lock ? new Promise(() => {}) : undefined; }));
-                    if (!got) { ui.fail("The game is already open in another tab. Close that tab, then reload this one."); return; }
+                    const channel = window.BroadcastChannel ? new BroadcastChannel("neekoras-unity") : null;
+                    // hold the lock while this tab runs the game; let go when another tab takes the game over
+                    const hold = () => new Promise((release) => {
+                        if (!channel) return;
+                        channel.onmessage = (ev) => {
+                            if (ev.data !== "take-over") return;
+                            try { if (window.skUnityInstance) window.skUnityInstance.Quit(); } catch (e) { /* stop anyway */ }
+                            document.body.innerHTML = '<p style="font:16px Inter,system-ui,sans-serif;color:#ece6da;padding:40px">' +
+                                "The game was moved to another tab.</p>";
+                            release();
+                        };
+                    });
+                    const wait = new AbortController();
+                    const timer = setTimeout(() => wait.abort(), 8000);
+                    const got = await new Promise((resolve) => {
+                        navigator.locks.request("neekoras-unity", { signal: wait.signal },
+                            () => { clearTimeout(timer); resolve(true); return hold(); })
+                            .catch(() => resolve(false));
+                    });
+                    if (!got) {
+                        await new Promise((resolve) => ui.fail("The game is already open in another tab. Play it here instead, or close that tab.",
+                            "Already open in another tab", { label: "Play here instead", onClick: resolve }));
+                        if (channel) channel.postMessage("take-over");
+                        location.reload();
+                        return;
+                    }
                 }
                 // Ask the browser not to clear this site's storage (game files, saves and the save code) when space runs low.
                 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* ignore */ }
@@ -758,6 +1203,7 @@
                     autoSyncPersistentDataPath: true,
                     // every engine crash (out of memory included) sends the error log; returning false keeps Unity's alert
                     errorHandler: function (message) {
+                        if (window.MemGuard) return window.MemGuard.onEngineError(message);
                         if (window.skSendReport) window.skSendReport("crash: " + String(message).slice(0, 400));
                         return false;
                     }
@@ -786,10 +1232,31 @@
                     window.addEventListener("resize", resizeCanvas);
                 }
                 if (window.csReady) await window.csReady;      // a cloud restore is written before the game reads saves
+                const fastLevel = /[?&]fast=2\b/.test(location.search) ? 2 : /[?&]fast=0\b/.test(location.search) ? -1 : 1;
+                let fastDone = false;
+                try { fastDone = localStorage.getItem(FAST_KEY) === "1"; } catch (e) { /* storage blocked */ }
+                let fastLive = false;
+                if (fastLevel === 2 || (fastLevel === 1 && !fastDone)) {
+                    const values = { ShaderQuality: fastLevel === 2 ? 2 : 0, VidParticles: 0, VidNoise: 0, VidDithering: 0, VidVSync: 1 };
+                    if (await applyFastMode(values)) { try { localStorage.setItem(FAST_KEY, "1"); } catch (e) { /* ignore */ } }
+                    else fastLive = true;                      // first visit: no settings file yet
+                }
                 const unityInstance = await createUnityInstance(canvas, config, () => {});
                 await titleReady;
+                // The engine now loads the title screen's files, which takes a while behind a black canvas: keep the
+                // loading screen up until its first scene has started (at most 150 s).
+                ui.phase("Loading the title screen");
+                const shownAt = Date.now();
+                while (!window.skSceneReady && Date.now() - shownAt < 150000) await sleep(300);
                 window.skUnityInstance = unityInstance;
                 tuneGC(unityInstance.Module);
+                // watches memory and, when it gets critical, reloads right after the next save instead of crashing
+                if (window.MemGuard) window.MemGuard.attach(unityInstance);
+                if (fastLive) {
+                    const q = fastLevel === 2 ? 2 : 0;
+                    let tries = 0;
+                    const t = setInterval(() => { if (setShaderQualityLive(unityInstance.Module, q) || ++tries > 60) clearInterval(t); }, 2000);
+                }
                 if (window.TabPause) TabPause.attach(unityInstance.Module);
                 URL.revokeObjectURL(dataUrl);
                 URL.revokeObjectURL(codeUrl);
