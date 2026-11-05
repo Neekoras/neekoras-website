@@ -166,10 +166,10 @@
     saveDir: "/idbfs/f4bbfc2459fd6f7ca49076cea7369b2c/",
     saveFile: /\/user\d+\.dat$/,       // the game's save slots (not PlayerPrefs, not Restore_Points)
     heapMaxMB: 4080,                   // wasm memory maximum of this build (65280 pages)
-    softFrac: 0.74,                    // of the limit, in Unity "used" MB:  4080 -> 3019
-    hardFrac: 0.83,                    //                                    4080 -> 3386
+    softFrac: 0.85,                    // of the limit, in Unity "used" MB:  4080 -> 3468 (a loaded save already uses ~3.2 GB)
+    hardFrac: 0.885,                   //                                    4080 -> 3611 (a real crash happened at 3709 used)
     crashMargin: 400,                  // hard level sits this far below a "used" value we died at
-    sampleMs: 120000,                  // GetMetricsInfo walks every dlmalloc chunk: keep it rare (it is also read at every save)
+    sampleMs: 300000,                  // GetMetricsInfo walks every dlmalloc chunk: keep it rare (it is also read at every save)
     slowSampleMs: 300000,              // used when one call took more than 25 ms
     logEveryMs: 120000,
     quietMs: 700,                      // no save transaction for this long = the save is finished
@@ -585,7 +585,7 @@
         // catalog only had it as "ReferencesData.asset", so every scene loaded without its defaults). A new version needs new file names (and a new tag for PATCHED,
         // which also makes browsers replace the copy they saved).
         const PATCH = "https://neekoras.com/games/silksong/patch/";
-        const CATALOG_URL = PATCH + "catalog.v3d.bin";
+        const CATALOG_URL = PATCH + "catalog.v4b.bin";     // v4b: scene dependency lists trimmed to what each scene references, plus the title set
         const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v1.bundle" };
         // sprites-ui: site watermarks painted out of the title logo, and the WebGPU logo the port put in place of
         // Team Cherry's (intro and Chinese variant) replaced with Team Cherry's own logo from the credits.
