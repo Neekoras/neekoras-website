@@ -1211,6 +1211,11 @@
                 const container = document.querySelector("#unity-container");
                 container.hidden = false;
                 const canvas = document.querySelector("#unity-canvas");
+                // The game locks the mouse during play (InputHandler.SetCursorEnabled sets Cursor.lockState). In the
+                // browser, Escape then only releases the lock and the game never sees it, so pausing took two presses
+                // and unpausing a third. It is a keyboard and controller game, so the lock is never taken; hiding
+                // the cursor still works.
+                canvas.requestPointerLock = function () { return Promise.resolve(); };
                 if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
                     config.devicePixelRatio = 1;
                     const warn = document.querySelector("#unity-mobile-warning");
