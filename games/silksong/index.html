@@ -636,27 +636,25 @@
 
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-        // Put a saved bundle back together as one stream, piece by piece.
-        async function savedBundle(bundle) {
-            const name = storeName(bundle);
+        // Put a saved copy back together as one Blob made of its pieces' Blobs. The browser keeps those on disk,
+        // so nothing is read or copied here; the bytes are read once, by whoever reads the Blob. Null when nothing
+        // is saved; false when a piece is missing (or the size is wrong): the "done" record goes, so it is fetched again.
+        async function savedBlob(name) {
             const meta = await cache.match(keyFor(name, "done"));
             if (!meta) return null;
             const { chunks, size } = await meta.json();
-            let i = 0;
-            const body = new ReadableStream({
-                async pull(controller) {
-                    if (i >= chunks) { controller.close(); return; }
-                    const hit = await cache.match(keyFor(name, i++));
-                    if (!hit) {
-                        await cache.delete(keyFor(name, "done"));
-                        installs.delete(bundle);
-                        controller.error(new Error("the saved copy of " + name + " is incomplete, reload to fetch it again"));
-                        return;
-                    }
-                    controller.enqueue(new Uint8Array(await hit.arrayBuffer()));
-                }
-            });
-            return new Response(body, { headers: { "Content-Type": "application/octet-stream", "Content-Length": String(size) } });
+            const hits = await Promise.all(Array.from({ length: chunks }, (_, i) => cache.match(keyFor(name, i))));
+            const blob = hits.every(Boolean) ? new Blob(await Promise.all(hits.map((h) => h.blob()))) : null;
+            if (blob && blob.size === size) return blob;
+            console.warn("[loader] the saved copy of " + name + " is incomplete, fetching it again");
+            await cache.delete(keyFor(name, "done"));
+            return false;
+        }
+        async function savedBundle(bundle) {
+            const blob = await savedBlob(storeName(bundle));
+            if (blob === false) installs.delete(bundle);      // a finished install whose copy broke: install again
+            if (!blob) return null;
+            return new Response(blob, { headers: { "Content-Type": "application/octet-stream", "Content-Length": String(blob.size) } });
         }
 
         // The engine fetches the smaller bundles, catalog data and videos itself, straight from the CDN and
@@ -1002,20 +1000,67 @@
         // 60 s and its WebGL heap threshold 1024 MB instead of 384-512; SceneLoad skips its pre-load memory clear,
         // keeping the one after the new room is up, which removes one of the two freezes on every room change).
         const ENGINE_PATCH = { "w-pt.wasm.unityweb": PATCH + "w-pt.wasm.v1.unityweb" };
-        async function buildFileUrl(file) {
+        // The engine files are gzip. The first visit inflates them with the browser's own gzip (DecompressionStream)
+        // and saves the plain bytes in Cache Storage, in pieces like the bundles; later visits hand the engine those
+        // plain copies, so nothing is inflated in JavaScript. Saved under the commit, or under the patched file's name
+        // (a new patched wasm needs a new file name, which also drops the old copy). Our copy of the port's loader
+        // (LOADER_URL) only inflates files that really are gzip, and leaves the wasm to instantiateWasm below.
+        const LOADER_URL = PATCH + "w-pt.loader.v2b.js";
+        const ENGINE_DIR = "engine/";
+        const engineName = (file) => ENGINE_DIR + (ENGINE_PATCH[file] ? ENGINE_PATCH[file].split("/").pop() : SHA + "/" + file);
+        async function engineBlob(file) {
+            const name = engineName(file);
+            const saved = await savedBlob(name);
+            if (saved) return saved;
             for (let attempt = 1; ; attempt++) {
                 try {
-                    const res = await realFetch(ENGINE_PATCH[file] || repoUrl(HOSTS[(attempt - 1) % HOSTS.length], "Build/" + file));
+                    const res = await realFetch(ENGINE_PATCH[file] || repoUrl(HOSTS[(attempt - 1) % HOSTS.length], "Build/" + file),
+                        attempt > 1 ? { cache: "reload" } : undefined);
                     if (!res.ok) throw new Error("HTTP " + res.status);
-                    const blob = await res.blob();
-                    const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
-                    if (head[0] !== 0x1f || head[1] !== 0x8b) throw new Error(file + " is not the expected gzip file");
-                    return URL.createObjectURL(new Blob([blob], { type: "application/octet-stream" }));
+                    const gz = await res.blob();
+                    const head = new Uint8Array(await gz.slice(0, 2).arrayBuffer());
+                    if (gz.size < 18 || head[0] !== 0x1f || head[1] !== 0x8b) throw new Error(file + " is not the expected gzip file");
+                    const usize = new DataView(await gz.slice(gz.size - 4).arrayBuffer()).getUint32(0, true);  // gzip trailer
+                    const plain = () => gz.stream().pipeThrough(new DecompressionStream("gzip"));
+                    try {
+                        await saveBundle(name, usize, plain());       // a cut-off or corrupt download fails here
+                    } catch (e) {
+                        if (!e || e.name !== "QuotaExceededError") throw e;
+                        // no room to save it: inflate it for this visit only (the game cannot save its bundles either)
+                        console.warn("[loader] no room to save " + file, e);
+                        const blob = await new Response(plain()).blob();
+                        if (blob.size !== usize) throw new Error(file + " came out at the wrong size");
+                        return blob;
+                    }
+                    const blob = await savedBlob(name);
+                    if (blob) return blob;
+                    throw new Error(file + " could not be read back");
                 } catch (e) {
                     if (attempt >= 4) throw e;
+                    console.warn("[loader] retrying " + file + " (attempt " + (attempt + 1) + ")", e);
                     await sleep(800 * attempt);
                 }
             }
+        }
+        // Saved engine files of other commits or patch versions.
+        async function forgetOldEngines() {
+            const keep = new Set(["w-pt.data.unityweb", "w-pt.framework.js.unityweb", "w-pt.wasm.unityweb"].map((f) => keyFor(engineName(f), "")));
+            const prefix = location.origin + "/__silksong/" + ENGINE_DIR;
+            for (const req of await cache.keys()) {
+                const url = req.url;
+                if (!url.startsWith(prefix)) continue;
+                const base = url.slice(0, url.lastIndexOf("/") + 1);
+                if (!keep.has(base)) await cache.delete(url);
+            }
+        }
+        // Compile the wasm while everything else loads. compileStreaming on a Response marked application/wasm
+        // compiles as the bytes are read; the engine then only instantiates it (config.instantiateWasm).
+        async function compileWasm(blob) {
+            if (WebAssembly.compileStreaming) {
+                try { return await WebAssembly.compileStreaming(new Response(blob, { headers: { "Content-Type": "application/wasm" } })); }
+                catch (e) { console.warn("[loader] streaming wasm compile failed, compiling from memory", e); }
+            }
+            return WebAssembly.compile(await blob.arrayBuffer());
         }
 
         // The game's GCManager runs a full collection plus Resources.UnloadUnusedAssets every 15 s whenever the
@@ -1136,6 +1181,17 @@
                     ui.fail("This browser is too old or has storage turned off. Try a current Chrome, Edge or Firefox window that is not private.");
                     return;
                 }
+                // The engine files (saved plain copies, or a download on the first visit) and the wasm compile start
+                // now, so they overlap the tab lock below, the bundle check and the loader script.
+                const cacheReady = caches.open(CACHE_NAME);
+                const engineFile = (file) => cacheReady.then((c) => { cache = cache || c; return engineBlob(file); });
+                const engineFiles = ["w-pt.data.unityweb", "w-pt.framework.js.unityweb", "w-pt.wasm.unityweb"].map(engineFile);
+                const engine = Promise.all(engineFiles);
+                const wasmModule = engineFiles[2].then(compileWasm);
+                engine.catch(() => {});
+                wasmModule.catch(() => {});
+                const loaderReady = loadScript(LOADER_URL).catch(() => loadScript(LOADER_URL + "?retry=1"));
+                loaderReady.catch(() => {});
                 // One game tab at a time: two running Unity games rewrite the shared save store over each other.
                 // A page being reloaded can still hold the lock for a moment, so wait for it a few seconds first;
                 // if another tab really has the game, offer to move it here (that tab stops its game).
@@ -1170,7 +1226,7 @@
                 // Ask the browser not to clear this site's storage (game files, saves and the save code) when space runs low.
                 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* ignore */ }
                 for (const old of OLD_CACHES) { try { await caches.delete(old); } catch (e) { /* ignore */ } }
-                cache = await caches.open(CACHE_NAME);
+                cache = await cacheReady;
                 const missing = await missingEntries();
                 allBytes = missing.reduce((n, e) => n + sizeOf(e), 0) || 1;
                 const titleMissing = missing.filter((e) => TITLE.some((p) => e[0].startsWith(p + "_")));
@@ -1179,11 +1235,13 @@
                 if (!missing.length) ui.cached();
                 if (!titleMissing.length) ui.starting(); else titleReady.then(() => ui.starting());
 
-                const [dataUrl, frameworkUrl, codeUrl] = await Promise.all([
-                    buildFileUrl("w-pt.data.unityweb"),
-                    buildFileUrl("w-pt.framework.js.unityweb"),
-                    buildFileUrl("w-pt.wasm.unityweb")
-                ]);
+                const [dataBlob, frameworkBlob] = await engine;
+                const dataUrl = URL.createObjectURL(dataBlob);
+                const frameworkUrl = URL.createObjectURL(frameworkBlob);
+                forgetOldEngines().catch(() => {});
+                // createUnityInstance stops here if the wasm cannot be compiled or instantiated
+                let wasmFailed;
+                const wasmFailure = new Promise((resolve, reject) => { wasmFailed = reject; });
                 // The port is built for WebGPU and the engine uses it whenever the browser has it; without it the
                 // engine falls back to WebGL 2. On WebGL 2 some blur/fog effects read the image they draw into and
                 // show broken rectangles, so WebGL 2 is only forced when the address has ?webgl (for testing).
@@ -1192,12 +1250,17 @@
                 }
                 const fps = parseInt((location.search.match(/[?&]fps=([0-9]+)/) || [])[1], 10);
                 if (fps >= 15 && fps <= 60) capFrameRate(fps);
-                await loadScript(repoUrl(HOSTS[0], "Build/w-pt.loader.js"));
+                await loaderReady;
 
                 const config = {
                     dataUrl: dataUrl,
                     frameworkUrl: frameworkUrl,
-                    codeUrl: codeUrl,
+                    codeUrl: "build.wasm",              // not fetched: instantiateWasm hands the engine the compiled module
+                    instantiateWasm: function (imports, receive) {
+                        wasmModule.then((module) => WebAssembly.instantiate(module, imports).then((instance) => receive(instance, module)))
+                            .catch((e) => wasmFailed(e));
+                        return {};
+                    },
                     streamingAssetsUrl: repoUrl(HOSTS[0], "StreamingAssets"),
                     // The big bundles are already kept by this page; stop the engine copying them again.
                     cacheControl: function () { return "no-store"; },
@@ -1248,7 +1311,7 @@
                     if (await applyFastMode(values)) { try { localStorage.setItem(FAST_KEY, "1"); } catch (e) { /* ignore */ } }
                     else fastLive = true;                      // first visit: no settings file yet
                 }
-                const unityInstance = await createUnityInstance(canvas, config, () => {});
+                const unityInstance = await Promise.race([createUnityInstance(canvas, config, () => {}), wasmFailure]);
                 await titleReady;
                 // The engine now loads the title screen's files, which takes a while behind a black canvas: keep the
                 // loading screen up until its first scene has started (at most 150 s).
@@ -1266,7 +1329,7 @@
                 }
                 if (window.TabPause) TabPause.attach(unityInstance.Module);
                 URL.revokeObjectURL(dataUrl);
-                URL.revokeObjectURL(codeUrl);
+                URL.revokeObjectURL(frameworkUrl);
                 ui.done();
                 canvas.style.display = "block";
                 gameShown = true;
