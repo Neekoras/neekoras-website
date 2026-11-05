@@ -585,7 +585,7 @@
         // catalog only had it as "ReferencesData.asset", so every scene loaded without its defaults). A new version needs new file names (and a new tag for PATCHED,
         // which also makes browsers replace the copy they saved).
         const PATCH = "https://neekoras.com/games/silksong/patch/";
-        const CATALOG_URL = PATCH + "catalog.v4b.bin";     // v4b: scene dependency lists trimmed to what each scene references, plus the title set
+        const CATALOG_URL = PATCH + "catalog.v4c.bin";     // v4b: scene dependency lists trimmed to what each scene references, plus the title set
         const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v1.bundle" };
         // sprites-ui: site watermarks painted out of the title logo, and the WebGPU logo the port put in place of
         // Team Cherry's (intro and Chinese variant) replaced with Team Cherry's own logo from the credits.
@@ -594,9 +594,11 @@
         // intro's logo fade and starting quote played at 4x and 2x speed (about 7.7 s less before the title).
         // v3 also switches off other screen-copy effects that break the same way: the Act 3 "Black Thread" plane
         // (same shader as Contrast Plane), the camera's "Screen Flash" overlay, and the pause camera's blur plane.
+        // v4: the HUD silk meter's "Animate" FSM goes straight from First? to Appear Anim and skips the appear
+        // animation for non-cursed players; it used to wait forever, so the silk meter never showed.
         const PATCHED = {
             "packed-sprites-ui_assets_all_f9a8ef56ecdd0a4b95785438aefb0b1a.bundle": { file: "sprites-ui.v2.deflate", csize: 15603265, usize: 117783912, tag: "v2", old: ["v1"] },
-            "packed-prefabs_assets_all_b19c0cf6b825f4cf18264a6c8f5765a6.bundle": { file: "prefabs.v3.deflate", csize: 131408249, usize: 147105257, tag: "v3", old: ["v1", "v2"] }
+            "packed-prefabs_assets_all_b19c0cf6b825f4cf18264a6c8f5765a6.bundle": { file: "prefabs.v4.deflate", csize: 131408243, usize: 147105254, tag: "v4", old: ["v1", "v2", "v3"] }
         };
         const storeName = (name) => PATCHED[name] ? name + "." + PATCHED[name].tag : name;
 
