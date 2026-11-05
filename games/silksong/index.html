@@ -502,10 +502,12 @@
                     buildFileUrl("w-pt.framework.js.unityweb"),
                     buildFileUrl("w-pt.wasm.unityweb")
                 ]);
-                // Use the engine's WebGL 2 renderer, not its experimental WebGPU one: the loader only picks
-                // WebGPU when navigator.gpu exists. (Players saw a white screen after the Silkspear and a crash
-                // on Save & Quit while it ran on WebGPU.)
-                try { Object.defineProperty(Navigator.prototype, "gpu", { get: () => undefined, configurable: true }); } catch (e) { /* keep WebGPU */ }
+                // The port is built for WebGPU and the engine uses it whenever the browser has it; without it the
+                // engine falls back to WebGL 2. On WebGL 2 some blur/fog effects read the image they draw into and
+                // show broken rectangles, so WebGL 2 is only forced when the address has ?webgl (for testing).
+                if (/[?&]webgl\b/.test(location.search)) {
+                    try { Object.defineProperty(Navigator.prototype, "gpu", { get: () => undefined, configurable: true }); } catch (e) { /* keep WebGPU */ }
+                }
                 await loadScript(repoUrl(HOSTS[0], "Build/w-pt.loader.js"));
 
                 const config = {
