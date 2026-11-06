@@ -462,6 +462,7 @@
     </script>
     <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
     <script src="https://neekoras.com/games/silksong/cloudsave.js?v=2"></script>
+    <script src="https://neekoras.com/games/silksong/audiopatch.js?v=1"></script>
     <div id="sk-loader" role="status" aria-live="polite">
         <div class="sk-inner">
             <div class="sk-kicker">Now loading</div>
@@ -490,6 +491,7 @@
             }
             function render() {
                 raf = 0;
+                if (!$("sk-fill")) return;
                 let frac = Math.min(bytes / total, 1);
                 if (frac > 0.999) frac = 1;
                 const pct = Math.floor(frac * 100);
@@ -585,7 +587,7 @@
         // catalog only had it as "ReferencesData.asset", so every scene loaded without its defaults). A new version needs new file names (and a new tag for PATCHED,
         // which also makes browsers replace the copy they saved).
         const PATCH = "https://neekoras.com/games/silksong/patch/";
-        const CATALOG_URL = PATCH + "catalog.v4c.bin";     // v4b: scene dependency lists trimmed to what each scene references, plus the title set
+        const CATALOG_URL = PATCH + "catalog.v4d.bin";     // v4b: scene dependency lists trimmed to what each scene references, plus the title set; v4d: hornet_scenes CRC of the audio-patched copy
         const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v1.bundle" };
         // sprites-ui: site watermarks painted out of the title logo, and the WebGPU logo the port put in place of
         // Team Cherry's (intro and Chinese variant) replaced with Team Cherry's own logo from the credits.
@@ -600,7 +602,14 @@
             "packed-sprites-ui_assets_all_f9a8ef56ecdd0a4b95785438aefb0b1a.bundle": { file: "sprites-ui.v2.deflate", csize: 15603265, usize: 117783912, tag: "v2", old: ["v1"] },
             "packed-prefabs_assets_all_b19c0cf6b825f4cf18264a6c8f5765a6.bundle": { file: "prefabs.v4.deflate", csize: 131408243, usize: 147105254, tag: "v4", old: ["v1", "v2", "v3"] }
         };
-        const storeName = (name) => PATCHED[name] ? name + "." + PATCHED[name].tag : name;
+        // Bundles still installed from the port's zip but rewritten on the way in by an APT2 edit script
+        // (audiopatch.js, made by agents/audiopatch/patch_audio.py): AudioClip references written back into the
+        // scenes' AudioSources. outSize = the patched size; tag names the saved copy (a copy saved without the patch,
+        // under the plain name, is dropped by missingEntries), old = earlier tags. A new apt needs a new file name and tag.
+        const AUDIO = {
+            "packed-scenes-hornet_scenes_all_c907e217c56bc36e9412cc713b6511b0.bundle": { apt: "hornet_scenes.audio.v1.apt", outSize: 577546399, tag: "a1", old: [] }
+        };
+        const storeName = (name) => PATCHED[name] ? name + "." + PATCHED[name].tag : AUDIO[name] ? name + "." + AUDIO[name].tag : name;
 
         const realFetch = window.fetch.bind(window);
         let cache = null;
@@ -873,14 +882,34 @@
             }
         }
 
+        // The APT2 edit script for a bundle in AUDIO (half a MB; fetched before the bundle's zip parts).
+        async function fetchApt(name) {
+            const a = AUDIO[name];
+            for (let attempt = 1; ; attempt++) {
+                try {
+                    const res = await realFetch(PATCH + a.apt, { cache: attempt > 1 ? "reload" : "default" });
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    const apt = parseApt(await res.arrayBuffer());
+                    if (apt.outSize !== a.outSize) throw new Error(a.apt + " is not the expected version");
+                    return apt;
+                } catch (e) {
+                    if (attempt >= 4) throw e;
+                    console.warn("[loader] retrying " + a.apt + " (attempt " + (attempt + 1) + ")", e);
+                    await sleep(800 * attempt);
+                }
+            }
+        }
+
         // Inflate one bundle straight out of the zip parts it spans and save it.
         async function installFromZip(entry, background) {
             const [name, start, csize, usize] = entry;
+            const apt = AUDIO[name] ? await fetchApt(name) : null;   // audio patch applied while it streams in
             const first = Math.floor(start / PART_SIZE) + 1;
             const last = Math.floor((start + csize - 1) / PART_SIZE) + 1;
             const inflate = new DecompressionStream("deflate-raw");
             const writer = inflate.writable.getWriter();
-            const saving = saveBundle(storeName(name), usize, inflate.readable);
+            const saving = apt ? saveBundle(storeName(name), apt.outSize, inflate.readable.pipeThrough(aptTransform(apt)))
+                               : saveBundle(storeName(name), usize, inflate.readable);
             for (let n = first; n <= last; n++) wantPart(n);
             let released = first;             // parts before this one are no longer needed by this install
             const feeding = (async () => {
@@ -956,6 +985,10 @@
             for (const name of Object.keys(PATCHED)) {
                 await forget(name);
                 for (const tag of PATCHED[name].old || []) await forget(name + "." + tag);
+            }
+            for (const name of Object.keys(AUDIO)) {
+                await forget(name);
+                for (const tag of AUDIO[name].old || []) await forget(name + "." + tag);
             }
             const out = [];
             for (const e of ENTRIES) if (!(await isSaved(e[0]))) out.push(e);
