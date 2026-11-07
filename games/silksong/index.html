@@ -56,7 +56,7 @@
         // this site's server with the player's save code when the game crashes (Unity's error alert), or when the
         // player presses "Report a problem" in the cloud panel. Repeated lines are folded into one with a count.
         // This page's build. version.txt next to the page holds the same string; bump both on every deploy.
-        window.SK_BUILD = "2026-11-07.1";
+        window.SK_BUILD = "2026-11-07.2";
         (function () {
             const LOG = [], MAX = 600, start = Date.now();
             let last = null, sent = 0;
@@ -75,7 +75,13 @@
             }
             for (const level of ["log", "info", "warn", "error"]) {
                 const orig = console[level].bind(console);
-                console[level] = function () { add(level, arguments); return orig.apply(null, arguments); };
+                console[level] = function () {
+                    add(level, arguments);
+                    // The engine logs this up to ~900 times per room load (an AudioClip's length read before it has
+                    // decoded). It is kept, folded, in the report log above but not printed each time.
+                    if (level === "log" && typeof arguments[0] === "string" && arguments[0].startsWith("Trying to get length of sound which is not loaded yet")) return;
+                    return orig.apply(null, arguments);
+                };
             }
             window.addEventListener("error", (e) => add("error", [(e.message || "error") + " @ " + (e.filename || "") + ":" + (e.lineno || "")]));
             window.addEventListener("unhandledrejection", (e) => add("error", ["unhandled rejection: " + (e.reason && (e.reason.stack || e.reason))]));
@@ -308,15 +314,19 @@
   let last = null, lim = limits(store.get(CFG.learnKey), root.navigator && navigator.deviceMemory, Date.now());
   let lastSaveAt = 0, pendingTx = 0, lastTxAt = 0, reloading = false, fatal = false, reported = false;
   let objects = 0, metricsOff = false, quitting = false, bigDropAt = 0, hbTimer = 0;
+  let lastPrecise = null;           // the last reading with Unity's "used" figure (taken at a save)
+  const usedNow = () => (last && last.usedMB != null ? last.usedMB : lastPrecise ? lastPrecise.usedMB : null);
   const tabId = Math.random().toString(36).slice(2);
 
-  function sample() {
+  // precise: also read Unity's used size (GetMetricsInfo). Only at a save: during play the walk froze the game for
+  // 4.9 and 6.9 s in a playtest (heap 3462 MB), once every 5 minutes; the timer reads the heap length only.
+  function sample(precise) {
     if (!M || !M.HEAPU8) return null;
     const s = { heapMB: Math.round(M.HEAPU8.length / MB), usedMB: null, at: Date.now() };
     try {
       // GetMetricsInfo walks the whole heap (a full second on slow machines): only pay for it once the heap
       // has grown into the range where running out is possible; below that the heap length says enough.
-      if (!metricsOff && inst && typeof inst.GetMetricsInfo === "function" && s.heapMB >= Math.min(lim.soft, CFG.precise)) {
+      if (precise && !metricsOff && inst && typeof inst.GetMetricsInfo === "function" && s.heapMB >= Math.min(lim.soft, CFG.precise)) {
         const t = performance.now();
         const m = inst.GetMetricsInfo();           // usedWASMHeapSize = sbrk top - dlmalloc free bytes (mallinfo walk)
         sampleCost = performance.now() - t;
@@ -324,6 +334,7 @@
         if (sampleCost > CFG.metricsMaxMs) { metricsOff = true; log("GetMetricsInfo took " + Math.round(sampleCost) + " ms, using the heap size only from now on"); }
         if (m && m.usedWASMHeapSize > 0 && m.usedWASMHeapSize <= M.HEAPU8.length) s.usedMB = Math.round(m.usedWASMHeapSize / MB);
       }
+      if (s.usedMB != null) lastPrecise = s;
     } catch (e) { /* metrics unavailable: heap length only */ }
     last = s;
     return s;
@@ -333,7 +344,8 @@
     if (fatal || reloading) return;
     const paused = root.TabPause && TabPause.isPaused && TabPause.isPaused();
     if (!paused) {
-      const s = sample(), lvl = levelFor(s, lim);
+      // between saves the level comes from the last save's reading (or the heap length when there is none)
+      const s = sample(false), lvl = levelFor(lastPrecise && s && s.heapMB >= lastPrecise.heapMB ? lastPrecise : s, lim);
       if (s && Date.now() - lastLog > CFG.logEveryMs) {
         lastLog = Date.now();
         log("heap " + s.heapMB + " MB, used " + s.usedMB + " MB, objects " + objects + ", level " + lvl +
@@ -350,9 +362,9 @@
     lastSaveAt = Date.now();
     if (root.skCheckVersion) try { skCheckVersion(); } catch (e) { /* */ }
     if (!M || fatal || reloading || quitting) return;
-    const lvl = levelFor(last && Date.now() - last.at < CFG.reuseMs ? last : sample(), lim);
+    const lvl = levelFor(last && last.usedMB != null && Date.now() - last.at < CFG.reuseMs ? last : sample(true), lim);
     if (lvl === "ok") return;
-    log("save written at level " + lvl + " (used " + (last && last.usedMB) + " MB, heap " + (last && last.heapMB) + " MB)");
+    log("save written at level " + lvl + " (used " + (usedNow()) + " MB, heap " + (last && last.heapMB) + " MB)");
     if (lvl === "hard" && Date.now() - started > CFG.minSessionMs) whenQuiet(() => reloadNow("auto after save"));
     else ui.prompt("Memory is running low. Reload to keep playing smoothly (your progress is saved).", () => whenQuiet(() => reloadNow("player after save")));
   }
@@ -366,7 +378,7 @@
   function reloadNow(why) {
     if (reloading) return;
     reloading = true;
-    store.set(CFG.flagKey, { at: Date.now(), why, usedMB: last && last.usedMB }, true);
+    store.set(CFG.flagKey, { at: Date.now(), why, usedMB: usedNow() }, true);
     log("reloading: " + why);
     ui.overlay("Progress saved. Reloading to free memory...", false);
     try { if (M && M.pauseMainLoop) M.pauseMainLoop(); } catch (e) { /* */ }
@@ -432,11 +444,11 @@
   function checkQuit(prev, n) {
     if (!M || fatal || reloading || quitting || !lastSaveAt) return;
     const heapMB = M.HEAPU8 ? Math.round(M.HEAPU8.length / MB) : 0, since = Date.now() - lastSaveAt;
-    if (!isQuitToMenu(prev, n, since, heapMB, last && last.usedMB)) return;
+    if (!isQuitToMenu(prev, n, since, heapMB, usedNow())) return;
     quitting = true;
     try { if (M.pauseMainLoop) M.pauseMainLoop(); } catch (e) { /* */ }
     try { M.resumeMainLoop = function () { /* held for the reload (TabPause resumes on focus) */ }; } catch (e) { /* */ }
-    log("quit to the menu at heap " + heapMB + " MB, used " + (last && last.usedMB) + " MB (objects " + prev + " -> " + n +
+    log("quit to the menu at heap " + heapMB + " MB, used " + (usedNow()) + " MB (objects " + prev + " -> " + n +
       ", save " + (since / 1000).toFixed(1) + " s ago): reloading instead of loading the menu");
     ui.overlay("Progress saved. Reloading to free memory...", false);
     whenQuiet(() => whenCloudIdle(() => reloadNow("quit to menu")));
@@ -564,7 +576,7 @@
   function heartbeat() {
     if (fatal) { stopHeartbeat(); return; }    // a crash this page saw is reported already
     store.set(CFG.hbKey, { at: Date.now(), tab: tabId, heapMB: M && M.HEAPU8 ? Math.round(M.HEAPU8.length / MB) : 0,
-      usedMB: last && last.usedMB, lastSaveAt, hidden: hasDom && document.hidden, build: root.SK_BUILD });
+      usedMB: usedNow(), lastSaveAt, hidden: hasDom && document.hidden, build: root.SK_BUILD });
   }
   function startHeartbeat() { clearInterval(hbTimer); heartbeat(); hbTimer = setInterval(heartbeat, CFG.hbMs); }
   function stopHeartbeat() { clearInterval(hbTimer); hbTimer = 0; store.del(CFG.hbKey); }
@@ -1003,14 +1015,10 @@
                         if (got + value.length > want) throw new Error("part " + n + " is longer than expected");
                         out.set(value, got);
                         got += value.length;
-                        doneBytes += value.length;
-                        progress();
                     }
                     if (got !== want) throw new Error("part " + n + " is " + got + " bytes, expected " + want);
                     return out;
                 } catch (e) {
-                    doneBytes -= got;
-                    progress();
                     if (halted || attempt >= 5) throw e;
                     console.warn("[loader] retrying part " + n + " (attempt " + (attempt + 1) + ")", e);
                     await sleep(800 * attempt);
@@ -1145,6 +1153,10 @@
                                : saveBundle(storeName(name), usize, inflate.readable);
             for (let n = first; n <= last; n++) wantPart(n);
             let released = first;             // parts before this one are no longer needed by this install
+            // Progress counts the bundle's own bytes as they go in, not whole zip parts: a part is shared with the
+            // neighbouring bundles (one of them the unused 344 MB scene bundle with ?split) and can be fetched again
+            // after release, so counting parts showed "2041 of 1991 MB".
+            let fed = 0;
             const feeding = (async () => {
                 let pos = start;
                 const end = start + csize;
@@ -1156,6 +1168,9 @@
                     const off = (n - 1) * PART_SIZE;
                     const to = Math.min(end - off, buf.length);
                     await writer.write(buf.subarray(pos - off, to));
+                    fed += to - (pos - off);
+                    doneBytes += to - (pos - off);
+                    progress();
                     pos = off + to;
                     releasePart(n);
                     released = n + 1;
@@ -1165,6 +1180,8 @@
             })();
             try { await Promise.all([feeding, saving]); }
             catch (e) {
+                doneBytes -= fed;
+                progress();
                 writer.abort(e).catch(() => {});
                 for (let n = released; n <= last; n++) releasePart(n);
                 throw e;
