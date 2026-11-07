@@ -55,6 +55,8 @@
         // Error log: keeps the game's recent console messages so a report can show what happened. It is sent to
         // this site's server with the player's save code when the game crashes (Unity's error alert), or when the
         // player presses "Report a problem" in the cloud panel. Repeated lines are folded into one with a count.
+        // This page's build. version.txt next to the page holds the same string; bump both on every deploy.
+        window.SK_BUILD = "2026-11-07.1";
         (function () {
             const LOG = [], MAX = 600, start = Date.now();
             let last = null, sent = 0;
@@ -77,20 +79,67 @@
             }
             window.addEventListener("error", (e) => add("error", [(e.message || "error") + " @ " + (e.filename || "") + ":" + (e.lineno || "")]));
             window.addEventListener("unhandledrejection", (e) => add("error", ["unhandled rejection: " + (e.reason && (e.reason.stack || e.reason))]));
-            window.skSendReport = function (why) {
+            // A start that keeps failing is retried by reloading, and each try used to send the same report:
+            // one report per reason (its first line) per hour.
+            function firstThisHour(why) {
+                const KEY = "silksong-report-stamps", now = Date.now(), reason = String(why).split("\n")[0].slice(0, 160);
+                try {
+                    let stamps = null;
+                    try { stamps = JSON.parse(localStorage.getItem(KEY)); } catch (e) { /* unreadable: start over */ }
+                    if (!stamps || typeof stamps !== "object") stamps = {};
+                    for (const k of Object.keys(stamps)) if (!(now - stamps[k] < 3600000)) delete stamps[k];
+                    if (stamps[reason]) return false;
+                    stamps[reason] = now;
+                    localStorage.setItem(KEY, JSON.stringify(stamps));
+                } catch (e) { /* storage blocked: send it */ }
+                return true;
+            }
+            function header(why) {
+                const n = navigator, row = (k, v) => "\n" + k + ": " + v;
+                let mg = "none", learned = "none";
+                try {
+                    if (window.MemGuard) {
+                        const s = window.MemGuard.state();
+                        mg = JSON.stringify({ heapMB: s.last && s.last.heapMB, usedMB: s.last && s.last.usedMB, objects: s.objects,
+                            soft: s.limits.soft, hard: s.limits.hard, limit: s.limits.limit, metricsOff: s.metricsOff,
+                            lastSaveAgoS: s.lastSaveAt ? Math.round((Date.now() - s.lastSaveAt) / 1000) : null, fatal: s.fatal, reloading: s.reloading });
+                    }
+                } catch (e) { /* leave it out */ }
+                try { learned = localStorage.getItem("silksong-memguard-crash") || "none"; } catch (e) { /* storage blocked */ }
+                return "reason: " + String(why).slice(0, 3000) + row("when", new Date().toISOString()) + row("build", window.SK_BUILD) +
+                    row("search", location.search || "(none)") + row("browser", n.userAgent) +
+                    row("screen", screen.width + "x" + screen.height + " @" + (window.devicePixelRatio || 1)) +
+                    row("device", "memory " + (n.deviceMemory || "?") + " GB, " + (n.hardwareConcurrency || "?") + " threads") +
+                    row("gpu", window.skGpuInfo || "unknown") + row("memguard", mg) + row("learned crash level", learned) + "\n\n";
+            }
+            // The header always goes in; only the oldest log lines are left out to fit maxBytes (UTF-8 bytes).
+            function reportBody(why, maxBytes, noLog) {
+                const enc = new TextEncoder(), head = header(why);
+                const lines = noLog ? [] : LOG.map((l) => "[" + (l.t / 1000).toFixed(1) + "s] " + l.level.toUpperCase() + " " + l.text + (l.n > 1 ? "  (x" + l.n + ")" : ""));
+                let budget = maxBytes - enc.encode(head).length - 64;
+                let i = lines.length;
+                while (i > 0) {
+                    const n = enc.encode(lines[i - 1]).length + 1;
+                    if (n > budget) break;
+                    budget -= n;
+                    i--;
+                }
+                return head + (i ? "(" + i + " older lines left out)\n" : "") + lines.slice(i).join("\n");
+            }
+            window.skSendReport = function (why, opts) {
                 let code = "";
                 try { code = localStorage.getItem("neekoras-save-code") || ""; } catch (e) { /* storage blocked */ }
                 if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(code) || sent >= 5) return Promise.resolve(false);
+                if (/^startup/.test(why) && !firstThisHour(why)) return Promise.resolve(false);
                 sent++;
-                const lines = LOG.map((l) => "[" + (l.t / 1000).toFixed(1) + "s] " + l.level.toUpperCase() + " " + l.text + (l.n > 1 ? "  (x" + l.n + ")" : ""));
-                const body = ("reason: " + why + "\nwhen: " + new Date().toISOString() + "\nbrowser: " + navigator.userAgent +
-                    "\nscreen: " + screen.width + "x" + screen.height + " @" + (window.devicePixelRatio || 1) + "\n\n" + lines.join("\n")).slice(-400000);
-                // a crash report may be the last thing this tab does: keepalive survives closing it (64 KB limit)
+                // a crash report may be the last thing this tab does: keepalive survives closing it (64 KiB limit)
                 const crash = /^(crash|startup)/.test(why);
+                const body = reportBody(why, crash ? 60000 : 400000, opts && opts.noLog);
                 return fetch("https://neekoras.com/games/silksong/api/reports?u=" + code,
-                    crash ? { method: "POST", body: body.slice(-60000), keepalive: true } : { method: "POST", body: body })
+                    crash ? { method: "POST", body: body, keepalive: true } : { method: "POST", body: body })
                     .then((r) => r.ok).catch(() => false);
             };
+            window.skSendReport._test = { reportBody, firstThisHour, LOG };
             const origAlert = window.alert.bind(window);
             window.alert = function (msg) {
                 if (/error occurred running the Unity content/i.test(String(msg))) window.skSendReport("crash: " + String(msg).slice(0, 400));
@@ -136,6 +185,31 @@
                 };
                 panel.appendChild(b);
             })(0);
+            // A tab the browser restored from its own copy can run an old page. Compare this page's build with the
+            // site's (at load, and after saves via MemGuard) and show a small note when they differ.
+            (function () {
+                let lastCheck = 0, shown = false;
+                window.skCheckVersion = function () {
+                    if (shown || Date.now() - lastCheck < 60000) return;
+                    lastCheck = Date.now();
+                    fetch(location.origin + "/games/silksong/version.txt", { cache: "no-store" })
+                        .then((r) => r.ok ? r.text() : "").then((v) => {
+                            v = v.trim();
+                            if (!v || v.length > 64 || v === window.SK_BUILD || shown) return;
+                            shown = true;
+                            add("info", ["[version] this page is " + window.SK_BUILD + ", the site has " + v]);
+                            const d = document.createElement("div");
+                            d.setAttribute("role", "status");
+                            d.title = "Click to hide";
+                            d.textContent = "Update ready. Reload after saving.";
+                            d.style.cssText = "position:fixed;right:14px;top:14px;z-index:99985;padding:6px 11px;border-radius:8px;background:#16161fd8;" +
+                                "color:#d8d2c6;font:12px/1.4 Inter,system-ui,sans-serif;cursor:pointer;border:1px solid rgba(236,230,218,.18)";
+                            d.onclick = () => d.remove();
+                            document.body.appendChild(d);
+                        }).catch(() => { /* offline: try again after the next save */ });
+                };
+                window.skCheckVersion();
+            })();
         })();
     </script>
     <script>
@@ -177,6 +251,14 @@
     precise: 3300,                     // heap MB from which the exact (slow) usage figure is read
     learnKey: "silksong-memguard-crash",
     flagKey: "silksong-memguard-reloaded",
+    metricsMaxMs: 500,                 // one GetMetricsInfo call slower than this: heap length only for the rest of the visit
+    reuseMs: 60000,                    // a save reuses a reading younger than this instead of walking the heap again
+    // Save & Quit at a full heap: the main menu's first load asks for 256 MB in one piece and fails (4 of 5 crash
+    // reports). The quit shows as a save, then "Loaded Objects now" falling from 125-150k to ~45k.
+    quit: { saveMs: 15000, minPrev: 80000, ratio: 0.5, heapMB: 3500, usedMB: 2900 },
+    cloudWaitMs: 20000,                // longest wait for the cloud upload before the quit reload
+    hbKey: "silksong-heartbeat",       // left in storage when the tab died without a pagehide (the OS killed it)
+    hbMs: 10000,
   };
 
   // ---------- pure decision logic (tested in Node) ----------
@@ -200,6 +282,13 @@
     // no Unity metrics: the heap length alone only says "near the end"
     return sample.heapMB >= Math.min(lim.limit, CFG.heapMaxMB) - 8 ? "soft" : "ok";
   }
+  // The quit to the main menu, told apart from a room change: a room change keeps the shared assets (every report
+  // shows each new count within 20% of the last), the quit unloads the whole save (down to ~45k), right after a save.
+  function isQuitToMenu(prev, now, sinceSaveMs, heapMB, usedMB) {
+    const q = CFG.quit;
+    return prev > q.minPrev && now > 0 && now < prev * q.ratio && sinceSaveMs >= 0 && sinceSaveMs < q.saveMs &&
+      (heapMB >= q.heapMB || (usedMB || 0) >= q.usedMB);
+  }
   // Unity's out-of-memory text: "[ ALLOC_DEFAULT ] used: 3708943756B | ... reserved: 3789235267B"
   function parseOom(text) {
     const used = /ALLOC_DEFAULT \] used: (\d+)B/.exec(text), want = /Trying to allocate: (\d+)B/.exec(text);
@@ -218,7 +307,8 @@
   let inst = null, M = null, started = Date.now(), timer = 0, lastLog = 0, sampleCost = 0;
   let last = null, lim = limits(store.get(CFG.learnKey), root.navigator && navigator.deviceMemory, Date.now());
   let lastSaveAt = 0, pendingTx = 0, lastTxAt = 0, reloading = false, fatal = false, reported = false;
-  let objects = 0;
+  let objects = 0, metricsOff = false, quitting = false, bigDropAt = 0, hbTimer = 0;
+  const tabId = Math.random().toString(36).slice(2);
 
   function sample() {
     if (!M || !M.HEAPU8) return null;
@@ -226,10 +316,12 @@
     try {
       // GetMetricsInfo walks the whole heap (a full second on slow machines): only pay for it once the heap
       // has grown into the range where running out is possible; below that the heap length says enough.
-      if (inst && typeof inst.GetMetricsInfo === "function" && s.heapMB >= Math.min(lim.soft, CFG.precise)) {
+      if (!metricsOff && inst && typeof inst.GetMetricsInfo === "function" && s.heapMB >= Math.min(lim.soft, CFG.precise)) {
         const t = performance.now();
         const m = inst.GetMetricsInfo();           // usedWASMHeapSize = sbrk top - dlmalloc free bytes (mallinfo walk)
         sampleCost = performance.now() - t;
+        // one report shows a single call taking 18.9 s: never risk that freeze twice
+        if (sampleCost > CFG.metricsMaxMs) { metricsOff = true; log("GetMetricsInfo took " + Math.round(sampleCost) + " ms, using the heap size only from now on"); }
         if (m && m.usedWASMHeapSize > 0 && m.usedWASMHeapSize <= M.HEAPU8.length) s.usedMB = Math.round(m.usedWASMHeapSize / MB);
       }
     } catch (e) { /* metrics unavailable: heap length only */ }
@@ -256,8 +348,9 @@
   // ---------- the safe moment: a save file landed in IndexedDB ----------
   function onSaveWritten() {
     lastSaveAt = Date.now();
-    if (!M || fatal || reloading) return;
-    const lvl = levelFor(sample(), lim);
+    if (root.skCheckVersion) try { skCheckVersion(); } catch (e) { /* */ }
+    if (!M || fatal || reloading || quitting) return;
+    const lvl = levelFor(last && Date.now() - last.at < CFG.reuseMs ? last : sample(), lim);
     if (lvl === "ok") return;
     log("save written at level " + lvl + " (used " + (last && last.usedMB) + " MB, heap " + (last && last.heapMB) + " MB)");
     if (lvl === "hard" && Date.now() - started > CFG.minSessionMs) whenQuiet(() => reloadNow("auto after save"));
@@ -320,23 +413,55 @@
       console[level] = function () {
         try {
           const t = typeof arguments[0] === "string" ? arguments[0] : "";
-          if (t.indexOf("Could not allocate memory") !== -1) onOom(t);
-          else if (t.indexOf("Loaded Objects now: ") !== -1) objects = parseInt(t.split("Loaded Objects now: ")[1], 10) || objects;
-          else if (t === "Halting program.") fatal = true;
+          if (t) onLine(t);
         } catch (e) { /* */ }
         return orig.apply(this, arguments);
       };
     }
+  }
+  function onLine(t) {
+    if (t.indexOf("Could not allocate memory") !== -1) onOom(t);
+    else if (t.indexOf("Loaded Objects now: ") !== -1) {
+      const n = parseInt(t.split("Loaded Objects now: ")[1], 10);
+      if (n > 0) { const prev = objects; objects = n; if (n < prev * CFG.quit.ratio) bigDropAt = Date.now(); checkQuit(prev, n); }
+    }
+    else if (t === "Halting program.") fatal = true;
+  }
+  // Runs inside the engine's own console.log, in the frame that unloaded the save: pausing here means the next
+  // frame (the menu's load) never runs. Then wait for the save writes and the cloud upload, and reload.
+  function checkQuit(prev, n) {
+    if (!M || fatal || reloading || quitting || !lastSaveAt) return;
+    const heapMB = M.HEAPU8 ? Math.round(M.HEAPU8.length / MB) : 0, since = Date.now() - lastSaveAt;
+    if (!isQuitToMenu(prev, n, since, heapMB, last && last.usedMB)) return;
+    quitting = true;
+    try { if (M.pauseMainLoop) M.pauseMainLoop(); } catch (e) { /* */ }
+    try { M.resumeMainLoop = function () { /* held for the reload (TabPause resumes on focus) */ }; } catch (e) { /* */ }
+    log("quit to the menu at heap " + heapMB + " MB, used " + (last && last.usedMB) + " MB (objects " + prev + " -> " + n +
+      ", save " + (since / 1000).toFixed(1) + " s ago): reloading instead of loading the menu");
+    ui.overlay("Progress saved. Reloading to free memory...", false);
+    whenQuiet(() => whenCloudIdle(() => reloadNow("quit to menu")));
+  }
+  function whenCloudIdle(fn) {
+    let done = false;
+    const go = () => { if (!done) { done = true; fn(); } };
+    const cs = root.CloudSave;
+    if (!cs || typeof cs.whenIdle !== "function") { setTimeout(go, 2500); return; }   // an older cloudsave.js
+    try { cs.whenIdle(true).then(go, go); } catch (e) { go(); }
+    setTimeout(go, CFG.cloudWaitMs);
   }
   function onOom(text) {
     if (fatal) return;
     const o = parseOom(text), heapMB = M && M.HEAPU8 ? Math.round(M.HEAPU8.length / MB) : 0;
     const prev = store.get(CFG.learnKey);
     // keep the lowest level seen; a single desktop crash at 4080 still lowers "hard" via usedMB
-    const rec = { at: Date.now(), heapMB: Math.min(heapMB || 1e9, prev && prev.heapMB || 1e9), usedMB: Math.min(o.usedMB || 1e9, prev && prev.usedMB || 1e9), wantMB: o.wantMB };
+    // Right after the save was unloaded (quit to menu) this is one 256 MB block that no longer fits at the wasm
+    // maximum, not a level to learn: "used" is only what was left (learning it would set "hard" below what a loaded
+    // save needs) and the heap is short of the maximum only by less than the request.
+    const atQuit = Date.now() - bigDropAt < 15000;
+    const rec = { at: Date.now(), heapMB: Math.min(!atQuit && heapMB || 1e9, prev && prev.heapMB || 1e9), usedMB: Math.min(!atQuit && o.usedMB || 1e9, prev && prev.usedMB || 1e9), wantMB: o.wantMB };
     if (rec.heapMB === 1e9) rec.heapMB = 0;
     if (rec.usedMB === 1e9) rec.usedMB = 0;
-    store.set(CFG.learnKey, rec);
+    if (!atQuit) store.set(CFG.learnKey, rec);
     log("out of memory: heap " + heapMB + " MB, unity used " + o.usedMB + " MB, wanted " + o.wantMB + " MB, last save " +
       (lastSaveAt ? Math.round((Date.now() - lastSaveAt) / 1000) + " s ago" : "none this session"));
   }
@@ -347,6 +472,10 @@
     if (!A || A.__memguard) return;
     const orig = A.requestDevice;
     A.requestDevice = function () {
+      try {
+        const i = this.info;    // GPUAdapterInfo, no extra call
+        if (i) root.skGpuInfo = [i.vendor, i.architecture, i.device, i.description].filter(Boolean).join(" / ") || "WebGPU (no details)";
+      } catch (e) { /* */ }
       return orig.apply(this, arguments).then((dev) => {
         try {
           dev.lost.then((info) => {
@@ -431,6 +560,33 @@
     };
   })();
 
+  // ---------- heartbeat: a tab the OS killed leaves its last one behind ----------
+  function heartbeat() {
+    if (fatal) { stopHeartbeat(); return; }    // a crash this page saw is reported already
+    store.set(CFG.hbKey, { at: Date.now(), tab: tabId, heapMB: M && M.HEAPU8 ? Math.round(M.HEAPU8.length / MB) : 0,
+      usedMB: last && last.usedMB, lastSaveAt, hidden: hasDom && document.hidden, build: root.SK_BUILD });
+  }
+  function startHeartbeat() { clearInterval(hbTimer); heartbeat(); hbTimer = setInterval(heartbeat, CFG.hbMs); }
+  function stopHeartbeat() { clearInterval(hbTimer); hbTimer = 0; store.del(CFG.hbKey); }
+  function previousDied(hb, now) {
+    if (!hb || hb.tab === tabId || !(now - hb.at < 7 * 864e5)) return null;
+    const ago = (t) => Math.round((now - t) / 1000) + " s";
+    const why = "died: previous session stopped at " + hb.heapMB + " MB (used " + hb.usedMB + " MB, " + (hb.hidden ? "in the background" : "on screen") +
+      ", last heartbeat " + ago(hb.at) + " ago, last save " + (hb.lastSaveAt ? Math.round((hb.at - hb.lastSaveAt) / 1000) + " s before it stopped" : "none") + ", build " + hb.build + ")";
+    // on screen and below the wasm maximum: the browser or device ran out first, so it is this device's real limit.
+    // "used" is not learned from here (it is up to 5 min old).
+    let learn = null;
+    if (!hb.hidden && hb.heapMB >= 2048 && hb.heapMB < CFG.heapMaxMB - 256) {
+      const prev = store.get(CFG.learnKey);
+      learn = { at: now, heapMB: Math.min(hb.heapMB, prev && prev.heapMB || 1e9), usedMB: prev && prev.usedMB || 0, wantMB: 0, from: "heartbeat" };
+    }
+    return { why, learn };
+  }
+  if (hasDom) {
+    root.addEventListener("pagehide", () => { clearInterval(hbTimer); hbTimer = 0; store.del(CFG.hbKey); });
+    root.addEventListener("pageshow", (e) => { if (e.persisted && M && !fatal) startHeartbeat(); });
+  }
+
   // ---------- wiring ----------
   function attach(unityInstance) {
     inst = unityInstance; M = unityInstance && unityInstance.Module;
@@ -443,6 +599,13 @@
       setTimeout(() => ui.prompt("The game reloaded to free memory. Choose Continue to pick up from your save.", null), 1500);
     }
     try { if (document.wasDiscarded) log("this tab was discarded by the browser while in the background (low memory)"); } catch (e) { /* */ }
+    const died = previousDied(store.get(CFG.hbKey), Date.now());
+    if (died) {
+      log(died.why);
+      if (died.learn) { store.set(CFG.learnKey, died.learn); lim = limits(died.learn, root.navigator && navigator.deviceMemory, Date.now()); }
+      if (root.skSendReport) skSendReport(died.why, { noLog: true });
+    }
+    startHeartbeat();
     log("attached: limit " + lim.limit + " MB, soft " + lim.soft + " MB, hard " + lim.hard + " MB" + (store.get(CFG.learnKey) ? " (learned from a crash)" : ""));
     clearTimeout(timer);
     timer = setTimeout(tick, 5000);
@@ -450,10 +613,11 @@
 
   if (hasDom) { hookIdb(); hookConsole(); hookGpu(); }
   const api = {
-    attach, onEngineError, config: CFG,
-    state: () => ({ last, limits: lim, lastSaveAt, pendingTx, objects, fatal, reloading, sampleCostMs: sampleCost }),
+    attach, onEngineError, config: CFG, stopHeartbeat,
+    state: () => ({ last, limits: lim, lastSaveAt, pendingTx, objects, fatal, reloading, quitting, metricsOff, sampleCostMs: sampleCost }),
     reloadAtNextSave: () => { lim = Object.assign({}, lim, { hard: 0, soft: 0 }); },   // for testing in the console
-    _test: { limits, levelFor, parseOom, hookIdb, onSaveWritten, setModule(i) { inst = i; M = i.Module; }, setStarted(t) { started = t; } },
+    _test: { limits, levelFor, parseOom, hookIdb, onSaveWritten, onLine, isQuitToMenu, previousDied, sample, heartbeat,
+      setModule(i) { inst = i; M = i.Module; }, setStarted(t) { started = t; }, setLastSave(t) { lastSaveAt = t; } },
   };
   root.MemGuard = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -461,7 +625,7 @@
 
     </script>
     <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
-    <script src="https://neekoras.com/games/silksong/cloudsave.js?v=2"></script>
+    <script src="https://neekoras.com/games/silksong/cloudsave.js?v=3"></script>
     <script src="https://neekoras.com/games/silksong/audiopatch.js?v=1"></script>
     <div id="sk-loader" role="status" aria-live="polite">
         <div class="sk-inner">
@@ -562,8 +726,34 @@
         // Storage; once the game is running the rest download in the background, one at a time.
         // The zip never has to be built in memory.
         const SHA = "bcbe014765f2f6ca4b1d82ac25755a0299a600ab";
-        const HOSTS = ["https://cdn.jsdelivr.net", "https://fastly.jsdelivr.net", "https://gcore.jsdelivr.net"];
-        const repoUrl = (host, path) => host + "/gh/web-ports/hollow-knight-silksong@" + SHA + "/" + path;
+        // GitHub's own raw host is the last resort, for networks that block jsDelivr (some school networks do).
+        const RAW = "https://raw.githubusercontent.com";
+        const HOSTS = ["https://cdn.jsdelivr.net", "https://fastly.jsdelivr.net", "https://gcore.jsdelivr.net", RAW];
+        const repoUrl = (host, path) => host === RAW ? RAW + "/web-ports/hollow-knight-silksong/" + SHA + "/" + path
+            : host + "/gh/web-ports/hollow-knight-silksong@" + SHA + "/" + path;
+        // A host that fails 3 times with a TypeError (no connection at all: blocked, no DNS) is skipped for the rest
+        // of the visit. If every host is out, all are tried again rather than none.
+        const hostFails = new Map();
+        const net = { ok: 0, typeErrors: 0, other: 0 };      // requests to the port's hosts this visit
+        let halted = false;                                   // the network blocks every host: stop downloading
+        const liveHosts = () => { const l = HOSTS.filter((h) => (hostFails.get(h) || 0) < 3); return l.length ? l : HOSTS; };
+        const hostFor = (attempt) => { const l = liveHosts(); return l[(attempt - 1) % l.length]; };
+        async function hostFetch(host, path, init) {
+            if (halted) throw new Error("downloads stopped");
+            try {
+                const res = await realFetch(repoUrl(host, path), init);
+                net.ok++;
+                return res;
+            } catch (e) {
+                if (e && e.name === "TypeError" && !(init && init.signal && init.signal.aborted)) {
+                    net.typeErrors++;
+                    const n = (hostFails.get(host) || 0) + 1;
+                    hostFails.set(host, n);
+                    if (n === 3) console.warn("[loader] " + host + " cannot be reached from this network, not using it again this visit");
+                } else net.other++;
+                throw e;
+            }
+        }
         const PART_SIZE = 20866662;
         const CACHE_NAME = "silksong-v2";
         const OLD_CACHES = ["silksong-v1"];
@@ -704,11 +894,11 @@
             for (let attempt = 1; attempt <= 4; attempt++) {
                 try {
                     const opts = attempt > 1 ? Object.assign({}, init, { cache: "reload" }) : init;
-                    const res = await realFetch(repoUrl(HOSTS[(attempt - 1) % HOSTS.length], path), opts);
+                    const res = await hostFetch(hostFor(attempt), path, opts);
                     if (res.ok || res.status === 404) return res;
                     last = res;
                 } catch (e) {
-                    if (init && init.signal && init.signal.aborted) throw e;
+                    if (halted || (init && init.signal && init.signal.aborted)) throw e;
                     last = e;
                 }
                 console.warn("[loader] retrying " + path + " (attempt " + (attempt + 1) + ")");
@@ -717,6 +907,23 @@
             if (last instanceof Response) return last;
             throw last;
         }
+
+        // Videos: the engine plays them in a <video> whose src points at the first host, which fetch() above never
+        // sees. Point it at the first host still in use.
+        (function () {
+            const d = window.HTMLMediaElement && Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "src");
+            if (!d || !d.set || !d.configurable) return;
+            Object.defineProperty(HTMLMediaElement.prototype, "src", {
+                configurable: true, enumerable: d.enumerable, get: d.get,
+                set: function (v) {
+                    try {
+                        const i = typeof v === "string" ? v.indexOf(REPO_PATH) : -1;
+                        if (i !== -1 && liveHosts()[0] !== HOSTS[0]) v = repoUrl(liveHosts()[0], v.slice(i + REPO_PATH.length));
+                    } catch (e) { /* leave it */ }
+                    return d.set.call(this, v);
+                }
+            });
+        })();
 
         // Files from this site (patched catalog and menu scene), with the same retries as the CDN.
         async function ownFetch(url, init) {
@@ -786,8 +993,7 @@
             for (let attempt = 1; ; attempt++) {
                 let got = 0;
                 try {
-                    const url = repoUrl(HOSTS[(attempt - 1) % HOSTS.length], "StreamingAssets/aa/WebGL.zip.part" + n);
-                    const res = await realFetch(url, { cache: attempt > 1 ? "reload" : "default" });
+                    const res = await hostFetch(hostFor(attempt), "StreamingAssets/aa/WebGL.zip.part" + n, { cache: attempt > 1 ? "reload" : "default" });
                     if (!res.ok) throw new Error("HTTP " + res.status);
                     const out = new Uint8Array(want);
                     const reader = res.body.getReader();
@@ -805,7 +1011,7 @@
                 } catch (e) {
                     doneBytes -= got;
                     progress();
-                    if (attempt >= 5) throw e;
+                    if (halted || attempt >= 5) throw e;
                     console.warn("[loader] retrying part " + n + " (attempt " + (attempt + 1) + ")", e);
                     await sleep(800 * attempt);
                 }
@@ -970,7 +1176,7 @@
         const queue = [];
         let running = 0;
         function pump() {
-            while (running < MAX_INSTALLS && queue.length) {
+            while (running < MAX_INSTALLS && queue.length && !halted) {
                 const job = queue.shift();
                 running++;
                 job.run().then(job.resolve, job.reject).finally(() => { running--; pump(); });
@@ -1037,6 +1243,7 @@
             });
             let failed = 0;
             for (const e of order) {
+                if (halted) return;
                 // leave the connection to the game while it is still asking for files
                 while (waiting || Date.now() - lastUrgent < QUIET_MS) await sleep(2000);
                 let ok = false;
@@ -1079,8 +1286,8 @@
             if (saved) return saved;
             for (let attempt = 1; ; attempt++) {
                 try {
-                    const res = await realFetch(ENGINE_PATCH[file] || repoUrl(HOSTS[(attempt - 1) % HOSTS.length], "Build/" + file),
-                        attempt > 1 ? { cache: "reload" } : undefined);
+                    const opts = attempt > 1 ? { cache: "reload" } : undefined;
+                    const res = await (ENGINE_PATCH[file] ? realFetch(ENGINE_PATCH[file], opts) : hostFetch(hostFor(attempt), "Build/" + file, opts));
                     if (!res.ok) throw new Error("HTTP " + res.status);
                     const gz = await res.blob();
                     const head = new Uint8Array(await gz.slice(0, 2).arrayBuffer());
@@ -1101,7 +1308,7 @@
                     if (blob) return blob;
                     throw new Error(file + " could not be read back");
                 } catch (e) {
-                    if (attempt >= 4) throw e;
+                    if (halted || attempt >= 4) throw e;
                     console.warn("[loader] retrying " + file + " (attempt " + (attempt + 1) + ")", e);
                     await sleep(800 * attempt);
                 }
@@ -1267,6 +1474,7 @@
                         if (!channel) return;
                         channel.onmessage = (ev) => {
                             if (ev.data !== "take-over") return;
+                            try { if (window.MemGuard) window.MemGuard.stopHeartbeat(); } catch (e) { /* */ }
                             try { if (window.skUnityInstance) window.skUnityInstance.Quit(); } catch (e) { /* stop anyway */ }
                             document.body.innerHTML = '<p style="font:16px Inter,system-ui,sans-serif;color:#ece6da;padding:40px">' +
                                 "The game was moved to another tab.</p>";
@@ -1403,8 +1611,15 @@
                 if (missing.length) { progress(); downloadRest(missing); }
             } catch (e) {
                 console.error(e);
-                if (window.skSendReport) window.skSendReport("startup: " + (e && (e.stack || e.message) || e));
-                if (e && e.name === "QuotaExceededError") {
+                // nothing from the port's hosts ever answered, every failure was a TypeError: the network blocks them
+                const blocked = e && e.name === "TypeError" && net.typeErrors > 0 && net.ok === 0 && net.other === 0;
+                if (blocked) halted = true;
+                if (window.skSendReport) window.skSendReport("startup: " + (blocked ? "blocked network: " : "") + (e && (e.stack || e.message) || e));
+                if (blocked) {
+                    ui.fail("This network blocks the servers the game downloads from (cdn.jsdelivr.net and raw.githubusercontent.com). " +
+                        "School and work networks often do this. Try another network, such as a home connection or a phone hotspot, then reload.",
+                        "This network blocks the download");
+                } else if (e && e.name === "QuotaExceededError") {
                     ui.fail("Your browser has no room left to save the game (about 2.5 GB). Free some disk space, then reload.");
                 } else {
                     ui.fail();

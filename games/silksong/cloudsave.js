@@ -4,7 +4,8 @@
  * The game writes its save slots, restore points and settings into its own folder of the browser's
  * "/idbfs" IndexedDB database (object store "FILE_DATA"). We hook IDBObjectStore.put to catch the
  * moment Unity writes one of them, and upload a snapshot of the whole folder (a STORE zip, same
- * format as the other games) to /games/silksong/api/, keeping the newest 10 per save code. The
+ * format as the other games) to /games/silksong/api/ (the server keeps the newest 10 per save code, plus hourly
+ * ones for a day and daily ones for two weeks). The
  * PlayerPrefs file carries "unity.*" tracking values that change on every page load; those are
  * ignored when deciding whether the save changed. Restore writes the files back into the same
  * store and reloads so Unity reads them on startup.
@@ -305,6 +306,7 @@
 
   // ---- upload with change detection + debounce ----
   let uploadTimer = null;
+  let timerPending = false;   // an upload is scheduled (debounce or retry back-off)
   let uploading = false;
   let uploadQueued = false;
   let manualQueued = false;
@@ -321,7 +323,8 @@
     if (uploading) { if (manual) manualQueued = true; else uploadQueued = true; return; }
     if (!manual && Date.now() < retryAfter) {
       clearTimeout(uploadTimer);
-      uploadTimer = setTimeout(() => uploadSnapshot(), retryAfter - Date.now() + 100);
+      timerPending = true;
+      uploadTimer = setTimeout(() => { timerPending = false; uploadSnapshot(); }, retryAfter - Date.now() + 100);
       return;
     }
     uploading = true;
@@ -383,8 +386,25 @@
     const now = Date.now();
     if (!uploadDeadline) uploadDeadline = now + 30000;
     clearTimeout(uploadTimer);
-    uploadTimer = setTimeout(() => uploadSnapshot(), Math.max(250, Math.min(DEBOUNCE_MS, uploadDeadline - now)));
+    timerPending = true;
+    uploadTimer = setTimeout(() => { timerPending = false; uploadSnapshot(); }, Math.max(250, Math.min(DEBOUNCE_MS, uploadDeadline - now)));
   }
+
+  // For the page's memory guard, before it reloads: resolves once no upload is running or waiting. With flush, a
+  // debounced upload starts now. A retry held back after server errors is not waited for (the save is local anyway).
+  window.CloudSave = {
+    whenIdle(flush) {
+      const backingOff = () => Date.now() < retryAfter;
+      if (flush && timerPending && !uploading && !backingOff()) { clearTimeout(uploadTimer); timerPending = false; uploadSnapshot(); }
+      return new Promise((resolve) => {
+        const check = () => {
+          if (uploading || manualQueued || ((uploadQueued || timerPending) && !backingOff())) return setTimeout(check, 200);
+          resolve(lastResult);
+        };
+        check();
+      });
+    },
+  };
 
   function ago(t) {
     if (!t) return "never";
