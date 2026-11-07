@@ -570,8 +570,13 @@
         const CHUNK = 32 * 1048576;
         const PARTS_AHEAD = 3;      // zip parts read ahead per bundle
         const MAX_INSTALLS = 4;     // bundles downloading at once
-        // the scene bundle is needed as soon as a game starts, so the background download takes it first
-        const FIRST = ["packed-scenes-hornet_scenes_all_c907e217c56bc36e9412cc713b6511b0.bundle"];
+        // The port's single 500 MB scene bundle is not used: every scene comes from its own split bundle (SPLIT below),
+        // and the background download takes those first.
+        // Opt-in while it is being tested: add ?split to the address.
+        const SCENES = "packed-scenes-hornet_scenes_all_c907e217c56bc36e9412cc713b6511b0.bundle";
+        const USE_SPLIT = new URLSearchParams(location.search).has("split");
+        const UNUSED = new Set(USE_SPLIT ? [SCENES] : []);
+        const FIRST = USE_SPLIT ? [] : [SCENES];
         // big bundles the engine asks for before the title screen: fetched straight away, next to the engine files
         const TITLE = ["packed-fonts", "packed-sprites-hornet_enemies", "packed-audio-sfx", "packed-sprites-effects",
             "packed-sprites-hornet_bosses", "packed-sprites-ui", "packed-sprites-hero", "packed-prefabs", "packed-sprites-scenery"];
@@ -587,7 +592,8 @@
         // catalog only had it as "ReferencesData.asset", so every scene loaded without its defaults). A new version needs new file names (and a new tag for PATCHED,
         // which also makes browsers replace the copy they saved).
         const PATCH = "https://neekoras.com/games/silksong/patch/";
-        const CATALOG_URL = PATCH + "catalog.v4d.bin";     // v4b: scene dependency lists trimmed to what each scene references, plus the title set; v4d: hornet_scenes CRC of the audio-patched copy
+        const realFetch = window.fetch.bind(window);
+        const CATALOG_URL = PATCH + (USE_SPLIT ? "catalog.v5.bin" : "catalog.v4d.bin");      // v4b: scene dependency lists trimmed to what each scene references, plus the title set; v4d: hornet_scenes CRC of the audio-patched copy; v5: scenes from the split bundles
         const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v1.bundle" };
         // sprites-ui: site watermarks painted out of the title logo, and the WebGPU logo the port put in place of
         // Team Cherry's (intro and Chinese variant) replaced with Team Cherry's own logo from the credits.
@@ -606,12 +612,33 @@
         // (audiopatch.js, made by agents/audiopatch/patch_audio.py): AudioClip references written back into the
         // scenes' AudioSources. outSize = the patched size; tag names the saved copy (a copy saved without the patch,
         // under the plain name, is dropped by missingEntries), old = earlier tags. A new apt needs a new file name and tag.
-        const AUDIO = {
-            "packed-scenes-hornet_scenes_all_c907e217c56bc36e9412cc713b6511b0.bundle": { apt: "hornet_scenes.audio.v1.apt", outSize: 577546399, tag: "a1", old: [] }
+        const AUDIO = USE_SPLIT ? {} : {
+            [SCENES]: { apt: "hornet_scenes.audio.v1.apt", outSize: 577546399, tag: "a1", old: [] }
         };
+        // The scenes, one bundle per scene (its file and its sharedAssets, with the audio patch already in), made by
+        // agents/split/tools/build.py. Each is a raw deflate file in patch/split/ that the page inflates and saves like
+        // PATCHED. The list (split.v1.json: [name, deflate size, bundle size], most shared first) is read at startup.
+        // A scene's catalog entry depends on its own bundle plus the bundles of the scenes whose sharedAssets it uses.
+        const SPLIT_LIST = PATCH + "split/split.v1.json";
+        let SPLIT = {};
+        const splitReady = (async () => {
+            if (!USE_SPLIT) return;
+            for (let attempt = 1; attempt <= 4; attempt++) {
+                try {
+                    const res = await realFetch(SPLIT_LIST, attempt > 1 ? { cache: "reload" } : undefined);
+                    if (res.ok) {
+                        for (const [name, csize, usize] of await res.json())
+                            SPLIT[name] = { file: "split/" + name.replace(/\.bundle$/, ".deflate"), csize, usize };
+                        return;
+                    }
+                } catch (e) { /* retried */ }
+                await new Promise((r) => setTimeout(r, 600 * attempt));
+            }
+            console.warn("[loader] could not read the scene list");
+        })();
+        const own = (name) => PATCHED[name] || SPLIT[name];
         const storeName = (name) => PATCHED[name] ? name + "." + PATCHED[name].tag : AUDIO[name] ? name + "." + AUDIO[name].tag : name;
 
-        const realFetch = window.fetch.bind(window);
         let cache = null;
         let doneBytes = 0;
         let allBytes = 1;
@@ -717,7 +744,7 @@
                 const name = new URL(raw, location.href).pathname.split("/").pop();
                 if (name === "catalog.bin") return ownFetch(CATALOG_URL, init);
                 if (SERVED[name]) return ownFetch(PATCH + SERVED[name], init);
-                if (cache && bundleNames.has(name)) {
+                if (cache && (bundleNames.has(name) || SPLIT[name])) {
                     lastServed = Date.now();
                     let hit = await savedBundle(name);
                     if (!hit) {
@@ -787,7 +814,7 @@
 
         // One of our own patched bundles: a single deflate file from this server.
         async function fetchPatched(name) {
-            const p = PATCHED[name];
+            const p = own(name);
             for (let attempt = 1; ; attempt++) {
                 let got = 0;
                 try {
@@ -967,7 +994,7 @@
                     name, resolve, reject,
                     run: async () => {
                         if (await isSaved(name)) return;
-                        if (PATCHED[name]) await fetchPatched(name);
+                        if (own(name)) await fetchPatched(name);
                         else await installFromZip(entry, !urgent && !waiting);
                     }
                 };
@@ -990,12 +1017,14 @@
                 await forget(name);
                 for (const tag of AUDIO[name].old || []) await forget(name + "." + tag);
             }
+            // the port's scene bundle, saved plain or with the audio patch (a1), is no longer used
             const out = [];
-            for (const e of ENTRIES) if (!(await isSaved(e[0]))) out.push(e);
+            for (const name of Object.keys(SPLIT)) if (!(await isSaved(name))) out.push([name, -1, SPLIT[name].csize, SPLIT[name].usize]);
+            for (const e of ENTRIES) if (!UNUSED.has(e[0]) && !(await isSaved(e[0]))) out.push(e);
             return out;
         }
         function sizeOf(entry) {
-            return PATCHED[entry[0]] ? PATCHED[entry[0]].csize : entry[2];
+            return own(entry[0]) ? own(entry[0]).csize : entry[2];
         }
 
         // Once the game is running, fetch everything still missing, one bundle after another.
@@ -1003,7 +1032,8 @@
             const order = missing.slice().sort((a, b) => {
                 const fa = FIRST.indexOf(a[0]), fb = FIRST.indexOf(b[0]);
                 if (fa !== fb) return (fa === -1 ? 99 : fa) - (fb === -1 ? 99 : fb);
-                return a[1] - b[1];
+                if ((a[1] < 0) !== (b[1] < 0)) return a[1] < 0 ? -1 : 1;
+                return a[1] < 0 ? 0 : a[1] - b[1];
             });
             let failed = 0;
             for (const e of order) {
@@ -1262,6 +1292,7 @@
                 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* ignore */ }
                 for (const old of OLD_CACHES) { try { await caches.delete(old); } catch (e) { /* ignore */ } }
                 cache = await cacheReady;
+                await splitReady;
                 const missing = await missingEntries();
                 allBytes = missing.reduce((n, e) => n + sizeOf(e), 0) || 1;
                 const titleMissing = missing.filter((e) => TITLE.some((p) => e[0].startsWith(p + "_")));
