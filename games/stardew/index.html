@@ -213,7 +213,11 @@ const haveContent = await opfsHas("Content.tar"), haveAudio = await opfsHas("Con
 let quiet = false;
 try { quiet = localStorage.getItem("stardew-music") === "off" && haveContent; } catch {}
 if (new URLSearchParams(location.search).has("music")) quiet = false;   // ?music asks again
-let wantMusic = haveAudio;
+// phones and tablets get no music: the 500 MB of audio sits in memory twice and crashes mobile tabs
+const mobile = navigator.userAgentData?.mobile || /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent) ||
+  (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));   // iPadOS reports a Mac
+if (mobile) quiet = true;
+let wantMusic = haveAudio && !mobile;
 if (!haveAudio && !quiet) {
   $("sv-progress").hidden = true;
   $("sv-choice").hidden = false;
