@@ -170,8 +170,12 @@ async function getTar(name, label) {
 
 // --- music choice (skipped once music is saved) ---
 const haveContent = await opfsHas("Content.tar"), haveAudio = await opfsHas("ContentAudio.tar");
+// a player who chose no music is not asked again on every visit
+let quiet = false;
+try { quiet = localStorage.getItem("stardew-music") === "off" && haveContent; } catch {}
+if (new URLSearchParams(location.search).has("music")) quiet = false;   // ?music asks again
 let wantMusic = haveAudio;
-if (!haveAudio) {
+if (!haveAudio && !quiet) {
   $("sv-progress").hidden = true;
   $("sv-choice").hidden = false;
   if (haveContent) $("sv-quiet").querySelector("span").textContent = "saved";
@@ -179,6 +183,7 @@ if (!haveAudio) {
     $("sv-music").onclick = () => resolve(true);
     $("sv-quiet").onclick = () => resolve(false);
   });
+  try { localStorage.setItem("stardew-music", wantMusic ? "on" : "off"); } catch {}
   $("sv-choice").hidden = true;
   $("sv-progress").hidden = false;
 }
@@ -288,7 +293,7 @@ try {
   try { extractTar(await opfsRead("DevicePreferences.tar"), "/libsdl/saves/"); }
   catch (e) { if (e?.name !== "NotFoundError") console.error("Could not restore DevicePreferences.tar:", e); }
 
-  show("Unpacking");
+  done = total; show("Unpacking");
   try { extractTar(contentTar, "/libsdl/"); }
   catch (e) {
     // a damaged saved copy: drop it so the next visit downloads it again

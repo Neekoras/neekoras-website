@@ -1,0 +1,220 @@
+// Stardew Valley cloud-save service for neekoras.com
+// Stores per-user save snapshots (zip blobs) in a SQLite DB. Per user it keeps the newest KEEP, plus
+// the newest of each hour for the last 24 hours, plus the newest of each day for the last 14 days
+// (the page uploads after every save, so the newest 10 alone only went back about 20 minutes).
+// Pinned snapshots are always kept. Proxied by nginx at /games/stardew/api/ -> /.
+//
+//   GET    /saves?u=<uuid>          -> JSON list [{name, size, time}]
+//   POST   /saves?u=<uuid>          -> body is a zip; stored as <utc-stamp>.zip
+//   GET    /saves/<name>?u=<uuid>   -> the zip (attachment)
+//   POST   /saves/adopt?u=<uuid>&from=<uuid> -> copy snapshots to the shared code
+//   POST   /saves/pin?u=<uuid>      -> never prune the newest snapshot
+
+const http = require("http");
+const fs = require("fs");
+const { DatabaseSync } = require("node:sqlite");
+
+const PORT = 9104;
+const HOST = "127.0.0.1";
+const DB_PATH = process.env.STARDEW_SAVES_DB || "/var/lib/stardew-saves/saves.db";
+const KEEP = 10;
+const HOURLY_MS = 24 * 3600 * 1000;
+const DAILY_MS = 14 * 24 * 3600 * 1000;
+const MAX_BODY = 25 * 1024 * 1024; // 25MB
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const NAME_RE = /^\d{8}T\d{6}\d{3}(-m)?\.zip$/;
+
+fs.mkdirSync(require("path").dirname(DB_PATH), { recursive: true });
+const db = new DatabaseSync(DB_PATH);
+db.exec("PRAGMA journal_mode = WAL");
+db.exec(`CREATE TABLE IF NOT EXISTS saves (
+  uid  TEXT NOT NULL,
+  name TEXT NOT NULL,
+  time TEXT NOT NULL,
+  data BLOB NOT NULL,
+  PRIMARY KEY (uid, name)
+)`);
+// Pinned ("kept") snapshots are never pruned. When a game switches to a save code that already
+// holds saves for it, the newest one is pinned, so a fresh local game autosaving under that code
+// can never push the real progress out.
+if (!db.prepare("SELECT 1 FROM pragma_table_info('saves') WHERE name = 'pinned'").get()) {
+  db.exec("ALTER TABLE saves ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
+}
+const MAX_PINNED = 5;
+
+// Error reports from the page (its recent console log), sent on a crash or from "Report a problem".
+db.exec(`CREATE TABLE IF NOT EXISTS reports (
+  id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid  TEXT NOT NULL,
+  time TEXT NOT NULL,
+  text TEXT NOT NULL
+)`);
+const MAX_REPORT = 512 * 1024;
+const KEEP_REPORTS = 100;
+const stReport = db.prepare("INSERT INTO reports (uid, time, text) VALUES (?, ?, ?)");
+const stPruneReports = db.prepare("DELETE FROM reports WHERE id NOT IN (SELECT id FROM reports ORDER BY id DESC LIMIT ?)");
+
+const stListSaves = db.prepare(
+  "SELECT name, length(data) AS size, time, pinned FROM saves WHERE uid = ? ORDER BY name DESC");
+const stGetSave = db.prepare("SELECT data FROM saves WHERE uid = ? AND name = ?");
+const stInsert = db.prepare("INSERT OR REPLACE INTO saves (uid, name, time, data) VALUES (?, ?, ?, ?)");
+const stNames = db.prepare("SELECT name, pinned FROM saves WHERE uid = ? ORDER BY name DESC");
+const stDelete = db.prepare("DELETE FROM saves WHERE uid = ? AND name = ? AND pinned = 0");
+
+// Snapshot names are UTC stamps: 20260825T014455123[-m].zip
+function nameTime(name) {
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})/.exec(name);
+  return m ? Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6], +m[7]) : 0;
+}
+// Which names to keep: rows are newest first. The newest KEEP (pinned ones count, as before), the newest in each
+// UTC hour younger than 24 h, the newest in each UTC day younger than 14 days, and every pinned one.
+function keepSet(rows, now) {
+  const keep = new Set(), hours = new Set(), days = new Set();
+  rows.forEach((r, i) => {
+    const t = nameTime(r.name), age = now - t;
+    if (i < KEEP || r.pinned) keep.add(r.name);
+    if (!t) { keep.add(r.name); return; }          // unexpected name: never delete it
+    const hour = r.name.slice(0, 11), day = r.name.slice(0, 8);
+    if (age < HOURLY_MS && !hours.has(hour)) { hours.add(hour); keep.add(r.name); }
+    if (age < DAILY_MS && !days.has(day)) { days.add(day); keep.add(r.name); }
+  });
+  return keep;
+}
+function prune(u, now = Date.now()) {
+  const rows = stNames.all(u), keep = keepSet(rows, now);
+  db.exec("BEGIN");
+  try {
+    for (const r of rows) if (!keep.has(r.name)) stDelete.run(u, r.name);
+    db.exec("COMMIT");
+  } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
+
+// Copy, not move: an old code someone wrote down keeps working.
+const stCopy = db.prepare("INSERT OR IGNORE INTO saves (uid, name, time, data) SELECT ?, name, time, data FROM saves WHERE uid = ?");
+const stPinNewest = db.prepare("UPDATE saves SET pinned = 1 WHERE uid = ? AND name = (SELECT max(name) FROM saves WHERE uid = ?)");
+const stUnpinOld = db.prepare(
+  `UPDATE saves SET pinned = 0 WHERE uid = ? AND pinned = 1 AND name NOT IN
+     (SELECT name FROM saves WHERE uid = ? AND pinned = 1 ORDER BY name DESC LIMIT ?)`);
+function pinNewest(u) {
+  stPinNewest.run(u, u);
+  stUnpinOld.run(u, u, MAX_PINNED);
+}
+
+function send(res, code, body, headers = {}) {
+  const isBuf = Buffer.isBuffer(body) || body instanceof Uint8Array;
+  const data = isBuf ? body : JSON.stringify(body);
+  res.writeHead(code, {
+    "Content-Type": isBuf ? "application/zip" : "application/json",
+    "Content-Length": Buffer.byteLength(data),
+    "Cache-Control": "no-store",
+    ...headers,
+  });
+  res.end(Buffer.from(data));
+}
+
+function stamp() {
+  return new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.(\d{3})Z$/, "$1"); // 20260825T014455123
+}
+
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url, "http://x");
+  const u = url.searchParams.get("u") || "";
+  if (!UUID_RE.test(u)) return send(res, 400, { error: "bad or missing user id" });
+
+  const parts = url.pathname.split("/").filter(Boolean); // ["saves"] or ["saves", name]
+
+  // POST /reports?u=<uuid> -> store one error report (plain text)
+  if (parts[0] === "reports" && parts.length === 1 && req.method === "POST") {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (c) => {
+      size += c.length;
+      if (size > MAX_REPORT) { send(res, 413, { error: "too large" }); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on("end", () => {
+      if (res.writableEnded) return;
+      stReport.run(u, new Date().toISOString(), Buffer.concat(chunks).toString("utf8"));
+      stPruneReports.run(KEEP_REPORTS);
+      return send(res, 200, { ok: true });
+    });
+    return;
+  }
+  if (parts[0] !== "saves") return send(res, 404, { error: "not found" });
+
+  // GET /saves -> list
+  if (req.method === "GET" && parts.length === 1) {
+    return send(res, 200, stListSaves.all(u));
+  }
+
+  // GET /saves/<name> -> download
+  if (req.method === "GET" && parts.length === 2) {
+    const name = parts[1];
+    if (!NAME_RE.test(name)) return send(res, 400, { error: "bad name" });
+    const row = stGetSave.get(u, name);
+    if (!row) return send(res, 404, { error: "not found" });
+    return send(res, 200, row.data, {
+      "Content-Disposition": `attachment; filename="stardew-${name}"`,
+    });
+  }
+
+  // POST /saves -> store snapshot, prune to KEEP
+  if (req.method === "POST" && parts.length === 1) {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (c) => {
+      size += c.length;
+      if (size > MAX_BODY) {
+        send(res, 413, { error: "too large" });
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on("end", () => {
+      if (res.writableEnded) return;
+      const body = Buffer.concat(chunks);
+      if (body.length < 22 || body[0] !== 0x50 || body[1] !== 0x4b) {
+        return send(res, 400, { error: "not a zip" });
+      }
+      const manual = url.searchParams.get("kind") === "manual";
+      const name = `${stamp()}${manual ? "-m" : ""}.zip`;
+      stInsert.run(u, name, new Date().toISOString(), body);
+      prune(u);
+      return send(res, 200, { ok: true, name, kept: stListSaves.all(u).map((s) => s.name) });
+    });
+    return;
+  }
+
+  // POST /saves/adopt?u=<shared>&from=<old> -> copy this game's snapshots from an old code to
+  // the shared code (one code for every game on the site). Only when the shared code has none
+  // for this game yet, so it never mixes two save histories. If it already has some, pin the
+  // newest so this browser's local game can't push it out.
+  if (req.method === "POST" && parts.length === 2 && parts[1] === "adopt") {
+    const from = url.searchParams.get("from") || "";
+    if (!UUID_RE.test(from) || from === u) return send(res, 400, { error: "bad from" });
+    if (stListSaves.all(u).length) {
+      pinNewest(u);
+      return send(res, 200, { copied: 0, existing: true });
+    }
+    const copied = Number(stCopy.run(u, from).changes);
+    return send(res, 200, { copied, existing: false });
+  }
+
+  // POST /saves/pin?u=<uuid> -> keep the newest snapshot forever (used when adopting a code)
+  if (req.method === "POST" && parts.length === 2 && parts[1] === "pin") {
+    pinNewest(u);
+    return send(res, 200, { ok: true });
+  }
+
+  return send(res, 405, { error: "method not allowed" });
+});
+
+if (require.main === module) {
+  server.listen(+process.env.STARDEW_SAVES_PORT || PORT, HOST, () =>
+    console.log(`stardew-saves listening on ${HOST}:${+process.env.STARDEW_SAVES_PORT || PORT}, db=${DB_PATH}, keep=${KEEP} + hourly 24 h + daily 14 d`));
+}
+module.exports = { keepSet, nameTime, prune, server, db };
