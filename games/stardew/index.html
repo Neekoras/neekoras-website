@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stardew Valley</title>
+<link rel="icon" href="/img/games/stardew.png">
+<style>
+  @font-face { font-family: "Instrument Serif"; src: url("/games/shared/fonts/instrument-serif-400.woff2") format("woff2"); font-display: swap; }
+  @font-face { font-family: "Inter"; src: url("/games/shared/fonts/inter-400.woff2") format("woff2"); font-display: swap; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+  canvas { width: 100%; height: 100%; display: block; }
+  #sv-load {
+    position: fixed; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 35%, #2a2426 0%, #161314 70%); color: #ece6da;
+    font: 14px/1.5 Inter, system-ui, sans-serif; transition: opacity .4s;
+  }
+  #sv-load.gone { opacity: 0; pointer-events: none; }
+  .sv-box { width: min(440px, calc(100vw - 32px)); }
+  .sv-kicker { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: #8f877b; }
+  .sv-title { font: 400 56px/1.1 "Instrument Serif", Georgia, serif; margin: 10px 0 26px; }
+  .sv-bar { height: 3px; background: #3a3436; border-radius: 2px; overflow: hidden; }
+  .sv-fill { height: 100%; width: 0; background: #d0714f; transition: width .3s; }
+  .sv-row { display: flex; justify-content: space-between; margin-top: 12px; }
+  .sv-row span:last-child { color: #8f877b; }
+  .sv-note { margin-top: 26px; color: #8f877b; font-size: 13px; }
+  .sv-choice { display: flex; flex-direction: column; gap: 10px; }
+  .sv-choice button {
+    font: 12px/1 Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; cursor: pointer;
+    padding: 14px 18px; border-radius: 999px; border: 1px solid #4a4244; background: #1a1718; color: #ece6da;
+    display: flex; justify-content: space-between; transition: border-color .15s, background .15s;
+  }
+  .sv-choice button:hover { border-color: #d0714f; background: #221d1e; }
+  .sv-choice button span { color: #8f877b; }
+  .sv-err { color: #d0714f; }
+</style>
+<script src="/games/shared/tabpause.js?v=2"></script>
+</head>
+<body>
+<div id="sv-load">
+  <div class="sv-box">
+    <div class="sv-kicker">Now loading</div>
+    <div class="sv-title">Stardew Valley</div>
+    <div class="sv-choice" id="sv-choice" hidden>
+      <button id="sv-music">Play with music <span>635 MB</span></button>
+      <button id="sv-quiet">Play without music <span>135 MB</span></button>
+    </div>
+    <div id="sv-progress">
+      <div class="sv-bar"><div class="sv-fill" id="sv-fill"></div></div>
+      <div class="sv-row"><span id="sv-what">Starting</span><span id="sv-mb"></span></div>
+    </div>
+    <div class="sv-note" id="sv-note">The first visit downloads the game. It is kept in this browser, so the next visit opens much faster.</div>
+  </div>
+</div>
+<canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<script type="module">
+// Stardew Valley web port (github.com/degloved-net/stardew-wasm), files from jsDelivr pinned to one commit.
+// Based on the port's game.js: game content and music are tar archives in ~20 MB parts, kept in OPFS;
+// the game itself writes Saves.tar and DevicePreferences.tar to OPFS.
+const SHA = "a664842611f09771f9155b9718046649bcaded33";
+const HOSTS = ["cdn", "fastly", "gcore"].map((h) => `https://${h}.jsdelivr.net/gh/degloved-net/stardew-wasm@${SHA}/`);
+const BASE = HOSTS[0];
+const MB = 1048576;
+// bytes of each download, for the progress bar
+const SIZES = { content: 66641920, audio: 522921984, wasm: 61307072, framework: 14317869 };
+
+const $ = (id) => document.getElementById(id);
+const canvas = $("canvas");
+let done = 0, total = 0;
+function show(what) {
+  $("sv-what").textContent = what;
+  if (total) {
+    $("sv-fill").style.width = Math.min(100, done / total * 100).toFixed(1) + "%";
+    $("sv-mb").textContent = `${Math.round(done / MB)} of ${Math.round(total / MB)} MB`;
+  }
+}
+function fail(msg) {
+  $("sv-progress").hidden = true;
+  $("sv-note").innerHTML = "";
+  $("sv-note").className = "sv-note sv-err";
+  $("sv-note").textContent = msg;
+}
+
+// fetch from jsDelivr, moving to the next host after an error
+let hostIdx = 0;
+async function cdnFetch(path, tries = 6) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    const url = HOSTS[(hostIdx + i) % HOSTS.length] + path;
+    try {
+      const res = await fetch(url);
+      if (res.ok && res.body) { hostIdx = (hostIdx + i) % HOSTS.length; return res; }
+      last = new Error(`HTTP ${res.status} for ${path}`);
+    } catch (e) { last = e; }
+    await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+  }
+  throw last;
+}
+const rel = (uri) => uri.startsWith(BASE) ? uri.slice(BASE.length) : null;
+
+// --- OPFS ---
+const opfs = await navigator.storage.getDirectory();
+void navigator.storage.persist?.().catch(() => false);
+async function opfsHas(name) { try { await opfs.getFileHandle(name); return true; } catch { return false; } }
+async function opfsRead(name) {
+  return new Uint8Array(await (await (await opfs.getFileHandle(name)).getFile()).arrayBuffer());
+}
+
+async function chunkCount(path) {
+  const text = (await (await cdnFetch(path)).text()).trim();
+  if (!/^\d+$/.test(text) || Number(text) < 1) throw new Error(`Bad chunk count in ${path}`);
+  return Number(text);
+}
+
+// one part at a time; a part that breaks mid-way is fetched again from the start
+async function readParts(name, label, write) {
+  const count = await chunkCount(name + ".count");
+  for (let i = 0; i < count; i++) {
+    const path = name + String(i).padStart(2, "0");
+    for (let attempt = 0; ; attempt++) {
+      const parts = [];
+      let got = 0;
+      try {
+        const reader = (await cdnFetch(path)).body.getReader();
+        for (;;) {
+          const { done: end, value } = await reader.read();
+          if (end) break;
+          parts.push(value); got += value.length; done += value.length;
+          show(label);
+        }
+        for (const p of parts) await write(p);
+        break;
+      } catch (e) {
+        done -= got;
+        if (attempt >= 3) throw e;
+        hostIdx = (hostIdx + 1) % HOSTS.length;
+      }
+    }
+  }
+}
+
+async function getTar(name, label) {
+  try { return await opfsRead(name); } catch {}
+  let writer;
+  try {
+    writer = await (await opfs.getFileHandle(name + ".part", { create: true })).createWritable();
+    await readParts(name, label, (c) => writer.write(c));
+    await writer.close();
+    // only a finished download gets the real name, so a half file is never read as the game
+    const handle = await opfs.getFileHandle(name + ".part");
+    if (handle.move) { await handle.move(name); return await opfsRead(name); }
+    const bytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
+    const w = await (await opfs.getFileHandle(name, { create: true })).createWritable();
+    await w.write(bytes); await w.close();
+    await opfs.removeEntry(name + ".part").catch(() => {});
+    return bytes;
+  } catch (e) {
+    try { await writer?.abort(); } catch {}
+    try { await opfs.removeEntry(name + ".part"); } catch {}
+    if (e && /HTTP|fetch|network/i.test(String(e.message || e))) throw e;
+    // storage full or OPFS blocked: keep it in memory for this visit
+    const chunks = [];
+    await readParts(name, label, (c) => { chunks.push(c); });
+    const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+    let off = 0; for (const c of chunks) { out.set(c, off); off += c.length; }
+    return out;
+  }
+}
+
+// --- music choice (skipped once music is saved) ---
+const haveContent = await opfsHas("Content.tar"), haveAudio = await opfsHas("ContentAudio.tar");
+let wantMusic = haveAudio;
+if (!haveAudio) {
+  $("sv-progress").hidden = true;
+  $("sv-choice").hidden = false;
+  if (haveContent) $("sv-quiet").querySelector("span").textContent = "saved";
+  wantMusic = await new Promise((resolve) => {
+    $("sv-music").onclick = () => resolve(true);
+    $("sv-quiet").onclick = () => resolve(false);
+  });
+  $("sv-choice").hidden = true;
+  $("sv-progress").hidden = false;
+}
+total = SIZES.wasm + SIZES.framework + (haveContent ? 0 : SIZES.content) + (wantMusic && !haveAudio ? SIZES.audio : 0);
+show("Downloading");
+
+try {
+  const contentP = getTar("Content.tar", "Downloading game files");
+  const audioP = wantMusic ? getTar("ContentAudio.tar", "Downloading music") : Promise.resolve(null);
+  const runtimeP = (async () => {
+    const { dotnet } = await import(BASE + "_framework/dotnet.js");
+    return dotnet
+      .withModuleConfig({ canvas })
+      .withEnvironmentVariable("MONO_SLEEP_ABORT_LIMIT", "99999")
+      .withRuntimeOptions([
+        "--jiterpreter-minimum-trace-hit-count=500",
+        "--jiterpreter-trace-monitoring-period=100",
+        "--jiterpreter-trace-monitoring-max-average-penalty=150",
+        `--jiterpreter-wasm-bytes-limit=${64 * MB}`,
+        `--jiterpreter-table-size=${32 * 1024}`,
+      ])
+      .withResourceLoader((type, _name, defaultUri, _integrity, behavior) => {
+        const path = rel(defaultUri);
+        if (!path || type.startsWith("js-module") || type === "dotnetjs") return undefined;
+        if (type === "dotnetwasm" && behavior === "dotnetwasm") {
+          // the engine is stored as .wasm0, .wasm1, ... and streamed back together
+          return (async () => {
+            const count = await chunkCount(path + ".count");
+            let idx = 0;
+            const next = async () => idx < count ? (await cdnFetch(path + idx++)).body.getReader() : null;
+            let cur = await next();
+            return new Response(new ReadableStream({
+              async pull(ctl) {
+                for (;;) {
+                  const { value, done: end } = await cur.read();
+                  if (!end && value) { done += value.length; show("Downloading game files"); ctl.enqueue(value); return; }
+                  cur = await next();
+                  if (!cur) { ctl.close(); return; }
+                }
+              },
+            }), { headers: { "Content-Type": "application/wasm" } });
+          })();
+        }
+        return cdnFetch(path).then(async (res) => {
+          const buf = await res.arrayBuffer();
+          done += buf.byteLength; show("Downloading game files");
+          return new Response(buf, { headers: res.headers });
+        });
+      })
+      .create();
+  })();
+
+  const [contentTar, audioTar, runtime] = await Promise.all([contentP, audioP, runtimeP]);
+  window.svRuntime = runtime;   // cloudsave.js pauses the game through it before a restore
+  const exports = await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName);
+
+  // validate the whole archive first, so a broken one never writes half a farm
+  function parseTar(tar) {
+    const entries = [], paths = new Set(), dec = new TextDecoder("utf-8", { fatal: true });
+    const str = (b, o, l) => { let e = o; while (e < o + l && b[e] !== 0) e++; return dec.decode(b.subarray(o, e)); };
+    const oct = (b, o, l, f) => {
+      const v = str(b, o, l).trim();
+      if (!/^[0-7]+$/.test(v)) throw new Error(`Invalid tar ${f}`);
+      return Number.parseInt(v, 8);
+    };
+    let pos = 0, end = false;
+    while (pos + 512 <= tar.length) {
+      const h = tar.subarray(pos, pos + 512);
+      if (h.every((v) => v === 0)) { end = true; break; }
+      let sum = 0;
+      for (let i = 0; i < 512; i++) sum += i >= 148 && i < 156 ? 32 : h[i];
+      if (oct(h, 148, 8, "checksum") !== sum) throw new Error(`Tar checksum mismatch at byte ${pos}`);
+      const name = str(h, 0, 100), prefix = str(h, 345, 155), full = prefix ? `${prefix}/${name}` : name;
+      const size = oct(h, 124, 12, "size"), type = h[156];
+      const isFile = type === 0 || type === 48, isDir = type === 53;
+      if (!isFile && !isDir) throw new Error(`Unsupported tar entry ${full}`);
+      const path = full.endsWith("/") ? full.slice(0, -1) : full;
+      const segs = path.split("/");
+      if (!path || path.startsWith("/") || path.includes("\\") || segs.some((s) => !s || s === "." || s === ".."))
+        throw new Error(`Unsafe tar path ${full}`);
+      if (paths.has(path)) throw new Error(`Duplicate tar path ${path}`);
+      paths.add(path);
+      const start = pos + 512, stop = start + size, next = start + Math.ceil(size / 512) * 512;
+      if (stop > tar.length || next > tar.length) throw new Error(`Truncated tar entry ${full}`);
+      entries.push({ path, isDir, start, stop });
+      pos = next;
+    }
+    if (!end) throw new Error("Tar archive has no end marker");
+    return entries;
+  }
+  function extractTar(tar, prefix) {
+    for (const e of parseTar(tar)) {
+      const target = e.path.startsWith("__prefs__/") ? "/libsdl/saves/" + e.path.slice(10) : prefix + e.path;
+      if (e.isDir) exports.WasmBootstrap.CreateContentDirectory(target);
+      else exports.WasmBootstrap.WriteContentFile(target, tar.subarray(e.start, e.stop));
+    }
+  }
+
+  await runtime.runMain();
+  await exports.WasmBootstrap.PreInit();
+
+  try {
+    const saves = await opfsRead("Saves.tar");
+    exports.WasmBootstrap.CreateContentDirectory("/libsdl/saves/Saves");
+    extractTar(saves, "/libsdl/saves/Saves/");
+  } catch (e) { if (e?.name !== "NotFoundError") console.error("Could not restore Saves.tar:", e); }
+  try { extractTar(await opfsRead("DevicePreferences.tar"), "/libsdl/saves/"); }
+  catch (e) { if (e?.name !== "NotFoundError") console.error("Could not restore DevicePreferences.tar:", e); }
+
+  show("Unpacking");
+  try { extractTar(contentTar, "/libsdl/"); }
+  catch (e) {
+    // a damaged saved copy: drop it so the next visit downloads it again
+    await opfs.removeEntry("Content.tar").catch(() => {});
+    throw e;
+  }
+  if (audioTar) {
+    try { extractTar(audioTar, "/libsdl/"); }
+    catch (e) { await opfs.removeEntry("ContentAudio.tar").catch(() => {}); console.error("Music archive damaged, playing without it:", e); }
+  }
+
+  $("sv-load").classList.add("gone");
+  const dpr = window.devicePixelRatio || 1;
+  await exports.WasmBootstrap.Init(Math.round(canvas.clientWidth * dpr) || 1280, Math.round(canvas.clientHeight * dpr) || 720);
+  new ResizeObserver(() => {
+    const d = window.devicePixelRatio || 1, w = Math.round(canvas.clientWidth * d), h = Math.round(canvas.clientHeight * d);
+    if (w > 0 && h > 0) try { exports.WasmBootstrap.Resize(w, h); } catch {}
+  }).observe(canvas);
+
+  try { void navigator.keyboard?.lock().catch(() => {}); } catch {}
+  document.addEventListener("keydown", (e) => {
+    if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].includes(e.code)) e.preventDefault();
+  });
+
+  const mod = runtime.Module;
+  if (mod && typeof mod.pauseMainLoop === "function") {
+    let started = false;
+    window.TabPause?.watch({
+      pause: () => { if (started) try { mod.pauseMainLoop(); } catch {} },
+      resume: () => { if (started) try { mod.resumeMainLoop(); } catch {} },
+    });
+    setTimeout(() => { started = true; }, 0);
+  }
+
+  try { await exports.WasmBootstrap.MainLoop(); }
+  catch (e) { if (e !== "unwind" && e?.message !== "unwind") throw e; }
+} catch (e) {
+  console.error(e);
+  $("sv-load").classList.remove("gone");
+  fail("The game could not load. Check your connection and reload the page. If it keeps happening, your browser may be out of storage space.");
+}
+</script>
+<script src="/games/stardew/cloudsave.js?v=1"></script>
+</body>
+</html>
