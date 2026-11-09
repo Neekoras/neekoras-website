@@ -278,8 +278,9 @@
     }
     return buf;
   }
+  // only the save folder counts as a change: the game rewrites DevicePreferences.tar (new tar times) on every boot
   async function hashFiles(files) {
-    const digest = await crypto.subtle.digest("SHA-256", rawBytes(files));
+    const digest = await crypto.subtle.digest("SHA-256", rawBytes(files.filter((f) => f.name === "Saves.tar")));
     return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
   }
 
@@ -299,6 +300,7 @@
   function setStatus(text) { if (statusEl) statusEl.textContent = text; }
 
   async function uploadSnapshot(manual) {
+    if (window.svSecondTab) return;   // the tab running the game does the uploads
     if (uploading) { if (manual) manualQueued = true; else uploadQueued = true; return; }
     if (!manual && Date.now() < retryAfter) {
       clearTimeout(uploadTimer);
@@ -404,7 +406,7 @@
   let restoring = false;
   let lastStamp = null;
   setInterval(async () => {
-    if (restoring) return;
+    if (restoring || window.svSecondTab) return;
     const st = await saveStamp();
     if (lastStamp !== null && st && st !== lastStamp) {
       lastSyncSeen = Date.now();
@@ -519,12 +521,12 @@
   // ---- tiny UI: cloud button + panel (same look as the other games) ----
   let panelOpen = false;
   const css = `
-    #cloudsave-btn { position: fixed; right: 14px; bottom: 14px; z-index: 99990;
+    #cloudsave-btn { position: fixed; left: 14px; bottom: 14px; z-index: 99990;
       width: 44px; height: 44px; border-radius: 50%; border: 1px solid #4448;
       background: #1c1c28e6; color: #cdd3ff; cursor: pointer; font-size: 22px;
       display: flex; align-items: center; justify-content: center; }
     #cloudsave-btn:hover { background: #262638; }
-    #cloudsave-panel { position: fixed; right: 14px; bottom: 66px; z-index: 99991;
+    #cloudsave-panel { position: fixed; left: 14px; bottom: 66px; z-index: 99991;
       width: 300px; max-height: 60vh; overflow: auto; border-radius: 10px;
       background: #16161ff2; color: #e6e6f0; border: 1px solid #4448;
       font: 13px/1.45 system-ui, sans-serif; padding: 12px; display: none; }
@@ -553,7 +555,7 @@
       border-radius: 6px; padding: 6px 8px; margin-bottom: 6px;
       display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     #cloudsave-panel .cs-viewing code { font-size: 11px; }
-    #cloudsave-toast { position: fixed; right: 14px; bottom: 70px; z-index: 99992;
+    #cloudsave-toast { position: fixed; left: 14px; bottom: 70px; z-index: 99992;
       background: #1d2b1de8; color: #b8e6b8; border: 1px solid #3a5a3a;
       border-radius: 8px; padding: 8px 14px; font: 13px system-ui, sans-serif;
       opacity: 0; transform: translateY(8px); pointer-events: none;

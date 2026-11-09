@@ -80,6 +80,8 @@ function show(what) {
 }
 function fail(msg) {
   $("sv-progress").hidden = true;
+  $("sv-choice").hidden = true;
+  document.querySelector(".sv-kicker").hidden = true;
   $("sv-note").innerHTML = "";
   $("sv-note").className = "sv-note sv-err";
   $("sv-note").textContent = msg;
@@ -221,7 +223,10 @@ let wantMusic = haveAudio && !mobile;
 if (!haveAudio && !quiet) {
   $("sv-progress").hidden = true;
   $("sv-choice").hidden = false;
-  if (haveContent) $("sv-quiet").querySelector("span").textContent = "saved";
+  // sizes from what this visit would really fetch
+  const base = SIZES.wasm + SIZES.framework + (haveContent ? 0 : SIZES.content);
+  $("sv-music").querySelector("span").textContent = Math.round((base + SIZES.audio) / MB) + " MB";
+  $("sv-quiet").querySelector("span").textContent = haveContent ? "saved" : Math.round(base / MB) + " MB";
   wantMusic = await new Promise((resolve) => {
     $("sv-music").onclick = () => resolve(true);
     $("sv-quiet").onclick = () => resolve(false);
@@ -356,10 +361,15 @@ try {
   $("sv-load").classList.add("gone");
   const dpr = window.devicePixelRatio || 1;
   await exports.WasmBootstrap.Init(Math.round(canvas.clientWidth * dpr) || 1280, Math.round(canvas.clientHeight * dpr) || 720);
-  new ResizeObserver(() => {
+  const fit = () => {
     const d = window.devicePixelRatio || 1, w = Math.round(canvas.clientWidth * d), h = Math.round(canvas.clientHeight * d);
     if (w > 0 && h > 0) try { exports.WasmBootstrap.Resize(w, h); } catch {}
-  }).observe(canvas);
+  };
+  new ResizeObserver(fit).observe(canvas);
+  // moving to a screen with a different pixel density changes no CSS size, so watch the density too
+  (function watchDpr() {
+    matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`).addEventListener("change", () => { fit(); watchDpr(); }, { once: true });
+  })();
 
   try { void navigator.keyboard?.lock().catch(() => {}); } catch {}
   document.addEventListener("keydown", (e) => {
@@ -384,6 +394,6 @@ try {
   fail("The game could not load. Check your connection and reload the page. If it keeps happening, your browser may be out of storage space.");
 }
 </script>
-<script src="/games/stardew/cloudsave.js?v=2"></script>
+<script src="/games/stardew/cloudsave.js?v=3"></script>
 </body>
 </html>
