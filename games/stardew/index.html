@@ -44,7 +44,7 @@
     <div class="sv-kicker">Now loading</div>
     <div class="sv-title">Stardew Valley</div>
     <div class="sv-choice" id="sv-choice" hidden>
-      <button id="sv-music">Play with music <span>635 MB</span></button>
+      <button id="sv-music">Play with music <span>610 MB</span></button>
       <button id="sv-quiet">Play without music <span>135 MB</span></button>
     </div>
     <div id="sv-progress">
@@ -63,8 +63,10 @@ const SHA = "a664842611f09771f9155b9718046649bcaded33";
 const HOSTS = ["cdn", "fastly", "gcore"].map((h) => `https://${h}.jsdelivr.net/gh/degloved-net/stardew-wasm@${SHA}/`);
 const BASE = HOSTS[0];
 const MB = 1048576;
-// bytes of each download, for the progress bar
-const SIZES = { content: 66641920, audio: 522921984, wasm: 61307072, framework: 14317869 };
+// bytes of each download, for the progress bar (framework = assemblies + one ICU shard + boot json,
+// the parts that go through the resource loader). content/audio are also the exact archive sizes.
+const SIZES = { content: 66641920, audio: 497756160, wasm: 61307072, framework: 11672058 };
+const TAR_SIZE = { "Content.tar": SIZES.content, "ContentAudio.tar": SIZES.audio };
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("canvas");
@@ -85,12 +87,12 @@ function fail(msg) {
 
 // fetch from jsDelivr, moving to the next host after an error
 let hostIdx = 0;
-async function cdnFetch(path, tries = 6) {
+async function cdnFetch(path, tries = 6, integrity) {
   let last;
   for (let i = 0; i < tries; i++) {
     const url = HOSTS[(hostIdx + i) % HOSTS.length] + path;
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, integrity ? { integrity } : undefined);
       if (res.ok && res.body) { hostIdx = (hostIdx + i) % HOSTS.length; return res; }
       last = new Error(`HTTP ${res.status} for ${path}`);
     } catch (e) { last = e; }
@@ -101,10 +103,24 @@ async function cdnFetch(path, tries = 6) {
 const rel = (uri) => uri.startsWith(BASE) ? uri.slice(BASE.length) : null;
 
 // --- OPFS ---
-const opfs = await navigator.storage.getDirectory();
-void navigator.storage.persist?.().catch(() => false);
-async function opfsHas(name) { try { await opfs.getFileHandle(name); return true; } catch { return false; } }
+// Some private windows and older browsers have no OPFS (getDirectory throws). Play from memory then,
+// instead of rejecting the module before the try below and leaving the loader on "Starting" forever.
+let opfs = null;
+try { opfs = await navigator.storage.getDirectory(); } catch (e) { console.warn("No OPFS, nothing is kept:", e); }
+const canWrite = !!opfs && typeof FileSystemFileHandle !== "undefined" && "createWritable" in FileSystemFileHandle.prototype;
+if (!canWrite) $("sv-note").textContent = "This browser cannot keep the game or your saves between visits (private window or an older browser). Use the cloud button to keep your progress.";
+void navigator.storage?.persist?.().catch(() => false);
+function noFile(name) { const e = new Error(name + " not found"); e.name = "NotFoundError"; return e; }
+async function opfsHas(name) {
+  if (!opfs) return false;
+  try {
+    const f = await (await opfs.getFileHandle(name)).getFile();
+    // a cached archive of the wrong size (cut short, or a leftover empty file) does not count
+    return !(name in TAR_SIZE) || f.size === TAR_SIZE[name];
+  } catch { return false; }
+}
 async function opfsRead(name) {
+  if (!opfs) throw noFile(name);
   return new Uint8Array(await (await (await opfs.getFileHandle(name)).getFile()).arrayBuffer());
 }
 
@@ -142,9 +158,11 @@ async function readParts(name, label, write) {
 }
 
 async function getTar(name, label) {
-  try { return await opfsRead(name); } catch {}
+  if (await opfsHas(name)) try { return await opfsRead(name); } catch {}
+  if (opfs) await opfs.removeEntry(name).catch(() => {});   // wrong-size leftover
   let writer;
   try {
+    if (!canWrite) throw new Error("OPFS is not writable here");
     writer = await (await opfs.getFileHandle(name + ".part", { create: true })).createWritable();
     await readParts(name, label, (c) => writer.write(c));
     await writer.close();
@@ -159,13 +177,33 @@ async function getTar(name, label) {
   } catch (e) {
     try { await writer?.abort(); } catch {}
     try { await opfs.removeEntry(name + ".part"); } catch {}
-    if (e && /HTTP|fetch|network/i.test(String(e.message || e))) throw e;
+    // the no-move() path creates `name` before writing it: never leave a half or empty copy behind
+    if (!(await opfsHas(name))) try { await opfs.removeEntry(name); } catch {}
+    // network errors: Chrome "Failed to fetch", Firefox "NetworkError ...", Safari "Load failed"
+    if (e && /HTTP|fetch|network|load failed/i.test(String(e.message || e))) throw e;
     // storage full or OPFS blocked: keep it in memory for this visit
     const chunks = [];
     await readParts(name, label, (c) => { chunks.push(c); });
     const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
     let off = 0; for (const c of chunks) { out.set(c, off); off += c.length; }
     return out;
+  }
+}
+
+// --- one running game per browser ---
+// Each tab keeps its own copy of the save folder in memory and writes all of it to Saves.tar, so a second tab
+// would later save its older copy over the first tab's progress (or drop a farm the first tab created).
+if (navigator.locks) {
+  const mine = await new Promise((resolve) => {
+    navigator.locks.request("stardew-game", { ifAvailable: true }, (lock) => {
+      resolve(!!lock);
+      return lock ? new Promise(() => {}) : undefined;   // held until this tab closes
+    }).catch(() => resolve(true));
+  });
+  if (!mine) {
+    window.svSecondTab = true;
+    fail("Stardew Valley is already open in another tab. Close it there, then reload this page.");
+    await new Promise(() => {});   // stop here; nothing below runs in this tab
   }
 }
 
@@ -193,7 +231,10 @@ show("Downloading");
 
 try {
   const contentP = getTar("Content.tar", "Downloading game files");
-  const audioP = wantMusic ? getTar("ContentAudio.tar", "Downloading music") : Promise.resolve(null);
+  // music is optional: if it cannot be fetched, start the game without it rather than failing the load
+  const audioP = wantMusic
+    ? getTar("ContentAudio.tar", "Downloading music").catch((e) => { console.error("Music unavailable, playing without it:", e); return null; })
+    : Promise.resolve(null);
   const runtimeP = (async () => {
     const { dotnet } = await import(BASE + "_framework/dotnet.js");
     return dotnet
@@ -206,7 +247,7 @@ try {
         `--jiterpreter-wasm-bytes-limit=${64 * MB}`,
         `--jiterpreter-table-size=${32 * 1024}`,
       ])
-      .withResourceLoader((type, _name, defaultUri, _integrity, behavior) => {
+      .withResourceLoader((type, _name, defaultUri, integrity, behavior) => {
         const path = rel(defaultUri);
         if (!path || type.startsWith("js-module") || type === "dotnetjs") return undefined;
         if (type === "dotnetwasm" && behavior === "dotnetwasm") {
@@ -228,7 +269,9 @@ try {
             }), { headers: { "Content-Type": "application/wasm" } });
           })();
         }
-        return cdnFetch(path).then(async (res) => {
+        // Keep the check the default loader does: with cacheBootResources the runtime stores whatever we return
+        // in Cache Storage under this hash, so a bad body would otherwise stick until the cache is cleared.
+        return cdnFetch(path, 6, integrity || undefined).then(async (res) => {
           const buf = await res.arrayBuffer();
           done += buf.byteLength; show("Downloading game files");
           return new Response(buf, { headers: res.headers });
@@ -298,12 +341,12 @@ try {
   try { extractTar(contentTar, "/libsdl/"); }
   catch (e) {
     // a damaged saved copy: drop it so the next visit downloads it again
-    await opfs.removeEntry("Content.tar").catch(() => {});
+    await opfs?.removeEntry("Content.tar").catch(() => {});
     throw e;
   }
   if (audioTar) {
     try { extractTar(audioTar, "/libsdl/"); }
-    catch (e) { await opfs.removeEntry("ContentAudio.tar").catch(() => {}); console.error("Music archive damaged, playing without it:", e); }
+    catch (e) { await opfs?.removeEntry("ContentAudio.tar").catch(() => {}); console.error("Music archive damaged, playing without it:", e); }
   }
 
   $("sv-load").classList.add("gone");
@@ -337,6 +380,6 @@ try {
   fail("The game could not load. Check your connection and reload the page. If it keeps happening, your browser may be out of storage space.");
 }
 </script>
-<script src="/games/stardew/cloudsave.js?v=1"></script>
+<script src="/games/stardew/cloudsave.js?v=2"></script>
 </body>
 </html>

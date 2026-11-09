@@ -148,17 +148,73 @@
     if (!files.length) throw new Error("no entries found");
     return files;
   }
+  // Same zip, but entries are deflated (method 8) when the browser has CompressionStream. A Stardew save
+  // folder is XML that shrinks about 10x, and the server refuses bodies over 25 MB, which a few farms
+  // with their _old backups can pass as STORE.
+  async function streamThrough(data, stream) {
+    return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(stream)).arrayBuffer());
+  }
+  async function packZip(files) {
+    if (typeof CompressionStream === "undefined") return buildZip(files);
+    const zip = buildZip(await Promise.all(files.map(async (f) =>
+      ({ name: f.name, data: await streamThrough(f.data, new CompressionStream("deflate-raw")) }))));
+    // buildZip wrote STORE headers for the compressed bytes: fix method, CRC and uncompressed size
+    const dv = new DataView(zip.buffer);
+    let pos = 0;
+    const cdStart = dv.getUint32(zip.length - 6, true);
+    let cd = cdStart;
+    for (const f of files) {
+      const crc = crc32(f.data);
+      const nameLen = dv.getUint16(pos + 26, true), csize = dv.getUint32(pos + 18, true);
+      dv.setUint16(pos + 8, 8, true); dv.setUint32(pos + 14, crc, true); dv.setUint32(pos + 22, f.data.length, true);
+      dv.setUint16(cd + 10, 8, true); dv.setUint32(cd + 16, crc, true); dv.setUint32(cd + 24, f.data.length, true);
+      pos += 30 + nameLen + csize;
+      cd += 46 + dv.getUint16(cd + 28, true);
+    }
+    return zip;
+  }
+  async function unpackZip(buf) {
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    const out = [];
+    let pos = 0;
+    while (pos + 4 <= buf.length && dv.getUint32(pos, true) === 0x04034b50) {
+      const method = dv.getUint16(pos + 8, true), crc = dv.getUint32(pos + 14, true);
+      const csize = dv.getUint32(pos + 18, true), usize = dv.getUint32(pos + 22, true);
+      const nameLen = dv.getUint16(pos + 26, true), extraLen = dv.getUint16(pos + 28, true);
+      const name = new TextDecoder().decode(buf.subarray(pos + 30, pos + 30 + nameLen));
+      const start = pos + 30 + nameLen + extraLen;
+      let data = buf.subarray(start, start + csize);
+      if (method === 8) data = await streamThrough(data, new DecompressionStream("deflate-raw"));
+      else if (method !== 0) throw new Error("unsupported zip entry: " + name);
+      if (data.length !== usize || crc32(data) !== crc) throw new Error("the snapshot is damaged (" + name + ")");
+      out.push({ name, data });
+      pos = start + csize;
+    }
+    if (!out.length) throw new Error("no entries found");
+    return out;
+  }
 
   // ---- reading/writing the game's save files in OPFS ----
   const SAVE_FILES = ["Saves.tar", "DevicePreferences.tar"];
   const isPrefs = (name) => name === "DevicePreferences.tar";
   const isSaveKey = (name) => SAVE_FILES.includes(name);
-  // a whole tar ends with two zero blocks; a file caught half-written does not
-  function tarComplete(b) {
-    if (b.length < 1024 || b.length % 512) return false;
-    for (let i = b.length - 1024; i < b.length; i++) if (b[i]) return false;
-    return true;
+  // Walk the headers (checksums, sizes) to the end marker. Only looking for trailing zero blocks also
+  // accepts a tar cut off inside a run of zero data, which the page's loader would then refuse.
+  function tarValid(b) {
+    const oct = (o, l) => { let s = ""; for (let i = o; i < o + l && b[i]; i++) s += String.fromCharCode(b[i]); s = s.trim(); return /^[0-7]+$/.test(s) ? parseInt(s, 8) : -1; };
+    let p = 0;
+    while (p + 512 <= b.length) {
+      let zero = true, sum = 0;
+      for (let i = p; i < p + 512; i++) { if (b[i]) zero = false; sum += i - p >= 148 && i - p < 156 ? 32 : b[i]; }
+      if (zero) { for (let i = p; i < b.length; i++) if (b[i]) return false; return true; }
+      if (oct(p + 148, 8) !== sum) return false;
+      const size = oct(p + 124, 12);
+      if (size < 0) return false;
+      p += 512 + Math.ceil(size / 512) * 512;
+    }
+    return false;
   }
+  const tarComplete = tarValid;
   // at least one real file in the save folder (not just empty directories)
   function tarHasFile(b) {
     for (let p = 0; p + 512 <= b.length; ) {
@@ -191,7 +247,11 @@
         const data = new Uint8Array(await (await (await dir.getFileHandle(name)).getFile()).arrayBuffer());
         if (!tarComplete(data)) { if (name === "Saves.tar") return []; continue; } // mid-write: try again later
         out.push({ name, data });
-      } catch {}
+      } catch (e) {
+        // Chrome throws NotReadableError when the game replaces Saves.tar while we read it. Skipping it would
+        // make a settings-only snapshot; give up this round instead and read again on the next check.
+        if (name === "Saves.tar" && e && e.name !== "NotFoundError") return [];
+      }
     }
     return out;
   }
@@ -250,7 +310,9 @@
     try {
       await migrated;
       const files = await readSaveFiles();
-      if (!files.length) {
+      // settings alone are not a save: a manual upload of just DevicePreferences.tar would sit in the
+      // list as a "manual save" that Restore then refuses
+      if (!files.length || (manual && !hasProgress(files))) {
         if (manual) alert("No save to upload yet. Play until the end of your first day so the game saves, then try again.");
         return;
       }
@@ -267,7 +329,7 @@
         updateSyncInfo();
         return;
       }
-      const zip = buildZip(files);
+      const zip = await packZip(files);
       const resp = await fetch(`${API}/saves?u=${UID}${manual ? "&kind=manual" : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/zip" },
@@ -373,6 +435,19 @@
   setInterval(pollTick, POLL_MS);
   pollTick();
 
+  // The game only logs a failed OPFS save to the console (full disk, private window, a browser without
+  // createWritable), so the player would believe the day was saved. Say it once. (Cloud upload reads the same
+  // OPFS file, so it cannot rescue that save.)
+  let warnedWrite = false;
+  setInterval(() => {
+    const err = globalThis._stardewOpfsLastError;
+    if (!err || warnedWrite) return;
+    warnedWrite = true;
+    setStatus("cloud: this browser could not save the game");
+    toast("This browser could not store your save (" + (/quota/i.test(err) ? "its storage is full" : "storage is unavailable") +
+      "), so today's progress will be lost when the tab closes.", { icon: "&#9888;", ms: 12000 });
+  }, 5000);
+
   // ---- watchdog: if nothing was uploaded for 8 minutes despite a live save, save now ----
   const WATCHDOG_MS = 8 * 60 * 1000;
   setInterval(() => {
@@ -382,15 +457,24 @@
 
   // ---- restore ----
   async function restore(name) {
+    if (window.svSecondTab) { alert("The game is running in another tab. Restore from that tab, so it cannot save over the restored farm."); return; }
     if (!confirm("Replace the current save with this cloud snapshot? The page will reload.")) return;
     const resp = await fetch(`${API}/saves/${name}?u=${viewUID}`);
     if (!resp.ok) { alert("Could not fetch snapshot (HTTP " + resp.status + ")"); return; }
-    const files = parseZip(new Uint8Array(await resp.arrayBuffer())).filter((f) => isSaveKey(f.name));
+    const files = (await unpackZip(new Uint8Array(await resp.arrayBuffer()))).filter((f) => isSaveKey(f.name));
     if (!hasProgress(files)) { alert("That snapshot has no game save in it."); return; }
     restoring = true;
     // stop the game first so it cannot write its own save over the restored one before the reload
     try { window.svRuntime?.Module?.pauseMainLoop(); } catch {}
     try {
+      // A save the game finished just before the pause can still be queued in its OPFS write chain
+      // (native.js _stardewOpfsWriteQueue). Let it land first, or it replaces the restored Saves.tar.
+      for (;;) {
+        const q = globalThis._stardewOpfsWriteQueue;
+        if (!q) break;
+        await q.catch(() => {});
+        if (q === globalThis._stardewOpfsWriteQueue) break;   // nothing new was queued meanwhile
+      }
       await writeSaveFiles(files);
       localStorage.setItem(LASTHASH_KEY, await hashFiles(await readSaveFiles()));
       sessionStorage.setItem("stardew-restored", "1");
