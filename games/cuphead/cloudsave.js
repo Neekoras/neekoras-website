@@ -20,7 +20,7 @@
   const CODE_FILE_KEY = "neekoras-save-code-file"; // "pending" until the code file has been downloaded
   const LASTHASH_KEY = "cuphead-cloud-lasthash";
   const OWN_KEY = "cuphead-cloud-uid"; // the code this game used before codes were shared
-  const GAME_KEYS = ["hollow-knight-cloud-uid", "celeste-cloud-uid", "pokerogue-cloud-uid", "clustertruck-cloud-uid", "omori-cloud-uid", "ultrakill-cloud-uid", "forager-cloud-uid", "cuphead-cloud-uid", "stardew-cloud-uid"];
+  const GAME_KEYS = ["hollow-knight-cloud-uid", "celeste-cloud-uid", "pokerogue-cloud-uid", "clustertruck-cloud-uid", "omori-cloud-uid", "ultrakill-cloud-uid", "cuphead-cloud-uid", "stardew-cloud-uid"];
   const isCode = (v) => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v);
   let OWN = null;
   function userId() {
