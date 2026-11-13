@@ -56,7 +56,7 @@
         // this site's server with the player's save code when the game crashes (Unity's error alert), or when the
         // player presses "Report a problem" in the cloud panel. Repeated lines are folded into one with a count.
         // This page's build. version.txt next to the page holds the same string; bump both on every deploy.
-        window.SK_BUILD = "2026-11-12.4";
+        window.SK_BUILD = "2026-11-13.1";
         (function () {
             const LOG = [], MAX = 600, start = Date.now();
             let last = null, sent = 0;
@@ -793,8 +793,10 @@
         // which also makes browsers replace the copy they saved).
         const PATCH = "https://neekoras.com/games/silksong/patch/";
         const realFetch = window.fetch.bind(window);
-        const CATALOG_URL = PATCH + (USE_SPLIT ? "catalog.v5f.bin" : "catalog.v4h.bin");      // v5f/v4h: v5d/v4g with sprites-scenery s1 and prefabs v6 (textures in group bundles, below); v4b: scene dependency lists trimmed to what each scene references, plus the title set; v4d: hornet_scenes CRC of the audio-patched copy; v5: scenes from the split bundles; v4e/v5b: prefabs v5 + menu_title v2
-        const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v2.bundle" };
+        const CATALOG_URL = PATCH + (USE_SPLIT ? "catalog.v5g.bin" : "catalog.v4i.bin");      // v5g/v4i: v5f/v4h with the CRC/size of the preload-fixed audio-atmos (SERVED below); v5f/v4h: v5d/v4g with sprites-scenery s1 and prefabs v6 (textures in group bundles, below); v4b: scene dependency lists trimmed to what each scene references, plus the title set; v4d: hornet_scenes CRC of the audio-patched copy; v5: scenes from the split bundles; v4e/v5b: prefabs v5 + menu_title v2
+        // audio-atmos v1: m_PreloadAudioData switched on for the 9 atmos clips that had it off (atmos_web_memory is the Memory_Needolin atmos), nothing else changed
+        const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v2.bundle",
+            "packed-audio-atmos_assets_all_b008c5fdb92b5563eaaf822ba425dd8d.bundle": "audio-atmos.v1.bundle" };
         // sprites-ui: site watermarks painted out of the title logo, and the WebGPU logo the port put in place of
         // Team Cherry's (intro and Chinese variant) replaced with Team Cherry's own logo from the credits.
         // prefabs: the full-screen "Contrast Plane" of the Weaver ability shrines switched off (its screen-copy
