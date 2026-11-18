@@ -32,9 +32,9 @@
   transition: background .25s, border-color .25s, color .25s;
 }
 #pauseMenu button + button { margin-top: 10px; }
-#pauseMenu button:hover { background: #ff4fa3; border-color: #ff4fa3; color: #0b0710; filter: none; }
+#pauseMenu button:hover { background: #ec65a6; border-color: #ec65a6; color: #0b0710; filter: none; }
 #pauseMenu button:active { filter: brightness(.92); }
-#pauseMenu button:focus-visible { outline: 2px solid #ff4fa3; outline-offset: 2px; }
+#pauseMenu button:focus-visible { outline: 2px solid #ec65a6; outline-offset: 2px; }
 #pauseMenu button#quitButton { background: none; color: #eef2f6; border-color: rgba(238, 242, 246, .35); }
 #pauseMenu button#quitButton:hover { background: none; border-color: #eef2f6; }
 #pauseMenu button[hidden] { display: none; }
@@ -53,8 +53,8 @@
 }
 #hud-layer .btn { font-size: 1.25rem; }
 #hud-layer .dpad-btn { border-radius: 12px; font-size: 18px; }
-#hud-layer .btn.active { background: rgba(255, 79, 163, .85); border-color: #ff4fa3; color: #0b0710; }
-body.edit-mode .touch-group { border: 1px dashed #ff4fa3 !important; background: rgba(255, 79, 163, .15) !important; }
+#hud-layer .btn.active { background: rgba(236, 101, 166, .85); border-color: #ec65a6; color: #0b0710; }
+body.edit-mode .touch-group { border: 1px dashed #ec65a6 !important; background: rgba(236, 101, 166, .15) !important; }
 
 #settings-bar button, #settings-panel #reset-pos {
   font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace !important; letter-spacing: .02em; text-transform: uppercase;
@@ -75,9 +75,9 @@ body.edit-mode .touch-group { border: 1px dashed #ff4fa3 !important; background:
   font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c;
 }
 #settings-panel input[type="range"] { display: block; margin: 0; background: rgba(238, 242, 246, .15) !important; height: 3px; }
-#settings-panel input[type="range"]::-webkit-slider-thumb { background: #ff4fa3 !important; }
-#settings-panel input[type="range"]::-moz-range-thumb { background: #ff4fa3; border: 0; width: 16px; height: 16px; border-radius: 50%; }
+#settings-panel input[type="range"]::-webkit-slider-thumb { background: #ec65a6 !important; }
+#settings-panel input[type="range"]::-moz-range-thumb { background: #ec65a6; border: 0; width: 16px; height: 16px; border-radius: 50%; }
 #settings-panel #reset-pos {
   background: none !important; color: #eef2f6 !important; border: 1px solid rgba(238, 242, 246, .35) !important;
 }
-#settings-panel #reset-pos:hover { border-color: #ff4fa3 !important; color: #ff4fa3 !important; }
+#settings-panel #reset-pos:hover { border-color: #ec65a6 !important; color: #ec65a6 !important; }

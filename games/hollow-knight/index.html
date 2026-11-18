@@ -36,13 +36,13 @@
     .hk-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
       font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .2s; }
     .hk-back:hover { color: #eef2f6; }
-    .hk-back:focus-visible, .hk-retry:focus-visible { outline: 2px solid #ff4fa3; outline-offset: 2px; }
+    .hk-back:focus-visible, .hk-retry:focus-visible { outline: 2px solid #ec65a6; outline-offset: 2px; }
     .hk-inner { width: 100%; max-width: 440px; }
     .hk-kicker { font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; margin-bottom: 14px; }
     .hk-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 700; font-size: clamp(44px, 9vw, 72px);
       line-height: .9; margin: 0 0 34px; letter-spacing: -.05em; text-transform: lowercase; color: #eef2f6; }
     .hk-bar { position: relative; height: 3px; background: #17222f; overflow: hidden; }
-    .hk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #ff4fa3; transition: width .35s linear; }
+    .hk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, rgba(236, 101, 166, .18), #ec65a6); transition: width .35s linear; }
     .hk-bar.hk-busy .hk-fill { width: 35% !important; transition: none; animation: hk-slide 1.3s ease-in-out infinite; }
     @keyframes hk-slide { 0% { left: -35%; } 100% { left: 100%; } }
     @media (prefers-reduced-motion: reduce) { .hk-bar.hk-busy .hk-fill { animation: none; width: 100% !important; opacity: .5; } }
@@ -405,7 +405,7 @@
           }
         })();
     </script>
-    <script src="https://neekoras.com/games/hollow-knight/cloudsave.js?v=15"></script>
+    <script src="https://neekoras.com/games/hollow-knight/cloudsave.js?v=16"></script>
 
 </body>
 

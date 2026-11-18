@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#050b14;--ink:#eef2f6;--soft:#7f8c9c;--line:#17222f;--sig:#ff7a2e;--glow:#ff4fa3;--well:#0a1320;--edge:#2a3747;--on:#0b0710;--dim:#74818f;
+:root{--bg:#050b14;--ink:#eef2f6;--soft:#7f8c9c;--line:#17222f;--sig:#ff7a2e;--glow:#ec65a6;--well:#0a1320;--edge:#2a3747;--on:#0b0710;--dim:#74818f;
   --out:cubic-bezier(.16,1,.3,1);--sans:"Schibsted Grotesk",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--pad:clamp(16px,3vw,40px)}
 *{box-sizing:border-box;margin:0}
 html{scroll-behavior:smooth;scroll-padding-top:24px;background:var(--bg)}
@@ -66,7 +66,7 @@ a{color:inherit;text-decoration:none}
 .lbl{display:flex;flex-direction:column;gap:3px;padding:0 2px}
 .lbl b{font:700 clamp(17px,1.5vw,21px)/1.15 var(--sans);letter-spacing:-.015em}
 .lbl .mono{color:var(--soft)}
-.play{position:absolute;left:12px;bottom:12px;padding:8px 12px 7px;border-radius:99px;background:var(--glow);color:var(--on);font-weight:500;line-height:1}
+.play{position:absolute;left:12px;bottom:12px;padding:8px 12px 7px;border-radius:99px;background:linear-gradient(100deg,var(--glow),var(--sig));color:var(--on);font-weight:500;line-height:1}
 
 /* first card takes a 2x2 slot */
 .g:first-child{grid-column:span 2;grid-row:span 2}
@@ -75,9 +75,8 @@ a{color:inherit;text-decoration:none}
 .g:first-child .lbl b{font-size:clamp(22px,2.4vw,34px)}
 
 @media (hover:hover){
-  .play{opacity:0;transform:translateY(6px);transition:opacity .25s,transform .35s var(--out),background .25s}
+  .play{opacity:0;transform:translateY(6px);transition:opacity .25s,transform .35s var(--out)}
   .g:hover .play,.g:focus-visible .play{opacity:1;transform:none}
-  .g:hover .play{background:var(--sig)}
   .g:hover .art,.g:focus-visible .art{transform:translateY(-10px) rotate(calc(var(--r,0deg)*-2)) scale(1.025);
     box-shadow:0 34px 50px -28px color-mix(in srgb,var(--c,#000) 70%,transparent)}
   .g:first-child:hover .art,.g:first-child:focus-visible .art{transform:translateY(-10px) rotate(1.2deg) scale(1.012)}

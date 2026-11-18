@@ -310,7 +310,7 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
 // nav backdrop after the hero
 (() => { const bar = $("#bar"), f = () => bar.classList.toggle("solid", scrollY > innerHeight - 60); addEventListener("scroll", f, { passive: true }); f(); })();
 
-/* Rays.
+/* Lake scene: a dusk sky, cliffs and two waterfalls above a lake where the rays swim.
    Drawn into a small pixel buffer (one buffer pixel = 2 CSS px) and scaled up unsmoothed.
    - Water: a lattice of dots over a two-buffer ripple simulation. The rays' wakes, the cursor and
      clicks push on it; dots shift and lift slightly with the wave. Kept dim on purpose.
@@ -320,7 +320,17 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
 (() => {
   const cv = $("#air"), hero = $("#top"), ctx = cv.getContext("2d"), S = 2, G = 11, TAU = Math.PI * 2, TAIL = 18;
   const rgb = (h) => { const n = parseInt(h.slice(1), 16); return (0xff000000 | (n & 255) << 16 | (n >> 8 & 255) << 8 | n >> 16) >>> 0; };
-  const DOT = ["#101b29", "#172638", "#213850", "#34587a"].map(rgb);
+  const DOTC = rgb("#7fb4e6"), DOTA = [0.09, 0.17, 0.3, 0.52];
+  // scenery palettes, top of the sky to the horizon and the lake from the shore down
+  const SKY = ["#0a1c36", "#0e2748", "#14345f", "#1e4179", "#31498a", "#4d5097", "#73589b", "#9d5f98", "#c4698e", "#e27c82", "#f39876", "#fbb582"].map(rgb);
+  const LAKE = ["#28568a", "#214b78", "#1b4068", "#163658", "#122c49", "#0e233b", "#0a1a2d", "#071220", "#050b14"].map(rgb);
+  const WATER = ["#f1faff", "#c9e8fb", "#98cdf0", "#6aaadb", "#467fb6"].map(rgb);
+  const ROCK = ["#132a41", "#19344f", "#1f3e5c"].map(rgb);
+  const C = { far: rgb("#4d4a88"), farTop: rgb("#6f5c9c"), mid: rgb("#2c3a6c"), seam: rgb("#0c1e30"), haze: rgb("#4a6a9a"), rim: rgb("#f09a7c"), moss: rgb("#245a55"), pine: rgb("#081725"), sun: rgb("#ffe7c2"), star: rgb("#c9dbf5"), white: rgb("#ffffff") };
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+  const mix = (a, b, t) => { const r = a & 255, g = a >> 8 & 255, bl = a >> 16 & 255; return (0xff000000 | (bl + ((b >> 16 & 255) - bl) * t) << 16 | (g + ((b >> 8 & 255) - g) * t) << 8 | (r + ((b & 255) - r) * t)) >>> 0; };
+  const hash = (n) => { n = Math.imul(n ^ n >>> 15, 0x2c1b3c6d); n = Math.imul(n ^ n >>> 12, 0x297a2d39); return ((n ^ n >>> 15) >>> 0) / 4294967296; };
+  const vn = (x, s) => { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash(i * 131 + s) * (1 - u) + hash((i + 1) * 131 + s) * u; };
   const KIND = [ // nearest to deepest: the deeper ones are smaller and dimmer
     { fill: "#3d6d9a", rim: "#a5d2f2", mid: "#2a5078", mark: "#e6f4ff" },
     { fill: "#b23a78", rim: "#ff8cc6", mid: "#7c2353", mark: "#ffd3e9" },
@@ -331,20 +341,93 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
   let W = 0, H = 0, img, buf, gw = 0, gh = 0, cur, prev, rays = [], mouse = null, last = 0, acc = 0, raf = 0, visible = true;
+  let scene, shore = 0, top, stars = [], falls = [], mist = [], fallAcc = 0, mistAcc = 0;
 
-  function size() {
+  /* The scenery is painted once per size into `scene`: a dithered dusk sky with a low sun, two far
+     ridges, a cliff on each side with pines, and the lake below the shore line. Each frame copies it
+     and draws the moving parts on top: the falls, foam, mist, the reflection, stars, dots and rays. */
+  function build() {
+    const hr = hero.getBoundingClientRect(), nameTop = (hero.querySelector("h1").getBoundingClientRect().top - hr.top - 28) / S;
+    shore = Math.round(clamp(Math.min(H * 0.46, nameTop), H * 0.24, H * 0.5)); // the shore line sits just above the name
+    scene = new Uint32Array(W * H); top = new Int16Array(W).fill(shore);
+    const sx = W * 0.37, sy = shore - H * 0.13, sr = Math.max(9, H * 0.055), n = SKY.length - 1, skySet = new Set(SKY.slice(0, 4));
+    for (let y = 0; y < shore; y++) for (let x = 0; x < W; x++) {
+      const d = Math.hypot(x - sx, (y - sy) * 1.15);
+      const f = Math.min(n, Math.pow(y / shore, 1.25) * n + Math.max(0, 1 - d / (sr * 5)) * 2.8), i = Math.floor(f);
+      scene[y * W + x] = d < sr ? C.sun : SKY[Math.min(n, i + (f - i > BAYER[(y & 3) * 4 + (x & 3)] ? 1 : 0))];
+    }
+    const ridge = (x, s, base, amp) => Math.max(0, Math.round(base - amp * (0.55 * vn(x / (W * 0.11), s) + 0.3 * vn(x / (W * 0.045), s + 7) + 0.15 * vn(x / (W * 0.018), s + 13))));
+    for (let x = 0; x < W; x++) {
+      let y0 = ridge(x, 11, shore - H * 0.045, H * 0.13);
+      for (let y = y0; y < shore; y++) scene[y * W + x] = y === y0 ? C.farTop : C.far;
+      y0 = ridge(x, 29, shore - H * 0.012, H * 0.085);
+      for (let y = y0; y < shore; y++) scene[y * W + x] = C.mid;
+    }
+    // cliffs: stepped ledges up to a terraced top, with a notch where the river goes over
+    const mh = Math.min(H * 0.3, shore * 0.62), ledge = (t) => Math.floor(clamp(t, 0, 1) * 6) / 6, terr = (x, s, a) => Math.floor(vn(x / 26, s) * a / 3) * 3;
+    const xr = W * 0.5, xr1 = W * 0.56, xl = W * 0.15, xl1 = W * 0.24;
+    const fw = clamp(Math.round(W * 0.04), 10, 30), fx = Math.round(W * (W < 330 ? 0.68 : 0.715));
+    falls = [{ x: fx, w: fw }, { x: Math.round(W * 0.07), w: Math.max(5, Math.round(fw * 0.42)) }]; // the main falls and a thin one across the lake
+    const inFalls = (x, pad) => falls.some((f) => x >= f.x - pad && x <= f.x + f.w - 1 + pad);
+    for (let x = 0; x < W; x++) {
+      let y = shore;
+      if (x >= xr) y = shore - Math.round(mh * (x < xr1 ? ledge((x - xr) / (xr1 - xr)) : 1) * 0.84) - (x >= xr1 ? terr(x, 3, mh * 0.2) : 0);
+      else if (x < xl1) y = shore - Math.round(mh * 0.5 * (x < xl ? 1 : ledge(1 - (x - xl) / (xl1 - xl)))) - (x < xl ? terr(x, 5, mh * 0.14) : 0);
+      if (inFalls(x, 1)) y += 3;
+      top[x] = y;
+      for (let yy = y; yy < shore; yy++) {
+        let c = yy === y ? C.rim : yy <= y + 2 ? C.moss
+          : hash(x * 13 + 7) > 0.88 && vn(yy / 9, x) > 0.35 ? C.seam // cracks
+          : ROCK[Math.min(2, Math.floor((vn(x / 7, 41) * 0.55 + vn(yy / 5 + Math.floor(x / 6) * 3.7, 77) * 0.45) * 3))];
+        if (yy > y + 2 && (yy - y) % 17 === 9 && hash(x * 5 + yy) > 0.3) c = mix(c, C.rim, 0.16); // ledges
+        if (shore - yy < 34) c = mix(c, C.haze, 0.3 * (1 - (shore - yy) / 34)); // spray haze near the water
+        scene[yy * W + x] = c;
+      }
+    }
+    for (let x = 1; x < W - 1; x++) { // rock faces that look toward the sun catch its light
+      const side = x > sx ? x - 1 : x + 1;
+      for (let y = top[x] + 1; y < top[side]; y++) scene[y * W + x] = mix(scene[y * W + x], C.rim, 0.4);
+    }
+    for (let x = 4, k = 0; x < W - 4; x += 5 + Math.floor(hash(k * 53 + 9) * 9), k++) { // pines along the tops
+      if (top[x] > shore - 8 || inFalls(x, 6) || Math.abs(top[x + 3] - top[x - 3]) > 4) continue;
+      const h = 7 + Math.floor(hash(k * 71 + 5) * 9);
+      for (let r = 0; r < h; r++) {
+        const y = top[x] - h + r, half = r >= h - 2 ? 0 : Math.floor(((r % 4) + 1) * 0.5 + r * 0.2);
+        if (y >= 0) for (let d = -half; d <= half; d++) scene[y * W + x + d] = C.pine;
+      }
+    }
+    const ln = LAKE.length - 1;
+    for (let y = shore; y < H; y++) for (let x = 0; x < W; x++) {
+      const f = Math.min(ln, Math.pow((y - shore) / ((H - shore) * 0.92), 0.9) * ln), i = Math.floor(f);
+      scene[y * W + x] = LAKE[Math.min(ln, i + (f - i > BAYER[(y & 3) * 4 + (x & 3)] ? 1 : 0))];
+    }
+    for (let x = 0; x < W; x++) if (top[x] < shore) scene[shore * W + x] = mix(scene[shore * W + x], C.white, 0.22);
+    stars = [];
+    for (let k = 0, m = Math.round(W * shore / 2400); k < m; k++) {
+      const i = Math.floor(hash(k * 97 + 1) * shore * 0.5) * W + Math.floor(hash(k * 193 + 2) * W);
+      if (skySet.has(scene[i])) stars.push({ i, ph: hash(k * 389 + 3) * TAU, sp: 0.6 + hash(k * 7 + 4) });
+    }
+    mist = [];
+    falls.forEach((f, n) => {
+      f.top = top[f.x + (f.w >> 1)];
+      f.col = Array.from({ length: f.w }, (_, i) => ({ sp: 0.045 + hash(i * 13 + n * 57 + 1) * 0.05, len: 5 + Math.floor(hash(i * 29 + n * 61 + 2) * 12), ph: hash(i * 41 + n * 67 + 3) * 100 }));
+    });
+  }
+
+  function size(again) {
     const r = hero.getBoundingClientRect(), w = Math.ceil(r.width / S), h = Math.ceil(r.height / S);
-    if (w === W && h === H) return;
+    if (w === W && h === H) { if (again) build(); return; }
     W = w; H = h; cv.width = W; cv.height = H;
     img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer);
     gw = Math.ceil(W / G) + 2; gh = Math.ceil(H / G) + 2; cur = new Float32Array(gw * gh); prev = new Float32Array(gw * gh);
+    build();
     const n = W < 330 ? 2 : 4;
     rays = Array.from({ length: n }, (_, i) => {
       const f = { k: KIND[i], sz: [2.1, 1.65, 1.3, 1][i], s: i * 2.1, ph: i * 1.7, spd: 0.00017 - i * 0.00002,
-        cx: W * (0.3 + 0.4 * ((i * 0.37) % 1)), cy: H * (0.32 + 0.34 * ((i * 0.61) % 1)), ax: W * 0.32, ay: H * 0.27,
+        cx: W * (0.3 + 0.4 * ((i * 0.37) % 1)), cy: shore + (H - shore) * (0.36 + 0.34 * ((i * 0.61) % 1)), ax: W * 0.32, ay: (H - shore) * 0.3,
         vx: 0, vy: 0, fl: i * 1.3, wake: 0 };
       const e = i % 4; // each comes in from a different edge
-      f.x = e === 0 ? -45 : e === 1 ? W + 45 : Math.random() * W; f.y = e === 2 ? -45 : e === 3 ? H + 45 : Math.random() * H;
+      f.x = e === 0 ? -45 : e === 1 ? W + 45 : Math.random() * W; f.y = e > 1 ? H + 45 : shore + 30 + Math.random() * (H - shore - 30);
       if (reduce) { const t = goal(f); f.x = t.x; f.y = t.y; }
       f.hd = Math.atan2(H / 2 - f.y, W / 2 - f.x);
       f.tail = Array.from({ length: TAIL }, (_, j) => ({ x: f.x - Math.cos(f.hd) * (6 * f.sz + j * 3), y: f.y - Math.sin(f.hd) * (6 * f.sz + j * 3) }));
@@ -353,7 +436,7 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
   }
   const goal = (f) => ({
     x: clamp(f.cx + f.ax * Math.sin(f.s + f.ph) + f.ax * 0.33 * Math.sin(2.7 * f.s + f.ph + 1.3), 24, W - 24),
-    y: clamp(f.cy + f.ay * Math.cos(0.9 * f.s + f.ph) + f.ay * 0.42 * Math.sin(1.6 * f.s + f.ph + 0.5), 24, H - 24),
+    y: clamp(f.cy + f.ay * Math.cos(0.9 * f.s + f.ph) + f.ay * 0.42 * Math.sin(1.6 * f.s + f.ph + 0.5), shore + 26, H - 24),
   });
   function poke(x, y, a) {
     const i = Math.round((x - 5) / G) + 1, j = Math.round((y - 5) / G) + 1;
@@ -378,6 +461,7 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
       if (sp > max) { dvx *= max / sp; dvy *= max / sp; }
       const k = 1 - Math.pow(0.996, dt);
       f.vx += (dvx - f.vx) * k; f.vy += (dvy - f.vy) * k; f.x += f.vx * dt; f.y += f.vy * dt;
+      if (f.y < shore + 16 && f.vy < 0) { f.y = shore + 16; f.vy = 0; } // the rays stay in the lake
       const v = Math.hypot(f.vx, f.vy);
       if (v > 0.004) { let d = Math.atan2(f.vy, f.vx) - f.hd; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU; f.hd += d * (1 - Math.pow(0.996, dt)); }
       f.fl += (0.002 + v * 0.02) * dt; // slow wing roll, a little quicker when moving fast
@@ -385,6 +469,10 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
       for (const t of f.tail) { const dx = t.x - px, dy = t.y - py, d = Math.hypot(dx, dy) || 1; t.x = px + (dx / d) * 3; t.y = py + (dy / d) * 3; px = t.x; py = t.y; }
       f.wake += dt; if (f.wake > 420) { f.wake = 0; poke(f.x, f.y, 0.12 * f.sz); }
     }
+    fallAcc += dt; if (fallAcc > 240) { fallAcc = 0; for (const f of falls) poke(f.x + Math.random() * f.w, shore + 7, 0.02 * f.w); } // the falls keep the lake moving
+    mistAcc += dt; if (mistAcc > 110 && mist.length < 22) { mistAcc = 0; const f = falls[Math.random() < 0.8 ? 0 : 1]; mist.push({ x: f.x - 2 + Math.random() * (f.w + 4), y: shore - 2, vx: (Math.random() - 0.5) * 0.014, vy: -(0.005 + Math.random() * 0.009), life: 1 }); }
+    for (const m of mist) { m.x += m.vx * dt; m.y += m.vy * dt; m.life -= dt / 2600; }
+    mist = mist.filter((m) => m.life > 0);
     acc += dt; let n = 0;
     while (acc >= 33 && n++ < 4) {
       acc -= 33;
@@ -411,18 +499,51 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
         : k.fill;
     }
   }
-  function render() {
-    buf.fill(0);
-    for (let j = 1; j < gh - 1; j++) for (let i = 1; i < gw - 1; i++) {
-      const k = j * gw + i, a = Math.abs(cur[k]), l = a > 0.4 ? 3 : a > 0.16 ? 2 : a > 0.05 ? 1 : 0;
-      put((i - 1) * G + 5 + Math.round(clamp((cur[k - 1] - cur[k + 1]) * 5, -2, 2)), (j - 1) * G + 5 + Math.round(clamp((cur[k - gw] - cur[k + gw]) * 5, -2, 2)), DOT[l]);
+  function render(t = 0) {
+    buf.set(scene);
+    for (const s of stars) buf[s.i] = Math.sin(t * 0.001 * s.sp + s.ph) > 0.2 ? C.star : mix(scene[s.i], C.star, 0.35);
+    // the lake mirrors what is above the shore, squashed and wobbling, fading into the water
+    const RH = Math.min(Math.round(H * 0.11), H - shore - 2);
+    for (let k = 0; k < RH; k++) {
+      const sy = shore - 1 - Math.round(k * 2.1); if (sy < 0) break;
+      const row = (shore + 1 + k) * W, srow = sy * W, wob = Math.round(Math.sin(k * 0.8 + t * 0.0016) * (0.6 + k * 0.05)), a = 0.45 + 0.55 * k / RH;
+      for (let x = 0; x < W; x++) buf[row + x] = mix(scene[srow + clamp(x + wob, 0, W - 1)], scene[row + x], a);
+      for (const f of falls) for (let x = f.x; x < f.x + f.w; x++) { const p = row + clamp(x - wob, 0, W - 1); buf[p] = mix(buf[p], WATER[1], (1 - k / RH) * 0.3); }
+    }
+    // falls: every column scrolls its own run of light and dark streaks, with foam where the water lands
+    const ft = Math.floor(t / 110);
+    for (const f of falls) {
+      for (let i = 0; i < f.w; i++) {
+        const c = f.col[i], x = f.x + i, off = t * c.sp + c.ph, edge = i === 0 || i === f.w - 1 ? 1 : 0;
+        for (let y = f.top; y < shore; y++) {
+          const v = hash(Math.floor((y - off) / c.len) * 7919 + i * 104729);
+          buf[y * W + x] = WATER[Math.min(4, (y < f.top + 2 || v < 0.16 ? 0 : v < 0.42 ? 1 : v < 0.74 ? 2 : 3) + edge)];
+        }
+      }
+      const fr = Math.min(5, 2 + (f.w >> 2));
+      for (let y = shore - fr; y < shore + fr; y++) for (let x = Math.max(0, f.x - fr); x < Math.min(W, f.x + f.w + fr); x++) {
+        const dx = (x - (f.x + f.w / 2)) / (f.w / 2 + fr), dy = (y - shore) / fr, d = dx * dx + dy * dy;
+        if (d < 1 && hash(x * 92821 + y * 68917 + ft * 31) > 0.35 + d * 0.6) buf[y * W + x] = hash(x + y * 7 + ft) > 0.5 ? WATER[0] : WATER[1];
+      }
+    }
+    for (const m of mist) {
+      const x0 = Math.round(m.x), y0 = Math.round(m.y);
+      for (let y = y0; y < y0 + 2; y++) for (let x = x0; x < x0 + 4; x++) if (x >= 0 && y >= 0 && x < W && y < H) buf[y * W + x] = mix(buf[y * W + x], C.white, 0.3 * m.life);
+    }
+    for (let j = 1; j < gh - 1; j++) {
+      if ((j - 1) * G + 5 < shore + 5) continue; // dots only on the water
+      for (let i = 1; i < gw - 1; i++) {
+        const k = j * gw + i, a = Math.abs(cur[k]), l = a > 0.4 ? 3 : a > 0.16 ? 2 : a > 0.05 ? 1 : 0;
+        const x = (i - 1) * G + 5 + Math.round(clamp((cur[k - 1] - cur[k + 1]) * 5, -2, 2)), y = (j - 1) * G + 5 + Math.round(clamp((cur[k - gw] - cur[k + gw]) * 5, -2, 2));
+        if (x >= 0 && y > shore && x < W && y < H) buf[y * W + x] = mix(buf[y * W + x], DOTC, DOTA[l]);
+      }
     }
     for (const f of rays) drawRay(f);
     ctx.putImageData(img, 0, 0);
   }
   function frame(now) {
     raf = 0; const dt = Math.min(now - last, 100); last = now;
-    step(dt); render();
+    step(dt); render(now);
     if (visible && !document.hidden) raf = requestAnimationFrame(frame);
   }
   const start = () => { if (!raf && !reduce && visible && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(frame); } };
@@ -431,7 +552,7 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
   let lastNode = -1;
   hero.addEventListener("pointermove", (e) => {
     const p = at(e); if (e.pointerType === "mouse") mouse = p;
-    const node = Math.round(p.y / G) * gw + Math.round(p.x / G); if (node !== lastNode) { lastNode = node; poke(p.x, p.y, 0.18); }
+    const node = Math.round(p.y / G) * gw + Math.round(p.x / G); if (node !== lastNode && p.y > shore) { lastNode = node; poke(p.x, p.y, 0.18); }
   });
   hero.addEventListener("pointerleave", () => { mouse = null; });
   hero.addEventListener("pointerdown", (e) => { // a click drops a ring into the water and nudges nearby rays away
@@ -442,6 +563,7 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
   document.addEventListener("visibilitychange", start);
   addEventListener("resize", () => { size(); if (reduce) render(); });
   size(); if (reduce) render(); else start();
+  if (document.fonts) document.fonts.ready.then(() => { size(true); if (reduce) render(); }); // the name moves once its font loads
 })();
 
 // scroll to a hackathon row; main rows open, minor rows flash
