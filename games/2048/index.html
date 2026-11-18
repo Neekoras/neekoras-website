@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>2048 · Nicholas Lin</title>
@@ -19,7 +19,7 @@
 </head>
 <body>
   <div class="container">
-    <p style="margin-bottom:15px;font-family:'Clear Sans','Helvetica Neue',Arial,sans-serif"><a href="/games" style="color:#776e65;text-decoration:none;font-weight:bold">&larr; Back to the Arcade</a></p>
+    <p style="margin-bottom:15px;font-family:'Clear Sans','Helvetica Neue',Arial,sans-serif"><a href="/games" style="display:inline-flex;align-items:center;min-height:44px;color:#776e65;text-decoration:none;font-weight:bold">&larr; Arcade</a></p>
     <div class="heading">
       <h1 class="title">2048</h1>
       <div class="scores-container">
@@ -30,15 +30,15 @@
 
     <div class="above-game">
       <p class="game-intro">Join the numbers and get to the <strong>2048 tile!</strong></p>
-      <a class="restart-button">New Game</a>
+      <a class="restart-button" role="button" tabindex="0">New Game</a>
     </div>
 
     <div class="game-container">
       <div class="game-message">
         <p></p>
         <div class="lower">
-	        <a class="keep-playing-button">Keep going</a>
-          <a class="retry-button">Try again</a>
+	        <a class="keep-playing-button" role="button" tabindex="0">Keep going</a>
+          <a class="retry-button" role="button" tabindex="0">Try again</a>
         </div>
       </div>
 
@@ -83,7 +83,7 @@
     </p>
     <hr>
     <p>
-    Created by <a href="http://gabrielecirulli.com" target="_blank">Gabriele Cirulli.</a> Based on <a href="https://itunes.apple.com/us/app/1024!/id823499224" target="_blank">1024 by Veewo Studio</a> and conceptually similar to <a href="http://asherv.com/threes/" target="_blank">Threes by Asher Vollmer.</a>
+    Created by <a href="http://gabrielecirulli.com" target="_blank" rel="noopener">Gabriele Cirulli.</a> Based on <a href="https://itunes.apple.com/us/app/1024!/id823499224" target="_blank" rel="noopener">1024 by Veewo Studio</a> and conceptually similar to <a href="http://asherv.com/threes/" target="_blank" rel="noopener">Threes by Asher Vollmer.</a>
     </p>
   </div>
 
@@ -97,5 +97,16 @@
   <script src="js/local_storage_manager.js"></script>
   <script src="js/game_manager.js"></script>
   <script src="js/application.js"></script>
+  <script>
+    // New Game, Keep going and Try again are links without an address; let Enter and Space press them.
+    document.addEventListener("keydown", function (e) {
+      var t = e.target;
+      if ((e.key === "Enter" || e.key === " ") && t.getAttribute && t.getAttribute("role") === "button") { e.preventDefault(); t.click(); }
+    });
+    document.addEventListener("click", function (e) {
+      var t = e.target;
+      if (e.detail && t.getAttribute && t.getAttribute("role") === "button") t.blur();
+    });
+  </script>
 </body>
 </html>

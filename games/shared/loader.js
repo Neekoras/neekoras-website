@@ -1,5 +1,5 @@
 /*
- * Shared loading screen for the games on neekoras.com, in the same style as Hollow Knight's.
+ * Shared loading screen for the games on neekoras.com, in the same style as the arcade page.
  *
  *   const L = GameLoader({ title: "ULTRAKILL", totalBytes: 98e6, note: "..." });
  *   L.download(bytesSoFar, totalBytes?)  // byte progress: bar, percent, MB, time left
@@ -15,31 +15,29 @@
   if (window.GameLoader) return;
 
   const css = `
-    @font-face { font-family: "Instrument Serif"; font-weight: 400; font-display: swap;
-      src: url("/games/shared/fonts/instrument-serif-400.woff2") format("woff2"); }
-    @font-face { font-family: "Inter"; font-weight: 400; font-display: swap;
-      src: url("/games/shared/fonts/inter-400.woff2") format("woff2"); }
     #gl-loader { position: fixed; inset: 0; z-index: 99000; display: flex; align-items: center; justify-content: center;
-      background: radial-gradient(ellipse at 50% 40%, #2c2729 0%, #1a1718 60%, #121011 100%);
-      color: #ece6da; font-family: Inter, system-ui, sans-serif; transition: opacity .6s ease; padding: 24px; box-sizing: border-box;
-      text-align: left; line-height: normal; letter-spacing: normal; }
+      background: radial-gradient(120% 80% at 50% -10%, #0d2136 0%, #081424 45%, #050b14 100%);
+      color: #eef2f6; font-family: "Schibsted Grotesk", system-ui, sans-serif; transition: opacity .6s ease; padding: 24px; box-sizing: border-box; text-align: left; line-height: normal; letter-spacing: normal; }
     #gl-loader.gl-gone { opacity: 0; pointer-events: none; }
-    #gl-loader * { box-sizing: border-box; }
+    #gl-loader .gl-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
+      font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .2s; }
+    #gl-loader .gl-back:hover { color: #eef2f6; }
+    #gl-loader .gl-back:focus-visible, #gl-loader .gl-retry:focus-visible { outline: 2px solid #ff4fa3; outline-offset: 2px; }
     #gl-loader .gl-inner { width: 100%; max-width: 440px; }
-    #gl-loader .gl-kicker { font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: #8f877b; margin-bottom: 14px; }
-    #gl-loader .gl-title { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; font-size: clamp(44px, 9vw, 64px);
-      line-height: 1; margin: 0 0 34px; letter-spacing: -.01em; color: #ece6da; }
-    #gl-loader .gl-bar { position: relative; height: 3px; background: rgba(236, 230, 218, .12); border-radius: 3px; overflow: hidden; }
-    #gl-loader .gl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #d0714f; border-radius: 3px; transition: width .35s linear; }
+    #gl-loader .gl-kicker { font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; margin-bottom: 14px; }
+    #gl-loader .gl-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 700; font-size: clamp(44px, 9vw, 72px);
+      line-height: .9; margin: 0 0 34px; letter-spacing: -.05em; text-transform: lowercase; color: #eef2f6; }
+    #gl-loader .gl-bar { position: relative; height: 3px; background: #17222f; overflow: hidden; }
+    #gl-loader .gl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #ff4fa3; transition: width .35s linear; }
     #gl-loader .gl-bar.gl-busy .gl-fill { width: 35% !important; transition: none; animation: gl-slide 1.3s ease-in-out infinite; }
     @keyframes gl-slide { 0% { left: -35%; } 100% { left: 100%; } }
     @media (prefers-reduced-motion: reduce) { #gl-loader .gl-bar.gl-busy .gl-fill { animation: none; width: 100% !important; opacity: .5; } }
     #gl-loader .gl-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
-    #gl-loader .gl-muted { color: #8f877b; font-size: 13px; margin-top: 6px; }
-    #gl-loader .gl-note { margin: 34px 0 0; font-size: 13px; line-height: 1.6; color: #8f877b; }
-    #gl-loader .gl-retry { margin-top: 18px; font: inherit; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #ece6da;
-      background: none; border: 1px solid rgba(236, 230, 218, .35); border-radius: 999px; padding: 9px 18px; cursor: pointer; }
-    #gl-loader .gl-retry:hover { border-color: #ece6da; }
+    #gl-loader .gl-muted { color: #7f8c9c; font-size: 13px; margin-top: 6px; }
+    #gl-loader .gl-note { margin: 34px 0 0; font-size: 14px; line-height: 1.6; color: #7f8c9c; }
+    #gl-loader .gl-retry { margin-top: 18px; min-height: 44px; padding: 0 22px; border: 0; border-radius: 99px; background: #eef2f6; color: #050b14;
+      font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; cursor: pointer; }
+    #gl-loader * { box-sizing: border-box; }
   `;
 
   window.GameLoader = function (opts) {
@@ -47,12 +45,18 @@
     const style = document.createElement("style");
     style.textContent = css;
     (document.head || document.documentElement).appendChild(style);
+    if (!document.querySelector('link[data-gl-fonts]')) {
+      const fonts = document.createElement("link");
+      fonts.rel = "stylesheet"; fonts.href = "https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap"; fonts.setAttribute("data-gl-fonts", "");
+      (document.head || document.documentElement).appendChild(fonts);
+    }
 
     const root = document.createElement("div");
     root.id = "gl-loader";
     root.setAttribute("role", "status");
     root.setAttribute("aria-live", "polite");
     root.innerHTML =
+      '<a class="gl-back" href="/games">← Arcade</a>' +
       '<div class="gl-inner">' +
       '<div class="gl-kicker">Now loading</div>' +
       '<h1 class="gl-title"></h1>' +
@@ -120,10 +124,10 @@
         // bytes rule this out.
         if (finished || (phase === "download" && bytes > 0)) return;
         phase = "cached";
-        phaseEl.textContent = "Loading from your browser";
+        phaseEl.textContent = "Loading from this browser";
         if (opts.cachedNote !== "") {
           noteEl.hidden = false;
-          noteEl.textContent = opts.cachedNote || "The game is already saved in this browser, so no download is needed.";
+          noteEl.textContent = opts.cachedNote || "The game is already kept in this browser, so no download is needed.";
         }
       },
       starting(label) {

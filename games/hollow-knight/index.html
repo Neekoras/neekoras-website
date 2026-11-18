@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
 
 <head>
     <base href="https://cdn.jsdelivr.net/gh/aukak/hollow-knight@2fc2e7149f0d5b2609b135ab48f00fd973930635/">
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Hollow Knight</title>
+    <title>Hollow Knight · Nicholas Lin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/instrument-serif@5/index.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/400.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
     <style>
@@ -31,36 +32,41 @@
         #unity-loading-bar { display: none !important; }
 
         #hk-loader { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
-            background: radial-gradient(ellipse at 50% 40%, #2c2729 0%, #1a1718 60%, #121011 100%);
-            color: #ece6da; font-family: Inter, system-ui, sans-serif; transition: opacity .6s ease; padding: 24px; box-sizing: border-box; }
-        #hk-loader.hk-gone { opacity: 0; pointer-events: none; }
-        .hk-inner { width: 100%; max-width: 440px; }
-        .hk-kicker { font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: #8f877b; margin-bottom: 14px; }
-        .hk-title { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; font-size: clamp(44px, 9vw, 64px); line-height: 1; margin: 0 0 34px; letter-spacing: -.01em; }
-        .hk-bar { position: relative; height: 3px; background: rgba(236, 230, 218, .12); border-radius: 3px; overflow: hidden; }
-        .hk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #d0714f; border-radius: 3px; transition: width .35s linear; }
-        .hk-bar.hk-busy .hk-fill { width: 35% !important; transition: none; animation: hk-slide 1.3s ease-in-out infinite; }
-        @keyframes hk-slide { 0% { left: -35%; } 100% { left: 100%; } }
-        @media (prefers-reduced-motion: reduce) { .hk-bar.hk-busy .hk-fill { animation: none; width: 100% !important; opacity: .5; } }
-        .hk-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
-        .hk-muted { color: #8f877b; font-size: 13px; margin-top: 6px; }
-        .hk-note { margin: 34px 0 0; font-size: 13px; line-height: 1.6; color: #8f877b; }
-        .hk-retry { margin-top: 18px; font: inherit; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #ece6da;
-            background: none; border: 1px solid rgba(236, 230, 218, .35); border-radius: 999px; padding: 9px 18px; cursor: pointer; }
-        .hk-retry:hover { border-color: #ece6da; }
+      background: radial-gradient(120% 80% at 50% -10%, #0d2136 0%, #081424 45%, #050b14 100%);
+      color: #eef2f6; font-family: "Schibsted Grotesk", system-ui, sans-serif; transition: opacity .6s ease; padding: 24px; box-sizing: border-box; }
+    #hk-loader.hk-gone { opacity: 0; pointer-events: none; }
+    .hk-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
+      font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .2s; }
+    .hk-back:hover { color: #eef2f6; }
+    .hk-back:focus-visible, .hk-retry:focus-visible { outline: 2px solid #ff4fa3; outline-offset: 2px; }
+    .hk-inner { width: 100%; max-width: 440px; }
+    .hk-kicker { font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; margin-bottom: 14px; }
+    .hk-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 700; font-size: clamp(44px, 9vw, 72px);
+      line-height: .9; margin: 0 0 34px; letter-spacing: -.05em; text-transform: lowercase; color: #eef2f6; }
+    .hk-bar { position: relative; height: 3px; background: #17222f; overflow: hidden; }
+    .hk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #ff4fa3; transition: width .35s linear; }
+    .hk-bar.hk-busy .hk-fill { width: 35% !important; transition: none; animation: hk-slide 1.3s ease-in-out infinite; }
+    @keyframes hk-slide { 0% { left: -35%; } 100% { left: 100%; } }
+    @media (prefers-reduced-motion: reduce) { .hk-bar.hk-busy .hk-fill { animation: none; width: 100% !important; opacity: .5; } }
+    .hk-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .hk-muted { color: #7f8c9c; font-size: 13px; margin-top: 6px; }
+    .hk-note { margin: 34px 0 0; font-size: 14px; line-height: 1.6; color: #7f8c9c; }
+    .hk-retry { margin-top: 18px; min-height: 44px; padding: 0 22px; border: 0; border-radius: 99px; background: #eef2f6; color: #050b14;
+      font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; cursor: pointer; }
 </style>
 </head>
 
 <body>
     <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
     <div id="hk-loader" role="status" aria-live="polite">
+        <a class="hk-back" href="https://neekoras.com/games">← Arcade</a>
         <div class="hk-inner">
             <div class="hk-kicker">Now loading</div>
             <h1 class="hk-title">Hollow Knight</h1>
             <div class="hk-bar hk-busy" id="hk-bar" role="progressbar" aria-label="Loading Hollow Knight" aria-valuemin="0" aria-valuemax="100"><div class="hk-fill" id="hk-fill"></div></div>
             <div class="hk-row"><span id="hk-phase">Getting ready</span><span id="hk-pct"></span></div>
             <div class="hk-row hk-muted"><span id="hk-mb"></span><span id="hk-eta"></span></div>
-            <p class="hk-note" id="hk-note">The first load is about 900 MB. After that the game is stored in your browser and opens much faster.</p>
+            <p class="hk-note" id="hk-note">The first load is about 900 MB. After that it is kept in this browser and starts much faster.</p>
         </div>
     </div>
     <script>
@@ -82,7 +88,7 @@
                 let frac = Math.min(bytes / TOTAL, 1);
                 if (frac > 0.999) frac = 1;
                 const pct = Math.floor(frac * 100);
-                if (frac === 1) $("hk-phase").textContent = "Saving to your browser";
+                if (frac === 1) $("hk-phase").textContent = "Saving to this browser";
                 $("hk-fill").style.width = (frac * 100) + "%";
                 $("hk-bar").setAttribute("aria-valuenow", pct);
                 $("hk-pct").textContent = pct + "%";
@@ -98,8 +104,8 @@
                 cached() {
                     if (phase === "download") return;
                     phase = "cached";
-                    $("hk-phase").textContent = "Loading from your browser";
-                    $("hk-note").textContent = "The game is already saved in this browser, so no download is needed.";
+                    $("hk-phase").textContent = "Loading from this browser";
+                    $("hk-note").textContent = "The game is already kept in this browser, so no download is needed.";
                 },
                 starting() {
                     if (phase === "starting") return;
@@ -118,7 +124,7 @@
                 fail() {
                     busy(false);
                     $("hk-fill").style.width = "0";
-                    $("hk-phase").textContent = "The download stopped";
+                    $("hk-phase").textContent = "The game could not load";
                     $("hk-pct").textContent = "";
                     $("hk-mb").textContent = "";
                     $("hk-eta").textContent = "";
@@ -401,7 +407,7 @@
           }
         })();
     </script>
-    <script src="https://neekoras.com/games/hollow-knight/cloudsave.js?v=13"></script>
+    <script src="https://neekoras.com/games/hollow-knight/cloudsave.js?v=14"></script>
 
 </body>
 

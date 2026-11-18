@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
-    <title>Clustertruck</title>
+    <title>Clustertruck · Nicholas Lin</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
     <style>
@@ -79,7 +79,7 @@
   </head>
   <body>
     <script src="/games/shared/tabpause.js?v=2"></script>
-    <script src="/games/shared/loader.js?v=2"></script>
+    <script src="/games/shared/loader.js?v=3"></script>
     <script>
       var gameLoader = GameLoader({
         title: "Clustertruck",
@@ -98,7 +98,7 @@
       <div id="unity-warning"> </div>
       <div id="unity-error"></div>
     </div>
-    <script src="cloudsave.js?v=8"></script>
+    <script src="cloudsave.js?v=9"></script>
     <script>
 
       var container = document.querySelector("#unity-container");
@@ -290,7 +290,7 @@
       }
 
       boot().catch(function (err) {
-        showError("Clustertruck failed to start (" + (err && err.message ? err.message : err) + "). Reload to try again.");
+        showError("Clustertruck failed to start (" + (err && err.message ? err.message : err) + "). Reload the page to try again.");
         console.error(err);
       });
 

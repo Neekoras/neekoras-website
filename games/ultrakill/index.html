@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
 
 <head>
     <base href="/games/ultrakill/">
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>ULTRAKILL</title>
+    <title>ULTRAKILL · Nicholas Lin</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <style>
         html,
         body {
@@ -28,7 +29,7 @@
 </head>
 
 <body style="text-align: center; padding: 0; border: 0; margin: 0;">
-    <script src="/games/shared/loader.js?v=2"></script>
+    <script src="/games/shared/loader.js?v=3"></script>
     <script>
         var gameLoader = GameLoader({
             title: "ULTRAKILL",
@@ -113,7 +114,7 @@
         ]).then(([dataUrl, wasmurl]) => {
             gameLoader.starting();
             document.querySelector("#unity-canvas").hidden = false;
-            createUnityInstance(document.querySelector("#unity-canvas"), {
+            return createUnityInstance(document.querySelector("#unity-canvas"), {
                 dataUrl: dataUrl,
                 frameworkUrl: "Build/ultrakill.framework.js.unityweb",
                 codeUrl: wasmurl,
@@ -132,7 +133,7 @@
             gameLoader.fail();
         });
     </script>
-    <script src="/games/ultrakill/cloudsave.js?v=6"></script>
+    <script src="/games/ultrakill/cloudsave.js?v=7"></script>
 </body>
 
 </html>

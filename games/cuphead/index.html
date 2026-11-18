@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
-    <title>Cuphead</title>
+    <title>Cuphead · Nicholas Lin</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <style>
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
@@ -12,7 +12,7 @@
     </style>
   </head>
   <body>
-    <script src="/games/shared/loader.js?v=2"></script>
+    <script src="/games/shared/loader.js?v=3"></script>
     <script>
       var gameLoader = GameLoader({
         title: "Cuphead",
@@ -22,7 +22,7 @@
     </script>
     <div id="gameContainer"></div>
     <script src="/games/shared/tabpause.js?v=2"></script>
-    <script src="cloudsave.js?v=5"></script>
+    <script src="cloudsave.js?v=6"></script>
     <script>
       // The data and wasm files are split into parts (hosts cap file size). Each is downloaded once,
       // joined into a blob, and kept in Cache Storage so later visits skip the download.
@@ -124,7 +124,7 @@
             for (var name in urls) URL.revokeObjectURL(urls[name]);
           },
           Module: {
-            onAbort: function (what) { gameLoader.fail("Cuphead stopped while starting (" + what + "). Reload to try again."); },
+            onAbort: function (what) { gameLoader.fail("Cuphead stopped while starting (" + what + "). Reload the page to try again."); },
           },
         });
       })().catch(function (e) {

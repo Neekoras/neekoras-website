@@ -420,6 +420,7 @@
     if (!el) {
       el = document.createElement("div");
       el.id = "cloudsave-toast";
+      el.setAttribute("role", "status");
       document.body.appendChild(el);
     }
     el.innerHTML = '<span class="cs-check">' + (opts.icon || "&#10003;") + '</span> ' + text;
@@ -439,51 +440,56 @@
   let panelOpen = false;
   const css = `
     #cloudsave-btn { position: fixed; right: 14px; bottom: 14px; z-index: 99990;
-      width: 44px; height: 44px; border-radius: 50%; border: 1px solid #4448;
-      background: #1c1c28e6; color: #cdd3ff; cursor: pointer; font-size: 22px;
+      width: 44px; height: 44px; border-radius: 50%; border: 1px solid #2a3747;
+      background: #0a1320f2; color: #eef2f6; cursor: pointer; font-size: 22px;
       display: flex; align-items: center; justify-content: center; }
-    #cloudsave-btn:hover { background: #262638; }
+    #cloudsave-btn:hover { background: #17222f; }
     #cloudsave-panel { position: fixed; right: 14px; bottom: 66px; z-index: 99991;
       width: 300px; max-height: 60vh; overflow: auto; border-radius: 10px;
-      background: #16161ff2; color: #e6e6f0; border: 1px solid #4448;
-      font: 13px/1.45 system-ui, sans-serif; padding: 12px; display: none; }
+      background: #0a1320f7; color: #eef2f6; border: 1px solid #2a3747;
+      font: 13px/1.45 "Schibsted Grotesk", system-ui, sans-serif; padding: 12px; display: none; }
     #cloudsave-panel h3 { margin: 0 0 2px; font-size: 14px; }
-    #cloudsave-panel .cs-status { color: #9aa; margin-bottom: 8px; }
+    #cloudsave-panel .cs-status { color: #7f8c9c; margin-bottom: 8px; }
     #cloudsave-panel .cs-row { display: flex; align-items: center; gap: 6px;
-      padding: 6px 0; border-top: 1px solid #ffffff14; }
+      padding: 6px 0; border-top: 1px solid #17222f; }
     #cloudsave-panel .cs-row span { flex: 1; }
-    #cloudsave-panel button { border: 1px solid #4448; background: #262638;
-      color: #e6e6f0; border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
-    #cloudsave-panel button:hover { background: #33334a; }
-    #cloudsave-panel .cs-empty { color: #889; padding: 6px 0; }
+    #cloudsave-panel button { border: 1px solid #2a3747; background: #17222f;
+      color: #eef2f6; border-radius: 6px; padding: 6px 10px; min-height: 32px; cursor: pointer; font-size: 12px; }
+    #cloudsave-panel button:hover { background: #223042; }
+    #cloudsave-panel .cs-empty { color: #7f8c9c; padding: 6px 0; }
     #cloudsave-panel #cloudsave-now { width: 100%; margin-bottom: 8px;
-      background: #2c3e5a; border-color: #4a6a94; font-weight: 600; }
-    #cloudsave-panel #cloudsave-now:hover { background: #37507a; }
+      background: #eef2f6; border-color: #eef2f6; color: #050b14; font-weight: 600; }
+    #cloudsave-panel #cloudsave-now:hover { background: #fff; }
     #cloudsave-panel #cloudsave-now:disabled { opacity: .6; cursor: default; }
-    #cloudsave-panel .cs-row small { color: #99a; }
-    #cloudsave-panel #cloudsave-code { border-top: 1px solid #ffffff22; margin-top: 10px; padding-top: 8px; }
+    #cloudsave-panel .cs-row small { color: #7f8c9c; }
+    #cloudsave-panel #cloudsave-code { border-top: 1px solid #17222f; margin-top: 10px; padding-top: 8px; }
     #cloudsave-panel .cs-code-head { font-weight: 600; margin-bottom: 2px; }
-    #cloudsave-panel .cs-code-hint { color: #99a; font-size: 12px; margin-bottom: 6px; }
+    #cloudsave-panel .cs-code-hint { color: #7f8c9c; font-size: 12px; margin-bottom: 6px; }
     #cloudsave-panel .cs-code-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
-    #cloudsave-panel .cs-code-row code { flex: 1; font-size: 10.5px; background: #0d0d14;
+    #cloudsave-panel .cs-code-row code { flex: 1; font-size: 10.5px; background: #050b14;
       padding: 4px 6px; border-radius: 5px; overflow-wrap: anywhere; user-select: all; }
     #cloudsave-panel #cloudsave-enter { width: 100%; }
-    #cloudsave-panel .cs-viewing { background: #2a2438; border: 1px solid #55488a;
+    #cloudsave-panel .cs-viewing { background: #17222f; border: 1px solid #2a3747;
       border-radius: 6px; padding: 6px 8px; margin-bottom: 6px;
       display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     #cloudsave-panel .cs-viewing code { font-size: 11px; }
     #cloudsave-toast { position: fixed; right: 14px; bottom: 70px; z-index: 99992;
-      background: #1d2b1de8; color: #b8e6b8; border: 1px solid #3a5a3a;
-      border-radius: 8px; padding: 8px 14px; font: 13px system-ui, sans-serif;
+      background: #0a1320f2; color: #eef2f6; border: 1px solid #2a3747;
+      border-radius: 8px; padding: 8px 14px; font: 13px "Schibsted Grotesk", system-ui, sans-serif;
       opacity: 0; transform: translateY(8px); pointer-events: none;
       transition: opacity .3s ease, transform .3s ease; }
     #cloudsave-toast.show { opacity: 1; transform: translateY(0); }
-    #cloudsave-toast .cs-check { color: #7fd97f; font-weight: 700; }
+    #cloudsave-toast .cs-check { color: #ff4fa3; font-weight: 700; }
     @keyframes cs-pulse {
-      0% { box-shadow: 0 0 0 0 #7fd97fb0; }
-      100% { box-shadow: 0 0 0 14px #7fd97f00; }
+      0% { box-shadow: 0 0 0 0 #ff4fa3b0; }
+      100% { box-shadow: 0 0 0 14px #ff4fa300; }
     }
-    #cloudsave-btn.saved-pulse { animation: cs-pulse .9s ease-out 2; border-color: #7fd97f; }
+    #cloudsave-btn.saved-pulse { animation: cs-pulse .9s ease-out 2; border-color: #ff4fa3; }
+    #cloudsave-btn:focus-visible, #cloudsave-panel button:focus-visible, #cloudsave-panel a:focus-visible { outline: 2px solid #ff4fa3; outline-offset: 2px; }
+    #cloudsave-panel .cs-home { display: inline-flex; align-items: center; min-height: 44px; margin: -10px 0 0; color: #7f8c9c; text-decoration: none;
+      font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; }
+    #cloudsave-panel .cs-home:hover { color: #eef2f6; }
+    @media (prefers-reduced-motion: reduce) { #cloudsave-toast { transition: none; } #cloudsave-btn.saved-pulse { animation: none; } }
   `;
   function nameToDate(n) {
     const m = n.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})/);
@@ -547,25 +553,32 @@
         const dBtn = document.createElement("button");
         dBtn.textContent = "⤓";
         dBtn.title = "Download to computer";
+        dBtn.setAttribute("aria-label", "Download to computer");
         dBtn.onclick = () => { location.href = `${API}/saves/${s.name}?u=${viewUID}`; };
         row.append(label, rBtn, dBtn);
         list.appendChild(row);
       }
     } catch (e) {
-      list.innerHTML = '<div class="cs-empty">Could not load cloud saves.</div>';
+      list.innerHTML = '<div class="cs-empty">Could not load cloud saves. Close this panel and open it again to retry.</div>';
     }
   }
   function buildUi() {
     const style = document.createElement("style");
     style.textContent = css;
     document.head.appendChild(style);
+    if (!document.querySelector("link[data-gl-fonts]")) {
+      const fonts = document.createElement("link");
+      fonts.rel = "stylesheet"; fonts.href = "https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap"; fonts.setAttribute("data-gl-fonts", "");
+      document.head.appendChild(fonts);
+    }
     const btn = document.createElement("button");
     btn.id = "cloudsave-btn";
     btn.title = "Cloud saves";
+    btn.setAttribute("aria-label", "Cloud saves");
     btn.textContent = "☁";
     const panel = document.createElement("div");
     panel.id = "cloudsave-panel";
-    panel.innerHTML = '<h3>Cloud saves</h3><div class="cs-status" id="cloudsave-status">cloud: waiting for game</div>' +
+    panel.innerHTML = '<a class="cs-home" href="/games">← Arcade</a><h3>Cloud saves</h3><div class="cs-status" id="cloudsave-status">cloud: waiting for game</div>' +
       '<div class="cs-status" id="cloudsave-sync"></div>' +
       '<button id="cloudsave-now">Save to cloud now</button><div id="cloudsave-list"></div>' +
       '<div id="cloudsave-code"><div class="cs-code-head">Save code</div>' +

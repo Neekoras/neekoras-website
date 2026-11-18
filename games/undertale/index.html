@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
-    <title>Undertale</title>
+    <title>Undertale · Nicholas Lin</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <style>
       @-webkit-keyframes rotation {
         from {
@@ -432,11 +433,11 @@
         stroke-width: 2;
       }
     </style>
-      <link rel="stylesheet" href="/games/shared/gamemaker.css?v=3">
+      <link rel="stylesheet" href="/games/shared/gamemaker.css?v=4">
 </head>
 
   <body>
-    <script src="/games/shared/loader.js?v=2"></script>
+    <script src="/games/shared/loader.js?v=3"></script>
     <script src="/games/shared/tabpause.js?v=2"></script>
     <script>window.GM_GAME = {"title": "Undertale", "cache": "undertale-v1", "files": [{"name": "game.unx", "parts": 0, "bytes": 86295180}, {"name": "runner.data", "parts": 0, "bytes": 2708249}, {"name": "runner.wasm", "parts": 0, "bytes": 5499715}], "scripts": ["runner.js"], "saveFiles": [{"url": "lang/lang_en.json", "path": "/_savedata/lang/lang_en.json"}, {"url": "lang/lang_ja.json", "path": "/_savedata/lang/lang_ja.json"}]};</script>
     <script src="/games/shared/gamemaker.js?v=5"></script>
@@ -2144,7 +2145,7 @@
           '.config-row-label { font-size: 12px; font-weight: 600; }' +
           'button { padding: 8px 16px; border-radius: 4px; background-color: unset; border-color: rgb(199, 159, 234); color: rgb(199, 159, 234); }' +
           '</style>';
-        let configHTML = '<html><head><title></title>' + configStyle + '</head><body>' +
+        let configHTML = '<html lang="en"><head><title></title>' + configStyle + '</head><body>' +
           '<div class="wallpaper-header"><h1>Live Wallpaper Configurator</h1><button id="wallpaper-reset-parameters">Reset parameters</button></div>' +
           '<div class="wallpaper-config" id="wallpaper-config"></div>' +
           '</body></html>'
@@ -2445,6 +2446,6 @@
         wallpaper_update_config(JSON.stringify(wallpaperConfig));
       }
     </script>
-    <script src="cloudsave.js?v=6"></script>
+    <script src="cloudsave.js?v=7"></script>
   </body>
 </html>

@@ -4,383 +4,300 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Arcade · Nicholas Lin</title>
-<meta name="description" content="A small arcade. Games by Nicholas Lin.">
+<meta name="description" content="Seventeen games that run in the browser. No downloads, no accounts.">
+<meta name="theme-color" content="#050b14">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/favicon.svg">
 <meta property="og:title" content="Arcade · Nicholas Lin">
-<meta property="og:description" content="A small arcade.">
+<meta property="og:description" content="Seventeen games that run in the browser. No downloads, no accounts.">
 <meta property="og:image" content="https://neekoras.com/img/photo1.jpg">
 <meta property="og:url" content="https://neekoras.com/games">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --paper:#f3efe6;--ink:#18160f;--muted:#8a8375;--line:#d9d2c4;--accent:#a2492f;
-    --serif:'Instrument Serif', Georgia, serif;--sans:'Inter', system-ui, sans-serif;
-  }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-  a{color:inherit;text-decoration:none}
-  .kicker{font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);font-weight:500}
+:root{--bg:#050b14;--ink:#eef2f6;--soft:#7f8c9c;--line:#17222f;--sig:#ff7a2e;--glow:#ff4fa3;--well:#0a1320;--edge:#2a3747;--on:#0b0710;--dim:#74818f;
+  --out:cubic-bezier(.16,1,.3,1);--sans:"Schibsted Grotesk",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--pad:clamp(16px,3vw,40px)}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth;scroll-padding-top:24px;background:var(--bg)}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+::selection{background:var(--glow);color:var(--bg)}
+.mono{font:400 12px/1.4 var(--mono);letter-spacing:.02em;text-transform:uppercase}
+.wrap{width:min(1360px,100% - 2*var(--pad));margin-inline:auto}
 
-  .cursor{position:fixed;top:0;left:0;width:9px;height:9px;border-radius:50%;background:var(--ink);pointer-events:none;z-index:10000;transform:translate(-50%,-50%);transition:width .25s,height .25s,background .25s,opacity .25s;mix-blend-mode:difference}
-  .cursor.big{width:46px;height:46px;background:#fff}
-  @media (hover:none){.cursor{display:none}}
+/* top bar */
+.bar{display:flex;justify-content:space-between;align-items:center;height:48px}
+.bar a{display:inline-flex;align-items:center;height:44px;color:var(--soft);transition:color .2s}
+.bar a:hover{color:var(--ink)}
+.bar .me{color:var(--ink)}
 
-  nav{position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;justify-content:flex-start;align-items:center;padding:1.5rem clamp(1.25rem,5vw,3.5rem);mix-blend-mode:difference;color:#fff}
-  nav .brand{font-family:var(--serif);font-size:1.35rem;letter-spacing:.01em}
-  nav .brand em{font-style:italic}
+/* wordmark */
+.top{padding-top:clamp(8px,2vw,24px)}
+.top h1{font:900 clamp(92px,25.5vw,372px)/.78 var(--sans);letter-spacing:-.065em;text-transform:lowercase;margin-left:-.045em;white-space:nowrap;user-select:none}
+.under{display:grid;grid-template-columns:1fr auto;gap:20px 40px;align-items:end;margin-top:clamp(22px,3vw,40px);padding-bottom:clamp(28px,4vw,52px)}
+.under p{max-width:38ch;font-size:clamp(16px,1.35vw,19px);line-height:1.45}
+.under p a{color:var(--soft);text-decoration:underline;text-decoration-color:var(--edge);text-underline-offset:4px;transition:color .2s,text-decoration-color .2s}
+.under p a:hover{color:var(--ink);text-decoration-color:var(--ink)}
+.find{display:flex;align-items:center;gap:10px;width:min(300px,100%);border-bottom:1px solid var(--soft);transition:border-color .2s}
+.find:focus-within{border-color:var(--glow);box-shadow:0 1px 0 var(--glow)}
+.find input{flex:1;min-width:0;height:44px;background:none;border:0;color:var(--ink);font:400 14px/1 var(--mono);outline:0}
+.find input::placeholder{color:var(--dim)}
+.find input::-webkit-search-cancel-button{display:none}
+.find kbd{font:400 12px/1 var(--mono);color:var(--soft);padding:4px 7px;border-radius:5px;background:var(--line)}
+.find .n{font:400 12px/1 var(--mono);letter-spacing:.02em;text-transform:uppercase;color:var(--soft);white-space:nowrap}
 
-  header.top{max-width:1100px;margin:0 auto;padding:9rem clamp(1.25rem,5vw,3.5rem) 2.5rem}
-  header.top .kicker{margin-bottom:1.25rem}
-  header.top h1{font-family:var(--serif);font-weight:400;line-height:.95;font-size:clamp(3rem,9vw,6rem);letter-spacing:-.01em;margin-bottom:1.25rem}
-  header.top h1 em{font-style:italic;color:var(--accent)}
-  header.top p{font-size:clamp(1rem,1.4vw,1.1rem);line-height:1.6;color:#3a362c;max-width:44ch}
-  header.top{display:grid;grid-template-columns:1fr;gap:2rem}
-  @media(min-width:860px){header.top{grid-template-columns:1fr auto;align-items:end;gap:3rem}}
-  .nw-jump{display:grid;grid-template-columns:1fr auto;align-items:center;gap:1.25rem;max-width:320px;padding:1.1rem 1.25rem;
-    border:1px solid var(--line);border-radius:12px;background:#efe9dc;transition:transform .4s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .4s}
-  .nw-jump:hover{transform:translateY(-3px);border-color:var(--ink);box-shadow:0 14px 30px -20px rgba(24,22,15,.5)}
-  .nw-jump .kicker{font-size:.62rem;margin-bottom:.45rem}
-  .nw-jump strong{display:block;font-family:var(--serif);font-weight:400;font-size:1.5rem;line-height:1.05}
-  .nw-jump strong em{font-style:italic;color:var(--accent)}
-  .nw-jump span.nw-jump-sub{display:block;margin-top:.35rem;font-size:.82rem;color:var(--muted);line-height:1.45}
-  .nw-jump .nw-arrow{width:2.4rem;height:2.4rem;border-radius:50%;background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:center;
-    font-size:1.05rem;transition:background .25s,transform .4s cubic-bezier(.2,.8,.2,1)}
-  .nw-jump:hover .nw-arrow{background:var(--accent);transform:translateX(3px)}
+/* the shelf */
+.shelf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(22px,2.6vw,40px) clamp(14px,1.8vw,26px);padding-bottom:clamp(72px,10vw,140px)}
+.g{display:flex;flex-direction:column;gap:12px;min-width:0;animation:drop .7s var(--out) both;animation-delay:calc(var(--i,0)*35ms)}
+.g[hidden]{display:none}
+@keyframes drop{from{opacity:0;transform:translateY(18px)}}
+.art{position:relative;display:block;aspect-ratio:1;border-radius:14px;overflow:hidden;background:var(--well);transform:rotate(var(--r,0deg));
+  transition:transform .45s var(--out),box-shadow .45s var(--out);will-change:transform}
+.art img{display:block;width:100%;height:100%;object-fit:cover}
+.art.px img{image-rendering:pixelated}
+.art.fit{background:var(--c)}.art.fit img{object-fit:contain;padding:11%}
+.art.pad{background:#171233;display:grid;place-items:center}
+.art.pad img{width:58%;height:auto}
+.g:nth-child(4n+1){--r:-1.1deg}.g:nth-child(4n+2){--r:.8deg}.g:nth-child(4n+3){--r:-.5deg}.g:nth-child(4n){--r:1.3deg}
+.g:nth-child(7n){--r:-1.6deg}.g:nth-child(1){--r:-.7deg}
+.lbl{display:flex;flex-direction:column;gap:3px;padding:0 2px}
+.lbl b{font:700 clamp(17px,1.5vw,21px)/1.15 var(--sans);letter-spacing:-.015em}
+.lbl .mono{color:var(--soft)}
+.play{position:absolute;left:12px;bottom:12px;padding:8px 12px 7px;border-radius:99px;background:var(--glow);color:var(--on);font-weight:500;line-height:1}
 
-  .grid{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,9rem);
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:clamp(1rem,3vw,2rem)}
-  .card{position:relative;display:block;border:1px solid var(--line);border-radius:12px;overflow:hidden;
-    background:#efe9dc;aspect-ratio:4/5;transition:transform .5s cubic-bezier(.2,.8,.2,1),border-color .4s,box-shadow .5s}
-  .card:hover{transform:translateY(-6px);border-color:var(--ink);box-shadow:0 18px 40px -24px rgba(24,22,15,.55)}
-  .card .art{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
-  .card .meta{position:absolute;left:0;bottom:0;width:100%;padding:1.25rem 1.35rem;
-    background:linear-gradient(to top,rgba(24,22,15,.82),rgba(24,22,15,0));color:var(--paper)}
-  .card .meta .name{font-family:var(--serif);font-size:1.9rem;line-height:1;margin-bottom:.25rem}
-  .card .meta .sub{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;opacity:.8}
-  .card .tag{position:absolute;top:1rem;right:1rem;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;
-    background:var(--paper);color:var(--ink);padding:.35rem .6rem;border-radius:20px;font-weight:600}
-  .card.soon{cursor:default}
-  .card.soon:hover{transform:none;border-color:var(--line);box-shadow:none}
-  .card.soon .art,.card.soon .meta .name{opacity:.55}
-  .card .tag.soon-tag{background:var(--accent);color:#fff}
+/* first card takes a 2x2 slot */
+.g:first-child{grid-column:span 2;grid-row:span 2}
+.g:first-child .art{aspect-ratio:auto;flex:1;min-height:0}
+.g:first-child .art.pad img{width:auto;height:68%}
+.g:first-child .lbl b{font-size:clamp(22px,2.4vw,34px)}
 
+@media (hover:hover){
+  .play{opacity:0;transform:translateY(6px);transition:opacity .25s,transform .35s var(--out),background .25s}
+  .g:hover .play,.g:focus-visible .play{opacity:1;transform:none}
+  .g:hover .play{background:var(--sig)}
+  .g:hover .art,.g:focus-visible .art{transform:translateY(-10px) rotate(calc(var(--r,0deg)*-2)) scale(1.025);
+    box-shadow:0 34px 50px -28px color-mix(in srgb,var(--c,#000) 70%,transparent)}
+  .g:first-child:hover .art,.g:first-child:focus-visible .art{transform:translateY(-10px) rotate(1.2deg) scale(1.012)}
+}
+@media (hover:none){.g:not(:first-child) .play{display:none}}
+.g:focus-visible{outline:0}
+.g:focus-visible .art{outline:2px solid var(--glow);outline-offset:2px}
+.g:active .art{transition-duration:.12s;transform:rotate(var(--r,0deg)) scale(.985)}
 
-  /* official game icons */
-  .icon{width:46%;aspect-ratio:1;border-radius:22%;overflow:hidden;background:#fff;
-    box-shadow:0 18px 36px -18px rgba(24,22,15,.55),0 0 0 1px rgba(24,22,15,.08);
-    transition:transform .5s cubic-bezier(.2,.8,.2,1)}
-  .icon img{width:100%;height:100%;object-fit:cover;display:block}
-  .icon.px img{image-rendering:pixelated}
-  .icon.pad{background:#fdf6ec;display:flex;align-items:center;justify-content:center}
-  .icon.pad img{width:62%;height:auto}
-  .card:hover .icon{transform:scale(1.06) rotate(-2deg)}
-  .card .art{padding-bottom:18%}
+.none{grid-column:1/-1;padding:clamp(40px,8vw,96px) 0;font-size:clamp(20px,2.4vw,30px);line-height:1.3;max-width:26ch}
+.none[hidden]{display:none}
+.none q{quotes:"\201C" "\201D";color:var(--soft)}
+.none button{display:block;margin-top:18px;min-height:44px;padding:0;background:none;border:0;color:var(--ink);font:400 12px/1 var(--mono);letter-spacing:.02em;text-transform:uppercase;text-decoration:underline;text-decoration-color:var(--edge);text-underline-offset:4px;cursor:pointer}
+.none button:hover{text-decoration-color:var(--ink)}
 
-  footer{border-top:1px solid var(--line);padding:clamp(3rem,6vw,4rem) clamp(1.25rem,5vw,3.5rem)}
-  .footer-in{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem}
-  .footer-in a{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:color .3s}
-  .footer-in a:hover{color:var(--ink)}
-  .colophon{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+/* request a game */
+.ask{display:grid;grid-template-columns:1fr 1.1fr;gap:32px clamp(32px,6vw,96px);align-items:start;padding-top:clamp(40px,6vw,72px);padding-bottom:clamp(72px,10vw,128px);border-top:1px solid var(--line)}
+.ask h2{font:900 clamp(40px,6.4vw,88px)/.9 var(--sans);letter-spacing:-.05em;text-transform:lowercase}
+.ask p{margin-top:18px;max-width:34ch;color:var(--soft)}
+.ask form{display:grid;gap:8px}
+.ask label{font:400 12px/1.4 var(--mono);letter-spacing:.02em;text-transform:uppercase;color:var(--soft);margin-top:14px}
+.ask label:first-child{margin-top:0}
+.ask input,.ask textarea{width:100%;background:var(--well);border:1px solid var(--line);border-radius:10px;padding:13px 14px;color:var(--ink);font:400 16px/1.4 var(--sans);transition:border-color .2s}
+.ask textarea{min-height:92px;resize:vertical}
+.ask input::placeholder,.ask textarea::placeholder{color:var(--dim)}
+.ask input:hover,.ask textarea:hover{border-color:var(--edge)}
+.ask input:focus-visible,.ask textarea:focus-visible{outline:0;border-color:var(--glow);box-shadow:0 0 0 1px var(--glow)}
+.ask input[aria-invalid=true]{border-color:var(--sig)}
+.ask .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.ask .row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px}
+.ask button{min-height:46px;padding:0 22px;border:0;border-radius:99px;background:var(--ink);color:var(--bg);font:500 12px/1 var(--mono);letter-spacing:.02em;text-transform:uppercase;cursor:pointer;transition:transform .3s var(--out),opacity .2s}
+.ask button:hover{transform:translateY(-2px)}
+.ask button:disabled{opacity:.5;cursor:default;transform:none}
+.ask .msg{font-size:14px;line-height:1.4;color:var(--soft)}
+.ask .msg.ok{color:var(--ink)}
+.ask .msg.err{color:var(--sig)}
 
-  /* hollow knight mini art */
-  .art-hollow{width:46%;aspect-ratio:1;border-radius:22%;overflow:hidden;position:relative;
-    background:#0a0805;
-    box-shadow:0 18px 36px -18px rgba(24,22,15,.55),0 0 0 1px rgba(24,22,15,.08);
-    transition:transform .5s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;justify-content:center}
-  .art-hollow svg{width:60%;height:60%}
-  .card:hover .art-hollow{transform:scale(1.06) rotate(-2deg)}
+footer{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-top:6px;padding-bottom:12px;border-top:1px solid var(--line);color:var(--soft)}
+footer a{display:inline-flex;align-items:center;min-height:44px;transition:color .2s}
+footer a:hover{color:var(--ink)}
 
-  /* game request box */
-  .ask{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,8rem)}
-  .ask-in{border-top:1px solid var(--line);padding-top:clamp(2.5rem,5vw,3.5rem);display:grid;grid-template-columns:1fr;gap:1.75rem}
-  @media(min-width:860px){.ask-in{grid-template-columns:1fr 1.15fr;gap:3rem;align-items:start}}
-  .ask h2{font-family:var(--serif);font-weight:400;font-size:clamp(2.2rem,5vw,3.4rem);line-height:1;margin:.9rem 0 .9rem}
-  .ask h2 em{font-style:italic;color:var(--accent)}
-  .ask p{color:#3a362c;line-height:1.6;max-width:38ch}
-  .ask form{display:grid;gap:.8rem}
-  .ask label{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:500}
-  .ask input,.ask textarea{width:100%;font:inherit;font-size:1rem;color:var(--ink);background:#fbf8f2;border:1px solid var(--line);
-    border-radius:10px;padding:.85rem 1rem;transition:border-color .25s,box-shadow .25s}
-  .ask textarea{min-height:5.5rem;resize:vertical}
-  .ask input:focus,.ask textarea:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(162,73,47,.12)}
-  .ask .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-  .ask .row{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:.3rem}
-  .ask button{font:inherit;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--paper);
-    background:var(--ink);border:0;border-radius:999px;padding:.9rem 1.6rem;cursor:pointer;transition:background .25s,transform .25s}
-  .ask button:hover{background:var(--accent)}
-  .ask button:disabled{opacity:.55;cursor:default}
-  .ask .msg{font-size:.9rem;color:var(--muted)}
-  .ask .msg.ok{color:#3f6b3a}
-  .ask .msg.err{color:var(--accent)}
-
-  /* NumWorks calculator downloads */
-  .nw{max-width:1100px;margin:0 auto;padding:0 clamp(1.25rem,5vw,3.5rem) clamp(5rem,10vw,8rem)}
-  .nw-in{border-top:1px solid var(--line);padding-top:clamp(2.5rem,5vw,3.5rem)}
-  .nw-top{display:grid;grid-template-columns:1fr;gap:1.75rem;margin-bottom:2.5rem}
-  @media(min-width:860px){.nw-top{grid-template-columns:1fr 1.15fr;gap:3rem;align-items:start}}
-  .nw h2{font-family:var(--serif);font-weight:400;font-size:clamp(2.2rem,5vw,3.4rem);line-height:1;margin:.9rem 0 .9rem}
-  .nw h2 em{font-style:italic;color:var(--accent)}
-  .nw p{color:#3a362c;line-height:1.6;max-width:44ch}
-  .nw-steps{list-style:none;counter-reset:s;display:grid;gap:.85rem}
-  .nw-steps li{counter-increment:s;display:grid;grid-template-columns:2rem 1fr;gap:.5rem;line-height:1.55;color:#3a362c}
-  .nw-steps li::before{content:counter(s);font-family:var(--serif);font-size:1.5rem;line-height:1;color:var(--accent)}
-  .nw-steps a{color:var(--ink);border-bottom:1px solid var(--line)}
-  .nw-steps a:hover{border-color:var(--accent)}
-  .nw-dl{display:inline-flex;align-items:center;gap:.5rem;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
-    color:var(--paper);background:var(--ink);border-radius:999px;padding:.75rem 1.25rem;transition:background .25s;white-space:nowrap}
-  .nw-dl:hover{background:var(--accent)}
-  .nw-dl small{font-size:.68rem;letter-spacing:.06em;opacity:.7;font-weight:500;text-transform:none}
-  .nw-feature{display:grid;gap:1.25rem;border:1px solid var(--line);border-radius:12px;background:#efe9dc;padding:clamp(1.25rem,3vw,2rem);margin-bottom:2.75rem}
-  @media(min-width:760px){.nw-feature{grid-template-columns:1fr auto;align-items:center}}
-  .nw-feature h3{font-family:var(--serif);font-weight:400;font-size:2rem;line-height:1;margin-bottom:.4rem}
-  .nw-feature .nw-list{font-size:.9rem;line-height:1.6;color:var(--muted);max-width:none}
-  .nw-label{font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:1.1rem}
-  .nw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:clamp(.9rem,2.5vw,1.5rem)}
-  .nw-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#efe9dc;display:flex;flex-direction:column;transition:border-color .3s,transform .4s cubic-bezier(.2,.8,.2,1)}
-  .nw-card:hover{border-color:var(--ink);transform:translateY(-3px)}
-  .nw-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;image-rendering:pixelated;background:#18160f}
-  .nw-card .nw-body{padding:1rem 1.1rem 1.1rem;display:flex;flex-direction:column;gap:.45rem;flex:1}
-  .nw-card h4{font-family:var(--serif);font-weight:400;font-size:1.45rem;line-height:1.05}
-  .nw-card p{font-size:.85rem;line-height:1.5;color:var(--muted);flex:1}
-  .nw-card .nw-dl{align-self:flex-start;margin-top:.35rem;padding:.6rem 1rem}
-  .nw-fine{margin-top:2rem;font-size:.82rem;color:var(--muted);max-width:70ch}
-  .nw-fine a{color:var(--ink);border-bottom:1px solid var(--line)}
-  .nw-fine a:hover{border-color:var(--accent)}
-  .reveal{opacity:0;transform:translateY(24px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.8,.2,1)}
-  .reveal.in{opacity:1;transform:none}
+@media (max-width:1020px){.shelf{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:700px){
+  .shelf{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .under{grid-template-columns:1fr}
+  .find{width:100%}.find kbd{display:none}
+  .ask{grid-template-columns:1fr}
+  .art{border-radius:11px}
+  .g:first-child .art{aspect-ratio:1.25;flex:none}
+  .g:first-child .art.pad img{height:66%}
+  .play{left:8px;bottom:8px;padding:6px 9px 5px;font-size:11px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important;transition-delay:0ms!important}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
-<div class="cursor" id="cursor"></div>
 
-<nav>
-  <a href="/games" class="brand">Nicholas <em>Lin</em></a>
+<nav class="wrap bar mono" aria-label="Site">
+  <a class="me" href="/">Nicholas Lin</a>
+  <a href="#request">Request a game</a>
 </nav>
 
-<header class="top">
-  <div>
-    <div class="kicker reveal">Play</div>
-    <h1 class="reveal">The <em>Arcade</em></h1>
-    <p class="reveal">A few browser games, hosted here. No downloads, no accounts. Pick one and go.</p>
+<header class="wrap top">
+  <h1>Arcade</h1>
+  <div class="under">
+    <p>Seventeen games that run right here in the tab. No downloads, no accounts. <a href="/games/numworks/">Got a NumWorks? There are games for the calculator too&nbsp;→</a></p>
+    <label class="find">
+      <input id="find" type="search" placeholder="Find a game" aria-label="Find a game" autocomplete="off" spellcheck="false">
+      <span class="n" id="count" aria-live="polite"></span><kbd aria-hidden="true">/</kbd>
+    </label>
   </div>
-  <a class="nw-jump reveal" href="/games/numworks/" data-cursor>
-    <span>
-      <span class="kicker">Calculator</span>
-      <strong>Have a <em>NumWorks</em>?</strong>
-      <span class="nw-jump-sub">Games you can put on it</span>
-    </span>
-    <span class="nw-arrow" aria-hidden="true">&rarr;</span>
-  </a>
 </header>
 
-<section class="grid">
-  <a class="card reveal" href="/games/celeste/" data-cursor>
-    <div class="art">
-      <div class="icon px pad"><img src="/img/games/celeste.png" alt="Celeste icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Celeste</div><div class="sub">Precision platformer · Keyboard &amp; controller</div></div>
+<main>
+<div class="wrap shelf" id="shelf">
+  <a class="g" href="/games/celeste/" style="--c:#e2302f" data-n="celeste precision platformer">
+    <span class="art px pad"><img src="/img/games/celeste.png" alt="" width="400" height="400" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Celeste</b><span class="mono">Precision platformer · Keyboard &amp; controller</span></span>
   </a>
-
-  <a class="card reveal" href="/games/cuphead/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/cuphead.png?v=2" alt="Cuphead icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Cuphead</div><div class="sub">Run-and-gun · Keyboard</div></div>
+  <a class="g" href="/games/cuphead/" style="--c:#ffd011" data-n="cuphead run-and-gun">
+    <span class="art"><img src="/img/games/cuphead.png?v=2" alt="" width="400" height="400" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Cuphead</b><span class="mono">Run-and-gun · Keyboard</span></span>
   </a>
-
-  <a class="card reveal" href="/games/hollow-knight/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/hollow-knight.png?v=2" alt="Hollow Knight icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Hollow Knight</div><div class="sub">Platformer · Keyboard & mouse</div></div>
+  <a class="g" href="/games/hollow-knight/" style="--c:#7fa3b3" data-n="hollow knight platformer">
+    <span class="art"><img src="/img/games/hollow-knight.png?v=2" alt="" width="400" height="400" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Hollow Knight</b><span class="mono">Platformer · Keyboard &amp; mouse</span></span>
   </a>
-
-  <a class="card reveal" href="/games/silksong/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/silksong.png?v=1" alt="Hollow Knight Silksong icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Silksong</div><div class="sub">Platformer · Keyboard</div></div>
+  <a class="g" href="/games/silksong/" style="--c:#d24a35" data-n="silksong platformer">
+    <span class="art"><img src="/img/games/silksong.png?v=1" alt="" width="400" height="400" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Silksong</b><span class="mono">Platformer · Keyboard</span></span>
   </a>
-
-  <a class="card reveal" href="/games/stardew/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/stardew.png?v=1" alt="Stardew Valley icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Stardew Valley</div><div class="sub">Farming sim · Keyboard & mouse</div></div>
+  <a class="g" href="/games/stardew/" style="--c:#2f8fd8" data-n="stardew valley farming sim">
+    <span class="art"><img src="/img/games/stardew.png?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Stardew Valley</b><span class="mono">Farming sim · Keyboard &amp; mouse</span></span>
   </a>
-
-  <a class="card reveal" href="/games/pokerogue/" data-cursor>
-    <div class="art">
-      <div class="icon px"><img src="/img/games/pokerogue.png" alt="PokeRogue icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">PokeRogue</div><div class="sub">Roguelite · saves in your browser</div></div>
+  <a class="g" href="/games/pokerogue/" style="--c:#9675ba" data-n="pokerogue roguelite">
+    <span class="art px"><img src="/img/games/pokerogue.png" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>PokeRogue</b><span class="mono">Roguelite · Saves in your browser</span></span>
   </a>
-
-  <a class="card reveal" href="/games/clustertruck/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/clustertruck.png?v=2" alt="Clustertruck icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Clustertruck</div><div class="sub">Platformer · Keyboard & mouse</div></div>
+  <a class="g" href="/games/clustertruck/" style="--c:#e0912f" data-n="clustertruck platformer">
+    <span class="art"><img src="/img/games/clustertruck.png?v=2" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Clustertruck</b><span class="mono">Platformer · Keyboard &amp; mouse</span></span>
   </a>
-
-  <a class="card reveal" href="/games/omori/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/omori.png?v=2" alt="OMORI icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">OMORI</div><div class="sub">RPG · Keyboard & mouse</div></div>
+  <a class="g" href="/games/omori/" style="--c:#c9d1dc" data-n="omori rpg">
+    <span class="art"><img src="/img/games/omori.png?v=2" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>OMORI</b><span class="mono">RPG · Keyboard &amp; mouse</span></span>
   </a>
-
-  <a class="card reveal" href="/games/ultrakill/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/ultrakill.png?v=2" alt="ULTRAKILL icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">ULTRAKILL</div><div class="sub">FPS · Keyboard & mouse</div></div>
+  <a class="g" href="/games/ultrakill/" style="--c:#e3200f" data-n="ultrakill fps">
+    <span class="art"><img src="/img/games/ultrakill.png?v=2" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>ULTRAKILL</b><span class="mono">FPS · Keyboard &amp; mouse</span></span>
   </a>
-
-  <a class="card reveal" href="/games/forager/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/forager.png?v=2" alt="Forager icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Forager</div><div class="sub">Adventure · Keyboard & mouse</div></div>
+  <a class="g" href="/games/forager/" style="--c:#7fd9c0" data-n="forager adventure">
+    <span class="art"><img src="/img/games/forager.png?v=2" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Forager</b><span class="mono">Adventure · Keyboard &amp; mouse</span></span>
   </a>
-
-  <a class="card reveal" href="/games/deltarune/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/deltarune.png?v=2" alt="Deltarune icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Deltarune</div><div class="sub">RPG · Keyboard</div></div>
+  <a class="g" href="/games/deltarune/" style="--c:#8f9bb0" data-n="deltarune rpg">
+    <span class="art"><img src="/img/games/deltarune.png?v=2" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Deltarune</b><span class="mono">RPG · Keyboard</span></span>
   </a>
-
-  <a class="card reveal" href="/games/undertale/" data-cursor>
-    <div class="art">
-      <div class="icon px"><img src="/img/games/undertale.svg" alt="Undertale icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Undertale</div><div class="sub">RPG · Keyboard</div></div>
+  <a class="g" href="/games/undertale/" style="--c:#e23a3a" data-n="undertale rpg">
+    <span class="art px"><img src="/img/games/undertale.svg" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Undertale</b><span class="mono">RPG · Keyboard</span></span>
   </a>
-
-  <a class="card reveal" href="/games/snow-rider/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/snow-rider.png" alt="Snow Rider 3D icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Snow Rider 3D</div><div class="sub">Sledding · Keyboard</div></div>
+  <a class="g" href="/games/snow-rider/" style="--c:#e5702e" data-n="snow rider 3d sledding">
+    <span class="art"><img src="/img/games/snow-rider.png" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Snow Rider 3D</b><span class="mono">Sledding · Keyboard</span></span>
   </a>
-
-  <a class="card reveal" href="/games/cut-the-rope/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/cut-the-rope.svg" alt="Cut the Rope DX icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Cut the Rope DX</div><div class="sub">Puzzle · Mouse & touch</div></div>
+  <a class="g" href="/games/cut-the-rope/" style="--c:#6db33c" data-n="cut the rope dx puzzle">
+    <span class="art fit"><img src="/img/games/cut-the-rope.svg" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Cut the Rope DX</b><span class="mono">Puzzle · Mouse &amp; touch</span></span>
   </a>
-
-  <a class="card reveal" href="/games/2048/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/2048.png?v=3" alt="2048 icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">2048</div><div class="sub">Puzzle · Keyboard & touch</div></div>
+  <a class="g" href="/games/2048/" style="--c:#edc22e" data-n="2048 puzzle">
+    <span class="art"><img src="/img/games/2048.png?v=3" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>2048</b><span class="mono">Puzzle · Keyboard &amp; touch</span></span>
   </a>
-
-  <a class="card reveal" href="/games/tetris/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/tetris.png" alt="Tetris icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Tetris</div><div class="sub">Falling blocks · Keyboard</div></div>
+  <a class="g" href="/games/tetris/" style="--c:#a565f2" data-n="tetris falling blocks">
+    <span class="art"><img src="/img/games/tetris.png" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Tetris</b><span class="mono">Falling blocks · Keyboard</span></span>
   </a>
-
-  <a class="card reveal" href="/games/pacman/" data-cursor>
-    <div class="art">
-      <div class="icon"><img src="/img/games/pacman.png" alt="Pac-Man icon"></div>
-    </div>
-    <span class="tag">Play</span>
-    <div class="meta"><div class="name">Pac-Man</div><div class="sub">Maze · Keyboard & touch</div></div>
+  <a class="g" href="/games/pacman/" style="--c:#ffd21f" data-n="pac-man maze">
+    <span class="art"><img src="/img/games/pacman.png" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play mono">Play</span></span>
+    <span class="lbl"><b>Pac-Man</b><span class="mono">Maze · Keyboard &amp; touch</span></span>
   </a>
-</section>
-
-<section class="ask" id="request">
-  <div class="ask-in reveal">
-    <div>
-      <div class="kicker">Requests</div>
-      <h2>Want a <em>game</em> here?</h2>
-      <p>Name a game you'd play on this site and I'll look into adding it.</p>
-    </div>
-    <form id="ask-form" novalidate>
-      <label for="ask-game">Game</label>
-      <input id="ask-game" name="game" maxlength="80" autocomplete="off" placeholder="Terraria, Hades, Minecraft..." required>
-      <label for="ask-note">Anything else? (optional)</label>
-      <textarea id="ask-note" name="note" maxlength="400" placeholder="Why you want it, or a link to it"></textarea>
-      <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-      <div class="row">
-        <button type="submit" data-cursor>Send request</button>
-        <span class="msg" id="ask-msg" role="status" aria-live="polite"></span>
-      </div>
-    </form>
+  <div class="none" id="none" hidden>
+    <span>Nothing called <q id="none-q"></q> on the shelf yet.</span>
+    <button type="button" id="none-ask">Ask me to add it ↓</button>
   </div>
-</section>
+</div>
 
-<footer>
-  <div class="footer-in reveal">
-    <span class="colophon">© <span id="yr"></span> Nicholas Lin</span>
+<section class="wrap ask" id="request">
+  <div>
+    <h2>Missing one?</h2>
+    <p>Name a game you would play here and I will see if I can get it running.</p>
   </div>
+  <form id="ask-form" novalidate>
+    <label for="ask-game">Game</label>
+    <input id="ask-game" name="game" maxlength="80" autocomplete="off" placeholder="Terraria, Hades, Minecraft…" required>
+    <label for="ask-note">Anything else? (optional)</label>
+    <textarea id="ask-note" name="note" maxlength="400" placeholder="Why you want it, or a link to it"></textarea>
+    <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <div class="row">
+      <button type="submit">Send request</button>
+      <span class="msg" id="ask-msg" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+</section>
+</main>
+
+<footer class="wrap mono">
+  <span>© <span id="yr">2026</span> Nicholas Lin</span>
+  <a href="/">Homepage</a>
 </footer>
 
 <script>
-  (function(){
-    var c=document.getElementById('cursor'),x=0,y=0,cx=0,cy=0;
-    if(matchMedia('(hover:hover)').matches){
-      addEventListener('mousemove',function(e){x=e.clientX;y=e.clientY});
-      (function loop(){cx+=(x-cx)*.2;cy+=(y-cy)*.2;c.style.left=cx+'px';c.style.top=cy+'px';requestAnimationFrame(loop)})();
-      document.querySelectorAll('[data-cursor],a').forEach(function(el){
-        el.addEventListener('mouseenter',function(){c.classList.add('big')});
-        el.addEventListener('mouseleave',function(){c.classList.remove('big')});
-      });
-    }
-  })();
-  (function(){
-    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
-    document.querySelectorAll('.reveal').forEach(function(el,i){el.style.transitionDelay=(i%4)*0.06+'s';io.observe(el)});
-  })();
-  (function(){
-    var f=document.getElementById('ask-form'),msg=document.getElementById('ask-msg'),btn=f.querySelector('button');
-    function say(t,cls){msg.textContent=t;msg.className='msg'+(cls?' '+cls:'')}
-    f.addEventListener('submit',function(e){
-      e.preventDefault();
-      var game=f.game.value.trim();
-      if(game.length<2){say('Tell me which game.','err');f.game.focus();return}
-      btn.disabled=true;say('Sending...');
-      fetch('/games/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({game:game,note:f.note.value.trim(),website:f.website.value})})
-        .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
-        .then(function(x){
-          if(x.ok){f.reset();say('Got it. Thanks for the idea.','ok')}
-          else say((x.d&&x.d.error)||'That did not go through. Try again.','err')
-        })
-        .catch(function(){say('That did not go through. Try again.','err')})
-        .then(function(){btn.disabled=false});
-    });
-  })();
+(function(){
+  var cards=[].slice.call(document.querySelectorAll('.g')),find=document.getElementById('find'),count=document.getElementById('count'),
+      none=document.getElementById('none'),noneQ=document.getElementById('none-q'),game=document.getElementById('ask-game');
+  cards.forEach(function(c,i){c.style.setProperty('--i',i)});
+
+  // filter the shelf as you type; "/" jumps to the field, Enter opens a single match
+  function run(){
+    var q=find.value.trim().toLowerCase(),n=0;
+    cards.forEach(function(c){var hit=!q||c.dataset.n.indexOf(q)>-1;c.hidden=!hit;if(hit)n++});
+    count.textContent=q?n+' of '+cards.length:'';
+    none.hidden=n>0;noneQ.textContent=find.value.trim();
+  }
+  find.addEventListener('input',run);
+  find.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){find.value='';run();find.blur()}
+    if(e.key==='Enter'){var v=cards.filter(function(c){return !c.hidden});if(v.length===1)location.href=v[0].href}
+  });
+  addEventListener('keydown',function(e){
+    if(e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){e.preventDefault();find.focus()}
+  });
+  document.getElementById('none-ask').addEventListener('click',function(){
+    game.value=find.value.trim().slice(0,80);
+    document.getElementById('request').scrollIntoView();
+    game.focus({preventScroll:true});
+  });
+
+  var f=document.getElementById('ask-form'),msg=document.getElementById('ask-msg'),btn=f.querySelector('button');
+  function say(t,cls){msg.textContent=t;msg.className='msg'+(cls?' '+cls:'')}
+  game.addEventListener('input',function(){game.removeAttribute('aria-invalid');if(msg.className.indexOf('err')>-1)say('')});
+  f.addEventListener('submit',function(e){
+    e.preventDefault();
+    var g=f.game.value.trim();
+    if(g.length<2){game.setAttribute('aria-invalid','true');say('Type the name of a game first.','err');game.focus();return}
+    btn.disabled=true;say('Sending…');
+    fetch('/games/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({game:g,note:f.note.value.trim(),website:f.website.value})})
+      .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+      .then(function(x){
+        if(x.ok){f.reset();say('Request sent. Thanks for the idea.','ok')}
+        else say((x.d&&x.d.error)||'The request did not send. Try again.','err')
+      })
+      .catch(function(){say('The request did not send. Check your connection and try again.','err')})
+      .then(function(){btn.disabled=false});
+  });
   document.getElementById('yr').textContent=new Date().getFullYear();
+})();
 </script>
 
 </body>

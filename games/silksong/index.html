@@ -1,14 +1,16 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
 
 <head>
     <base href="https://cdn.jsdelivr.net/gh/web-ports/hollow-knight-silksong@bcbe014765f2f6ca4b1d82ac25755a0299a600ab/">
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Hollow Knight Silksong</title>
+    <title>Silksong · Nicholas Lin</title>
+    <link rel="icon" href="https://neekoras.com/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/instrument-serif@5/index.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/400.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
     <style>
         html,
         body {
@@ -27,26 +29,30 @@
             left: 0;
         }
         #unity-canvas { background: #231F20; }
-        #unity-mobile-warning { display: none; position: fixed; left: 50%; top: 5%; transform: translate(-50%); background: #fff3c4; padding: 10px; color: #231F20; font-family: Inter, system-ui, sans-serif; }
+        #unity-mobile-warning { display: none; position: fixed; left: 50%; top: 5%; transform: translate(-50%); background: #fff3c4; padding: 10px; color: #231F20; font-family: "Schibsted Grotesk", system-ui, sans-serif; }
 
         #sk-loader { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
-            background: radial-gradient(ellipse at 50% 40%, #2c2729 0%, #1a1718 60%, #121011 100%);
-            color: #ece6da; font-family: Inter, system-ui, sans-serif; transition: opacity .6s ease; padding: 24px; box-sizing: border-box; }
-        #sk-loader.sk-gone { opacity: 0; pointer-events: none; }
-        .sk-inner { width: 100%; max-width: 440px; }
-        .sk-kicker { font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: #8f877b; margin-bottom: 14px; }
-        .sk-title { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; font-size: clamp(44px, 9vw, 64px); line-height: 1; margin: 0 0 34px; letter-spacing: -.01em; }
-        .sk-bar { position: relative; height: 3px; background: rgba(236, 230, 218, .12); border-radius: 3px; overflow: hidden; }
-        .sk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #d0714f; border-radius: 3px; transition: width .35s linear; }
-        .sk-bar.sk-busy .sk-fill { width: 35% !important; transition: none; animation: sk-slide 1.3s ease-in-out infinite; }
-        @keyframes sk-slide { 0% { left: -35%; } 100% { left: 100%; } }
-        @media (prefers-reduced-motion: reduce) { .sk-bar.sk-busy .sk-fill { animation: none; width: 100% !important; opacity: .5; } }
-        .sk-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
-        .sk-muted { color: #8f877b; font-size: 13px; margin-top: 6px; }
-        .sk-note { margin: 34px 0 0; font-size: 13px; line-height: 1.6; color: #8f877b; }
-        .sk-retry { margin-top: 18px; font: inherit; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #ece6da;
-            background: none; border: 1px solid rgba(236, 230, 218, .35); border-radius: 999px; padding: 9px 18px; cursor: pointer; }
-        .sk-retry:hover { border-color: #ece6da; }
+      background: radial-gradient(120% 80% at 50% -10%, #0d2136 0%, #081424 45%, #050b14 100%);
+      color: #eef2f6; font-family: "Schibsted Grotesk", system-ui, sans-serif; transition: opacity .6s ease; padding: 24px; box-sizing: border-box; }
+    #sk-loader.sk-gone { opacity: 0; pointer-events: none; }
+    .sk-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
+      font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .2s; }
+    .sk-back:hover { color: #eef2f6; }
+    .sk-back:focus-visible, .sk-retry:focus-visible { outline: 2px solid #ff4fa3; outline-offset: 2px; }
+    .sk-inner { width: 100%; max-width: 440px; }
+    .sk-kicker { font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; margin-bottom: 14px; }
+    .sk-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 700; font-size: clamp(44px, 9vw, 72px);
+      line-height: .9; margin: 0 0 34px; letter-spacing: -.05em; text-transform: lowercase; color: #eef2f6; }
+    .sk-bar { position: relative; height: 3px; background: #17222f; overflow: hidden; }
+    .sk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #ff4fa3; transition: width .35s linear; }
+    .sk-bar.sk-busy .sk-fill { width: 35% !important; transition: none; animation: sk-slide 1.3s ease-in-out infinite; }
+    @keyframes sk-slide { 0% { left: -35%; } 100% { left: 100%; } }
+    @media (prefers-reduced-motion: reduce) { .sk-bar.sk-busy .sk-fill { animation: none; width: 100% !important; opacity: .5; } }
+    .sk-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .sk-muted { color: #7f8c9c; font-size: 13px; margin-top: 6px; }
+    .sk-note { margin: 34px 0 0; font-size: 14px; line-height: 1.6; color: #7f8c9c; }
+    .sk-retry { margin-top: 18px; min-height: 44px; padding: 0 22px; border: 0; border-radius: 99px; background: #eef2f6; color: #050b14;
+      font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; cursor: pointer; }
     </style>
 </head>
 
@@ -209,7 +215,7 @@
                             d.title = "Click to hide";
                             d.textContent = "Update ready. Reload after saving.";
                             d.style.cssText = "position:fixed;right:14px;top:14px;z-index:99985;padding:6px 11px;border-radius:8px;background:#16161fd8;" +
-                                "color:#d8d2c6;font:12px/1.4 Inter,system-ui,sans-serif;cursor:pointer;border:1px solid rgba(236,230,218,.18)";
+                                "color:#eef2f6;font:12px/1.4 Schibsted Grotesk,system-ui,sans-serif;cursor:pointer;border:1px solid rgba(238,242,246,.18)";
                             d.onclick = () => d.remove();
                             document.body.appendChild(d);
                         }).catch(() => { /* offline: try again after the next save */ });
@@ -539,8 +545,8 @@
 
   // ---------- UI (inline styles, matches the page's note box) ----------
   const ui = (() => {
-    const css = "position:fixed;z-index:99990;font:13px/1.45 Inter,system-ui,sans-serif;color:#ece6da;background:#16161fe8;border-radius:10px;";
-    const btn = "font:inherit;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#ece6da;background:none;border:1px solid rgba(236,230,218,.35);border-radius:999px;padding:6px 14px;margin-left:8px;cursor:pointer;";
+    const css = "position:fixed;z-index:99990;font:13px/1.45 Schibsted Grotesk,system-ui,sans-serif;color:#eef2f6;background:#0a1320f2;border-radius:10px;";
+    const btn = "font:inherit;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#eef2f6;background:none;border:1px solid rgba(238,242,246,.35);border-radius:999px;padding:6px 14px;margin-left:8px;cursor:pointer;";
     let p = null, b = null, o = null;
     function el(style, html) { const d = document.createElement("div"); d.style.cssText = css + style; d.setAttribute("role", "status"); d.innerHTML = html; document.body.appendChild(d); return d; }
     const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
@@ -549,7 +555,7 @@
         if (!hasDom || o) return;
         if (p) p.remove();
         p = el("left:50%;top:16px;transform:translateX(-50%);max-width:min(560px,calc(100vw - 32px));padding:10px 14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;",
-          "<span style='flex:1 1 220px'>" + esc(text) + "</span>" + (onReload ? "<button data-a='r' style='" + btn + "border-color:#d0714f'>Reload now</button>" : "") + "<button data-a='x' style='" + btn + "'>" + (onReload ? "Later" : "OK") + "</button>");
+          "<span style='flex:1 1 220px'>" + esc(text) + "</span>" + (onReload ? "<button data-a='r' style='" + btn + "border-color:#ff4fa3'>Reload now</button>" : "") + "<button data-a='x' style='" + btn + "'>" + (onReload ? "Later" : "OK") + "</button>");
         const me = p;
         me.addEventListener("click", (e) => { const a = e.target.getAttribute("data-a"); if (!a) return; me.remove(); if (p === me) p = null; if (a === "r" && onReload) onReload(); });
         setTimeout(() => { if (p === me) { me.remove(); p = null; } }, 30000);
@@ -557,14 +563,14 @@
       banner(text) {
         if (!hasDom) return;
         if (!text) { if (b) { b.remove(); b = null; } return; }
-        if (!b) b = el("right:14px;bottom:14px;padding:7px 12px;font-size:12px;pointer-events:none;border:1px solid #d0714f80;", "");
+        if (!b) b = el("right:14px;bottom:14px;padding:7px 12px;font-size:12px;pointer-events:none;border:1px solid #ff4fa380;", "");
         b.textContent = text;
       },
       overlay(text, withButton) {
         if (!hasDom) return;
         if (p) { p.remove(); p = null; }
         if (b) { b.remove(); b = null; }
-        if (!o) o = el("inset:0;border-radius:0;background:#121011ee;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:15px;", "");
+        if (!o) o = el("inset:0;border-radius:0;background:#050b14ee;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:15px;", "");
         o.innerHTML = "<div style='max-width:440px'><p>" + esc(text) + "</p>" + (withButton ? "<button style='" + btn + "margin:14px 0 0;padding:9px 18px'>Reload</button>" : "") + "</div>";
         const k = o.querySelector("button");
         if (k) k.onclick = () => { reloading = true; location.reload(); };
@@ -632,16 +638,17 @@
 
     </script>
     <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
-    <script src="https://neekoras.com/games/silksong/cloudsave.js?v=4"></script>
+    <script src="https://neekoras.com/games/silksong/cloudsave.js?v=5"></script>
     <script src="https://neekoras.com/games/silksong/audiopatch.js?v=1"></script>
     <div id="sk-loader" role="status" aria-live="polite">
+        <a class="sk-back" href="https://neekoras.com/games">← Arcade</a>
         <div class="sk-inner">
             <div class="sk-kicker">Now loading</div>
             <h1 class="sk-title">Silksong</h1>
             <div class="sk-bar sk-busy" id="sk-bar" role="progressbar" aria-label="Loading Silksong" aria-valuemin="0" aria-valuemax="100"><div class="sk-fill" id="sk-fill"></div></div>
             <div class="sk-row"><span id="sk-phase">Getting ready</span><span id="sk-pct"></span></div>
             <div class="sk-row sk-muted"><span id="sk-mb"></span><span id="sk-eta"></span></div>
-            <p class="sk-note" id="sk-note">The game downloads as you play, about 2 GB in all, and is kept in this browser so the next visit opens much faster.</p>
+            <p class="sk-note" id="sk-note">The game downloads as you play, about 2 GB in all, and is kept in this browser so the next visit starts much faster.</p>
         </div>
     </div>
     <div hidden id="unity-container" class="unity-desktop">
@@ -666,7 +673,7 @@
                 let frac = Math.min(bytes / total, 1);
                 if (frac > 0.999) frac = 1;
                 const pct = Math.floor(frac * 100);
-                if (frac === 1) $("sk-phase").textContent = "Saving to your browser";
+                if (frac === 1) $("sk-phase").textContent = "Saving to this browser";
                 $("sk-fill").style.width = (frac * 100) + "%";
                 $("sk-bar").setAttribute("aria-valuenow", pct);
                 $("sk-pct").textContent = pct + "%";
@@ -682,8 +689,8 @@
                 cached() {
                     if (phase === "download") return;
                     phase = "cached";
-                    $("sk-phase").textContent = "Loading from your browser";
-                    $("sk-note").textContent = "The game is already saved in this browser, so no download is needed.";
+                    $("sk-phase").textContent = "Loading from this browser";
+                    $("sk-note").textContent = "The game is already kept in this browser, so no download is needed.";
                 },
                 phase(text) {
                     busy(true);
@@ -709,7 +716,7 @@
                 fail(msg, title, button) {
                     busy(false);
                     $("sk-fill").style.width = "0";
-                    $("sk-phase").textContent = title || "The download stopped";
+                    $("sk-phase").textContent = title || "The game could not load";
                     $("sk-pct").textContent = "";
                     $("sk-mb").textContent = "";
                     $("sk-eta").textContent = "";
@@ -879,7 +886,7 @@
                 el.id = "sk-dl";
                 el.setAttribute("role", "status");
                 el.style.cssText = "position:fixed;left:14px;bottom:14px;z-index:99980;padding:7px 12px;border-radius:8px;" +
-                    "background:#16161fe0;color:#d8d2c6;font:12px/1.4 Inter,system-ui,sans-serif;pointer-events:none;transition:opacity .4s;opacity:0";
+                    "background:#0a1320f2;color:#eef2f6;font:12px/1.4 Schibsted Grotesk,system-ui,sans-serif;pointer-events:none;transition:opacity .4s;opacity:0";
                 document.body.appendChild(el);
                 return el;
             }
@@ -1320,7 +1327,7 @@
                 if (!ok) failed++;
             }
             if (failed) note.show("Some game files could not be downloaded. They will be fetched when the game needs them.");
-            else note.show("The whole game is saved in this browser");
+            else note.show("The whole game is kept in this browser");
             note.hide(6000);
         }
 
@@ -1535,7 +1542,7 @@
                             if (ev.data !== "take-over") return;
                             try { if (window.MemGuard) window.MemGuard.stopHeartbeat(); } catch (e) { /* */ }
                             try { if (window.skUnityInstance) window.skUnityInstance.Quit(); } catch (e) { /* stop anyway */ }
-                            document.body.innerHTML = '<p style="font:16px Inter,system-ui,sans-serif;color:#ece6da;padding:40px">' +
+                            document.body.innerHTML = '<p style="font:16px Schibsted Grotesk,system-ui,sans-serif;color:#eef2f6;padding:40px">' +
                                 "The game was moved to another tab.</p>";
                             release();
                         };

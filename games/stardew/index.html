@@ -3,55 +3,63 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Stardew Valley</title>
+<title>Stardew Valley · Nicholas Lin</title>
 <link rel="icon" href="/img/games/stardew.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-  @font-face { font-family: "Instrument Serif"; src: url("/games/shared/fonts/instrument-serif-400.woff2") format("woff2"); font-display: swap; }
-  @font-face { font-family: "Inter"; src: url("/games/shared/fonts/inter-400.woff2") format("woff2"); font-display: swap; }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
   canvas { width: 100%; height: 100%; display: block; }
   #sv-load {
-    position: fixed; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(circle at 50% 35%, #2a2426 0%, #161314 70%); color: #ece6da;
-    font: 14px/1.5 Inter, system-ui, sans-serif; transition: opacity .4s;
+    position: fixed; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: radial-gradient(120% 80% at 50% -10%, #0d2136 0%, #081424 45%, #050b14 100%); color: #eef2f6;
+    font: 14px/1.5 "Schibsted Grotesk", system-ui, sans-serif; transition: opacity .4s;
   }
   #sv-load.gone { opacity: 0; pointer-events: none; }
   #sv-load [hidden] { display: none !important; }
-  .sv-box { width: min(440px, calc(100vw - 32px)); }
-  .sv-kicker { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: #8f877b; }
-  .sv-title { font: 400 56px/1.1 "Instrument Serif", Georgia, serif; margin: 10px 0 26px; }
-  .sv-bar { height: 3px; background: #3a3436; border-radius: 2px; overflow: hidden; }
-  .sv-fill { height: 100%; width: 0; background: #d0714f; transition: width .3s; }
-  .sv-row { display: flex; justify-content: space-between; margin-top: 12px; }
-  .sv-row span:last-child { color: #8f877b; }
-  .sv-note { margin-top: 26px; color: #8f877b; font-size: 13px; }
+  .sv-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
+    font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .2s; }
+  .sv-back:hover { color: #eef2f6; }
+  #sv-load :focus-visible { outline: 2px solid #ff4fa3; outline-offset: 2px; }
+  .sv-box { width: 100%; max-width: 440px; }
+  .sv-kicker { font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; margin-bottom: 14px; }
+  .sv-title { font: 700 clamp(44px, 9vw, 72px)/.9 "Schibsted Grotesk", system-ui, sans-serif; letter-spacing: -.05em; text-transform: lowercase; margin: 0 0 34px; }
+  .sv-bar { height: 3px; background: #17222f; overflow: hidden; }
+  .sv-fill { height: 100%; width: 0; background: #ff4fa3; transition: width .3s; }
+  .sv-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-variant-numeric: tabular-nums; }
+  .sv-row span:last-child { color: #7f8c9c; }
+  .sv-note { margin-top: 34px; color: #7f8c9c; font-size: 14px; line-height: 1.6; }
   .sv-choice { display: flex; flex-direction: column; gap: 10px; }
   .sv-choice button {
-    font: 12px/1 Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; cursor: pointer;
-    padding: 14px 18px; border-radius: 999px; border: 1px solid #4a4244; background: #1a1718; color: #ece6da;
-    display: flex; justify-content: space-between; transition: border-color .15s, background .15s;
+    font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; cursor: pointer;
+    min-height: 48px; padding: 0 20px; border-radius: 99px; border: 1px solid #2a3747; background: #0a1320; color: #eef2f6;
+    display: flex; justify-content: space-between; align-items: center; transition: border-color .15s, background .15s;
   }
-  .sv-choice button:hover { border-color: #d0714f; background: #221d1e; }
-  .sv-choice button span { color: #8f877b; }
-  .sv-err { color: #d0714f; }
+  .sv-choice button:hover { border-color: #eef2f6; }
+  .sv-choice button span { color: #7f8c9c; }
+  .sv-err { color: #eef2f6; }
+  .sv-retry { display: block; margin-top: 18px; min-height: 44px; padding: 0 22px; border: 0; border-radius: 99px; background: #eef2f6; color: #050b14;
+    font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; cursor: pointer; }
 </style>
 <script src="/games/shared/tabpause.js?v=2"></script>
 </head>
 <body>
-<div id="sv-load">
+<div id="sv-load" role="status" aria-live="polite">
+  <a class="sv-back" href="/games">← Arcade</a>
   <div class="sv-box">
     <div class="sv-kicker">Now loading</div>
-    <div class="sv-title">Stardew Valley</div>
+    <h1 class="sv-title">Stardew Valley</h1>
     <div class="sv-choice" id="sv-choice" hidden>
       <button id="sv-music">Play with music <span>610 MB</span></button>
       <button id="sv-quiet">Play without music <span>135 MB</span></button>
     </div>
     <div id="sv-progress">
       <div class="sv-bar"><div class="sv-fill" id="sv-fill"></div></div>
-      <div class="sv-row"><span id="sv-what">Starting</span><span id="sv-mb"></span></div>
+      <div class="sv-row"><span id="sv-what">Getting ready</span><span id="sv-mb"></span></div>
     </div>
-    <div class="sv-note" id="sv-note">The first visit downloads the game. It is kept in this browser, so the next visit opens much faster.</div>
+    <div class="sv-note" id="sv-note">The first visit downloads the game. It is kept in this browser, so the next visit starts much faster.</div>
   </div>
 </div>
 <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
@@ -85,6 +93,12 @@ function fail(msg) {
   $("sv-note").innerHTML = "";
   $("sv-note").className = "sv-note sv-err";
   $("sv-note").textContent = msg;
+  if (!document.querySelector(".sv-retry")) {
+    const b = document.createElement("button");
+    b.className = "sv-retry"; b.type = "button"; b.textContent = "Reload";
+    b.onclick = () => location.reload();
+    $("sv-note").after(b);
+  }
 }
 
 // fetch from jsDelivr, moving to the next host after an error
@@ -226,7 +240,7 @@ if (!haveAudio && !quiet) {
   // sizes from what this visit would really fetch
   const base = SIZES.wasm + SIZES.framework + (haveContent ? 0 : SIZES.content);
   $("sv-music").querySelector("span").textContent = Math.round((base + SIZES.audio) / MB) + " MB";
-  $("sv-quiet").querySelector("span").textContent = haveContent ? "saved" : Math.round(base / MB) + " MB";
+  $("sv-quiet").querySelector("span").textContent = haveContent ? "kept" : Math.round(base / MB) + " MB";
   wantMusic = await new Promise((resolve) => {
     $("sv-music").onclick = () => resolve(true);
     $("sv-quiet").onclick = () => resolve(false);
@@ -236,7 +250,7 @@ if (!haveAudio && !quiet) {
   $("sv-progress").hidden = false;
 }
 total = SIZES.wasm + SIZES.framework + (haveContent ? 0 : SIZES.content) + (wantMusic && !haveAudio ? SIZES.audio : 0);
-show("Downloading");
+show("Downloading game files");
 
 try {
   const contentP = getTar("Content.tar", "Downloading game files");
@@ -359,6 +373,7 @@ try {
   }
 
   $("sv-load").classList.add("gone");
+  $("sv-load").inert = true;
   const dpr = window.devicePixelRatio || 1;
   await exports.WasmBootstrap.Init(Math.round(canvas.clientWidth * dpr) || 1280, Math.round(canvas.clientHeight * dpr) || 720);
   const fit = () => {
@@ -391,9 +406,10 @@ try {
 } catch (e) {
   console.error(e);
   $("sv-load").classList.remove("gone");
-  fail("The game could not load. Check your connection and reload the page. If it keeps happening, your browser may be out of storage space.");
+  $("sv-load").inert = false;
+  fail("The game could not load. Check your connection, then reload the page to try again. If it keeps happening, your browser may be out of storage space.");
 }
 </script>
-<script src="/games/stardew/cloudsave.js?v=4"></script>
+<script src="/games/stardew/cloudsave.js?v=5"></script>
 </body>
 </html>
