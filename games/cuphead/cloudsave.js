@@ -568,7 +568,7 @@
     document.head.appendChild(style);
     if (!document.querySelector("link[data-gl-fonts]")) {
       const fonts = document.createElement("link");
-      fonts.rel = "stylesheet"; fonts.href = "https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap"; fonts.setAttribute("data-gl-fonts", "");
+      fonts.rel = "stylesheet"; fonts.href = "/fonts/site.css"; fonts.setAttribute("data-gl-fonts", "");
       document.head.appendChild(fonts);
     }
     const btn = document.createElement("button");

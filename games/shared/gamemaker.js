@@ -4,7 +4,7 @@
  * runner scripts and hands them those copies. The screen fades out when the game logs
  * "Entering main loop.". Put these at the top of <body> and remove the page's own runner.js tag:
  *
- *   <script src="/games/shared/loader.js?v=3"></script>
+ *   <script src="/games/shared/loader.js?v=4"></script>
  *   <script src="/games/shared/tabpause.js?v=2"></script>
  *   <script>window.GM_GAME = { title: "Undertale", cache: "undertale-v1", scripts: ["runner.js"],
  *     files: [{ name: "game.unx", parts: 0, bytes: 86295180 }, ...] };</script>
