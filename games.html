@@ -6,8 +6,8 @@
 <title>Arcade · Nicholas Lin</title>
 <meta name="description" content="Seventeen games that run in the browser. No downloads, no accounts.">
 <meta name="theme-color" content="#050b14">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/favicon.svg?v=2">
 <meta property="og:title" content="Arcade · Nicholas Lin">
 <meta property="og:description" content="Seventeen games that run in the browser. No downloads, no accounts.">
 <meta property="og:image" content="https://neekoras.com/img/photo1.jpg">
@@ -116,8 +116,7 @@ a{color:inherit;text-decoration:none}
 .ask .msg.err{color:var(--sig)}
 
 footer{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-top:6px;padding-bottom:12px;border-top:1px solid var(--line);color:var(--soft)}
-footer a{display:inline-flex;align-items:center;min-height:44px;transition:color .2s}
-footer a:hover{color:var(--ink)}
+footer>span{line-height:44px}
 
 @media (max-width:1020px){.shelf{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:700px){
@@ -136,7 +135,7 @@ footer a:hover{color:var(--ink)}
 <body>
 
 <nav class="wrap bar mono" aria-label="Site">
-  <a class="me" href="/">Nicholas Lin</a>
+  <span class="me">Nicholas Lin</span>
   <a href="#request">Request a game</a>
 </nav>
 
@@ -248,7 +247,6 @@ footer a:hover{color:var(--ink)}
 
 <footer class="wrap mono">
   <span>© <span id="yr">2026</span> Nicholas Lin</span>
-  <a href="/">Homepage</a>
 </footer>
 
 <script>
