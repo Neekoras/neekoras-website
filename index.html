@@ -232,14 +232,14 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
     <div><span>Email</span><a href="mailto:nickylin211@gmail.com">nickylin211@gmail.com</a></div>
     <div><span>GitHub</span><a href="https://github.com/Neekoras" target="_blank" rel="noopener">Neekoras</a></div>
     <div><span>LinkedIn</span><a href="https://www.linkedin.com/in/nicholas-lin-086600390/" target="_blank" rel="noopener">Nicholas Lin</a></div>
-    <div><span>Also</span><a href="/games">Arcade</a></div>
+    <div><span>Also</span><a href="/games">Games</a></div>
   </div>
 </section>
 </main>
 
 <footer class="foot mono">
   <span>© <span id="yr">2026</span> Nicholas Lin</span>
-  <a href="/games">Arcade</a>
+  <a href="/games">Games</a>
 </footer>
 
 <div class="cmdk" id="cmdk" hidden role="dialog" aria-modal="true" aria-label="Command menu">
@@ -475,7 +475,7 @@ function goRow(i) {
     { g: "Links", l: "GitHub", h: "Neekoras ↗", run: link("https://github.com/Neekoras") },
     { g: "Links", l: "LinkedIn", h: "Nicholas Lin ↗", run: link("https://www.linkedin.com/in/nicholas-lin-086600390/") },
     { g: "Links", l: "Exonic tournament", h: "exonic.ai ↗", run: link("https://www.exonic.ai/tournament") },
-    { g: "Links", l: "Arcade", h: "neekoras.com/games", run: () => (location.href = "/games") },
+    { g: "Links", l: "Games", h: "neekoras.com/games", kw: "arcade play", run: () => (location.href = "/games") },
   ];
   let shown = [], sel = 0, back = null;
   function draw() {
