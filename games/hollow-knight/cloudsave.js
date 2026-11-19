@@ -510,13 +510,13 @@
       opacity: 0; transform: translateY(8px); pointer-events: none;
       transition: opacity .3s ease, transform .3s ease; }
     #cloudsave-toast.show { opacity: 1; transform: translateY(0); }
-    #cloudsave-toast .cs-check { color: #ec65a6; font-weight: 700; }
+    #cloudsave-toast .cs-check { color: #b7a6ff; font-weight: 700; }
     @keyframes cs-pulse {
-      0% { box-shadow: 0 0 0 0 #ec65a6b0; }
-      100% { box-shadow: 0 0 0 14px #ec65a600; }
+      0% { box-shadow: 0 0 0 0 #b7a6ffb0; }
+      100% { box-shadow: 0 0 0 14px #b7a6ff00; }
     }
-    #cloudsave-btn.saved-pulse { animation: cs-pulse .9s ease-out 2; border-color: #ec65a6; }
-    #cloudsave-btn:focus-visible, #cloudsave-panel button:focus-visible, #cloudsave-panel a:focus-visible { outline: 2px solid #ec65a6; outline-offset: 2px; }
+    #cloudsave-btn.saved-pulse { animation: cs-pulse .9s ease-out 2; border-color: #b7a6ff; }
+    #cloudsave-btn:focus-visible, #cloudsave-panel button:focus-visible, #cloudsave-panel a:focus-visible { outline: 2px solid #b7a6ff; outline-offset: 2px; }
     #cloudsave-panel .cs-home { display: inline-flex; align-items: center; min-height: 44px; margin: -10px 0 0; color: #7f8c9c; text-decoration: none;
       font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; }
     #cloudsave-panel .cs-home:hover { color: #eef2f6; }

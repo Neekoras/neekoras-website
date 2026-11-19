@@ -6,10 +6,10 @@
 <title>Nicholas Lin</title>
 <meta name="description" content="Software developer in the Bay Area. I build working products in a day, and I have won hackathons at Y Combinator, AGI House and Entrepreneurs First.">
 <meta name="theme-color" content="#050b14">
-<link rel="icon" href="/favicon.ico" sizes="48x48">
-<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
-<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/favicon.ico?v=3" sizes="48x48">
+<link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml">
+<link rel="icon" href="/favicon-96.png?v=3" type="image/png" sizes="96x96">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3">
 <meta property="og:title" content="Nicholas Lin">
 <meta property="og:description" content="Software developer in the Bay Area. Hackathon wins at Y Combinator, AGI House and Entrepreneurs First.">
 <meta property="og:image" content="https://neekoras.com/img/photo1.jpg">
@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#050b14;--ink:#eef2f6;--soft:#7f8c9c;--line:#17222f;--sig:#ff7a2e;--glow:#ff4fa3;--well:#0a1320;--edge:#2a3747;--on:#0b0710;--dim:#74818f;
+:root{--bg:#050b14;--ink:#eef2f6;--soft:#7f8c9c;--line:#17222f;--sig:#f2a7c3;--glow:#b7a6ff;--tint:#d3caf5;--well:#0a1320;--edge:#2a3747;--on:#0b0710;--dim:#74818f;
   --out:cubic-bezier(.16,1,.3,1);--sans:"Schibsted Grotesk",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--pad:clamp(16px,3vw,40px)}
 *{box-sizing:border-box;margin:0}
 html{scroll-behavior:smooth;scroll-padding-top:64px;background:var(--bg)}
@@ -30,7 +30,7 @@ body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--sans);-webkit
 a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;text-align:inherit}
 :focus-visible{outline:2px solid var(--glow);outline-offset:2px}
-::selection{background:var(--glow);color:var(--bg)}
+::selection{background:color-mix(in srgb,var(--glow) 36%,transparent);color:var(--ink)}
 .mono{font:400 12px/1.4 var(--mono);letter-spacing:.02em;text-transform:uppercase}
 .soft{color:var(--soft)}
 
@@ -43,7 +43,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 .bar a:hover::after{transform:scaleX(1);transform-origin:left}
 
 /* hero: full screen, rays drawn on a low-resolution canvas behind the text */
-.hero{background:radial-gradient(55% 45% at 88% 96%,rgba(255,79,163,.13) 0%,rgba(255,79,163,0) 70%),radial-gradient(120% 80% at 50% -10%,#0d2136 0%,#081424 45%,var(--bg) 100%);position:relative;min-height:100svh;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.9fr);gap:var(--pad);align-items:end;padding:96px var(--pad) clamp(56px,9vh,88px);overflow:hidden}
+.hero{background:radial-gradient(55% 45% at 88% 96%,rgba(183,166,255,.12) 0%,rgba(183,166,255,0) 70%),radial-gradient(120% 80% at 50% -10%,#0d2136 0%,#081424 45%,var(--bg) 100%);position:relative;min-height:100svh;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.9fr);gap:var(--pad);align-items:end;padding:96px var(--pad) clamp(56px,9vh,88px);overflow:hidden}
 #air{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
 .hero>div,.hero>dl,.hero>.down{position:relative;z-index:1}
 .until{position:absolute;z-index:1;left:var(--pad);top:56px;padding:6px 10px;background:color-mix(in srgb,var(--bg) 70%,transparent);font-variant-numeric:tabular-nums;pointer-events:none}
@@ -83,8 +83,8 @@ dl,dd{margin:0}
 #cmdk-list{list-style:none;margin:0;padding:6px;max-height:min(52vh,420px);overflow:auto}
 #cmdk-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;cursor:pointer;color:var(--ink)}
 #cmdk-list li small{font:400 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--soft);white-space:nowrap}
-#cmdk-list li[aria-selected="true"]{background:var(--glow);color:var(--on)}
-#cmdk-list li[aria-selected="true"] small{color:#5a1638}
+#cmdk-list li[aria-selected="true"]{background:linear-gradient(90deg,color-mix(in srgb,var(--glow) 22%,transparent),color-mix(in srgb,var(--sig) 8%,transparent) 55%,transparent);box-shadow:inset 2px 0 0 var(--glow)}
+#cmdk-list li[aria-selected="true"] small{color:var(--tint)}
 #cmdk-list li.g{padding:12px 14px 6px;font:400 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--soft);cursor:default}
 #cmdk-list li.none{color:var(--soft);cursor:default}
 .cmdk-foot{display:flex;gap:18px;border-top:1px solid var(--line);padding:10px 16px;color:var(--soft)}
@@ -95,22 +95,23 @@ section{padding:clamp(72px,12vh,128px) var(--pad) 0}
 .sh h2{font:700 clamp(28px,3.4vw,44px)/1 var(--sans);letter-spacing:-.04em;text-transform:lowercase}
 .rule{position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--ink);transform:scaleX(0);transform-origin:left;transition:transform 1.1s cubic-bezier(.33,1,.68,1)}
 .in .rule{transform:scaleX(1)}
-.rule::before{content:"";position:absolute;left:0;top:-1px;width:56px;height:3px;background:var(--glow)}
+.rule::before{content:"";position:absolute;left:0;top:-1px;width:120px;height:3px;background:linear-gradient(90deg,var(--glow),var(--sig) 45%,transparent)}
 
 /* work table */
 .th,.tr>.row{display:grid;grid-template-columns:56px minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) 28px;gap:16px;align-items:baseline;width:100%;padding:0 12px}
 .th{padding-top:12px;padding-bottom:10px;color:var(--soft)}
 .tr{position:relative;margin:0 -12px}
-.tr>.row{padding:18px 24px;transition:background .15s,color .15s,padding .3s var(--out)}
+.tr>.row{position:relative;isolation:isolate;padding:18px 24px;transition:background .15s,color .15s,padding .3s var(--out)}
+.tr>.row::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,color-mix(in srgb,var(--glow) 22%,transparent),color-mix(in srgb,var(--sig) 8%,transparent) 55%,transparent);box-shadow:inset 2px 0 0 var(--glow);opacity:0;z-index:-1;transition:opacity .35s ease;pointer-events:none}
 .tr::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:1px;background:var(--line);transform:scaleX(0);transform-origin:left;transition:transform 1s cubic-bezier(.33,1,.68,1);transition-delay:calc(var(--i)*70ms + .2s)}
 .in .tr::after{transform:scaleX(1)}
 .tr .name{font:500 clamp(20px,2.2vw,28px)/1.15 var(--sans);letter-spacing:-.025em}
 .tr .plus{justify-self:end;font:400 18px/1 var(--mono);transition:transform .3s var(--out)}
-@media (hover:hover){.tr>.row:hover{background:var(--glow);color:var(--on);padding-left:36px}.tr>.row:hover .soft{color:#5a1638}}
+@media (hover:hover){.tr>.row:hover{padding-left:36px}.tr>.row:hover::before{opacity:1}.tr>.row:hover .soft{color:var(--tint)}}
 .tr.open .plus{transform:rotate(45deg)}
 a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (hover:hover){a.row:hover .plus{transform:translate(2px,-2px)}}
 .grp{padding:40px 0 10px;border-bottom:1px solid var(--line)}
-.pair{position:relative}.pair::before{content:"";position:absolute;left:-14px;top:0;bottom:0;width:2px;background:var(--glow)}
+.pair{position:relative}.pair::before{content:"";position:absolute;left:-14px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--glow),var(--sig) 55%,transparent)}
 .pair-cap{display:flex;gap:10px;align-items:baseline;padding:16px 0 6px;font:400 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--glow)}.pair-cap span{color:var(--soft)}
 .tr.minor .name{font-size:clamp(16px,1.5vw,19px);font-weight:400;letter-spacing:-.01em}
 .more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .5s var(--out)}
@@ -133,7 +134,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 /* exonic */
 .exo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:var(--pad);border-bottom:1px solid var(--line);padding:28px 0 32px;align-items:end}
 .exo .rank{font:700 clamp(96px,17vw,240px)/.8 var(--sans);letter-spacing:-.06em;font-variant-numeric:tabular-nums}
-.exo .rank i{font-style:normal;color:var(--sig)}
+.exo .rank i{font-style:normal;color:color-mix(in srgb,var(--sig) 76%,var(--bg))}
 .exo p{color:var(--soft);max-width:52ch;margin-bottom:14px}.exo p.lead{color:var(--ink);font:500 clamp(20px,2vw,26px)/1.25 var(--sans);letter-spacing:-.02em;max-width:26ch;margin-bottom:18px}.exo .spec{margin-top:22px}.exo sup{font-size:.7em;line-height:0;vertical-align:.45em;color:var(--glow)}
 .exo .spec{background:none}
 .spec a{display:inline-flex;align-items:center;min-height:44px;margin:-14px 0}
@@ -330,7 +331,7 @@ function goRow(i) {
 
 // dna strip: 200 bases; one base mutates at a time, the way a design gets rescored
 (() => {
-  const el = $("#dna"), B = "ACGT", C = { A: "#ff4fa3", C: "#ff7a2e", G: "#3d6d9a", T: "#22344a" };
+  const el = $("#dna"), B = "ACGT", C = { A: "#b7a6ff", C: "#f2a7c3", G: "#3d6d9a", T: "#22344a" };
   const cells = Array.from({ length: 200 }, () => { const c = document.createElement("i"), b = B[(Math.random() * 4) | 0]; c.style.backgroundColor = C[b]; el.appendChild(c); return c; });
   if (reduce) return;
   let timer = 0;

@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Silksong · Nicholas Lin</title>
-    <link rel="icon" href="https://neekoras.com/favicon.svg?v=2" type="image/svg+xml">
+    <link rel="icon" href="https://neekoras.com/favicon.svg?v=3" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://neekoras.com/fonts/site.css">
     <style>
@@ -36,13 +36,13 @@
     .sk-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
       font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .2s; }
     .sk-back:hover { color: #eef2f6; }
-    .sk-back:focus-visible, .sk-retry:focus-visible { outline: 2px solid #ec65a6; outline-offset: 2px; }
+    .sk-back:focus-visible, .sk-retry:focus-visible { outline: 2px solid #b7a6ff; outline-offset: 2px; }
     .sk-inner { width: 100%; max-width: 440px; }
     .sk-kicker { font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; margin-bottom: 14px; }
     .sk-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 700; font-size: clamp(44px, 9vw, 72px);
       line-height: .9; margin: 0 0 34px; letter-spacing: -.05em; text-transform: lowercase; color: #eef2f6; }
     .sk-bar { position: relative; height: 3px; background: #17222f; overflow: hidden; }
-    .sk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, rgba(236, 101, 166, .18), #ec65a6); transition: width .35s linear; }
+    .sk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, rgba(183, 166, 255, 0), #b7a6ff 70%, #f2a7c3); transition: width .35s linear; }
     .sk-bar.sk-busy .sk-fill { width: 35% !important; transition: none; animation: sk-slide 1.3s ease-in-out infinite; }
     @keyframes sk-slide { 0% { left: -35%; } 100% { left: 100%; } }
     @media (prefers-reduced-motion: reduce) { .sk-bar.sk-busy .sk-fill { animation: none; width: 100% !important; opacity: .5; } }
@@ -553,7 +553,7 @@
         if (!hasDom || o) return;
         if (p) p.remove();
         p = el("left:50%;top:16px;transform:translateX(-50%);max-width:min(560px,calc(100vw - 32px));padding:10px 14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;",
-          "<span style='flex:1 1 220px'>" + esc(text) + "</span>" + (onReload ? "<button data-a='r' style='" + btn + "border-color:#ec65a6'>Reload now</button>" : "") + "<button data-a='x' style='" + btn + "'>" + (onReload ? "Later" : "OK") + "</button>");
+          "<span style='flex:1 1 220px'>" + esc(text) + "</span>" + (onReload ? "<button data-a='r' style='" + btn + "border-color:#b7a6ff'>Reload now</button>" : "") + "<button data-a='x' style='" + btn + "'>" + (onReload ? "Later" : "OK") + "</button>");
         const me = p;
         me.addEventListener("click", (e) => { const a = e.target.getAttribute("data-a"); if (!a) return; me.remove(); if (p === me) p = null; if (a === "r" && onReload) onReload(); });
         setTimeout(() => { if (p === me) { me.remove(); p = null; } }, 30000);
@@ -561,7 +561,7 @@
       banner(text) {
         if (!hasDom) return;
         if (!text) { if (b) { b.remove(); b = null; } return; }
-        if (!b) b = el("right:14px;bottom:14px;padding:7px 12px;font-size:12px;pointer-events:none;border:1px solid #ec65a680;", "");
+        if (!b) b = el("right:14px;bottom:14px;padding:7px 12px;font-size:12px;pointer-events:none;border:1px solid #b7a6ff80;", "");
         b.textContent = text;
       },
       overlay(text, withButton) {
@@ -636,7 +636,7 @@
 
     </script>
     <script src="https://neekoras.com/games/shared/tabpause.js?v=2"></script>
-    <script src="https://neekoras.com/games/silksong/cloudsave.js?v=7"></script>
+    <script src="https://neekoras.com/games/silksong/cloudsave.js?v=8"></script>
     <script src="https://neekoras.com/games/silksong/audiopatch.js?v=1"></script>
     <div id="sk-loader" role="status" aria-live="polite">
         <a class="sk-back" href="https://neekoras.com/games">← Arcade</a>

@@ -20,12 +20,12 @@
   .sv-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
     font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .2s; }
   .sv-back:hover { color: #eef2f6; }
-  #sv-load :focus-visible { outline: 2px solid #ec65a6; outline-offset: 2px; }
+  #sv-load :focus-visible { outline: 2px solid #b7a6ff; outline-offset: 2px; }
   .sv-box { width: 100%; max-width: 440px; }
   .sv-kicker { font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; margin-bottom: 14px; }
   .sv-title { font: 700 clamp(44px, 9vw, 72px)/.9 "Schibsted Grotesk", system-ui, sans-serif; letter-spacing: -.05em; text-transform: lowercase; margin: 0 0 34px; }
   .sv-bar { height: 3px; background: #17222f; overflow: hidden; }
-  .sv-fill { height: 100%; width: 0; background: linear-gradient(90deg, rgba(236, 101, 166, .18), #ec65a6); transition: width .3s; }
+  .sv-fill { height: 100%; width: 0; background: linear-gradient(90deg, rgba(183, 166, 255, 0), #b7a6ff 70%, #f2a7c3); transition: width .3s; }
   .sv-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-variant-numeric: tabular-nums; }
   .sv-row span:last-child { color: #7f8c9c; }
   .sv-note { margin-top: 34px; color: #7f8c9c; font-size: 14px; line-height: 1.6; }
@@ -408,6 +408,6 @@ try {
   fail("The game could not load. Check your connection, then reload the page to try again. If it keeps happening, your browser may be out of storage space.");
 }
 </script>
-<script src="/games/stardew/cloudsave.js?v=7"></script>
+<script src="/games/stardew/cloudsave.js?v=8"></script>
 </body>
 </html>

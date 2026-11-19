@@ -22,13 +22,13 @@
     #gl-loader .gl-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
       font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .2s; }
     #gl-loader .gl-back:hover { color: #eef2f6; }
-    #gl-loader .gl-back:focus-visible, #gl-loader .gl-retry:focus-visible { outline: 2px solid #ec65a6; outline-offset: 2px; }
+    #gl-loader .gl-back:focus-visible, #gl-loader .gl-retry:focus-visible { outline: 2px solid #b7a6ff; outline-offset: 2px; }
     #gl-loader .gl-inner { width: 100%; max-width: 440px; }
     #gl-loader .gl-kicker { font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; margin-bottom: 14px; }
     #gl-loader .gl-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 700; font-size: clamp(44px, 9vw, 72px);
       line-height: .9; margin: 0 0 34px; letter-spacing: -.05em; text-transform: lowercase; color: #eef2f6; }
     #gl-loader .gl-bar { position: relative; height: 3px; background: #17222f; overflow: hidden; }
-    #gl-loader .gl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, rgba(236, 101, 166, .18), #ec65a6); transition: width .35s linear; }
+    #gl-loader .gl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, rgba(183, 166, 255, 0), #b7a6ff 70%, #f2a7c3); transition: width .35s linear; }
     #gl-loader .gl-bar.gl-busy .gl-fill { width: 35% !important; transition: none; animation: gl-slide 1.3s ease-in-out infinite; }
     @keyframes gl-slide { 0% { left: -35%; } 100% { left: 100%; } }
     @media (prefers-reduced-motion: reduce) { #gl-loader .gl-bar.gl-busy .gl-fill { animation: none; width: 100% !important; opacity: .5; } }
