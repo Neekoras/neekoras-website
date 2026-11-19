@@ -3,7 +3,12 @@
    The sky is the Bay Area's real one: the sun and moon sit where they are right now over San
    Francisco, and /weather.json (written by the server every ten minutes) picks clear, cloud,
    fog, rain or storm. Add ?hour=18.5 or ?sky=rain to the address to preview another moment.
-   lakeScene({ canvas, host, name, rays, reduce }) fills `canvas` to cover `host`; the shore line is
+   The calendar is California's too. From mid-November to New Year's Day there is a lit tree on
+   the cliff and snow: light flurries always, heavier when the real weather is rain. Santa crosses
+   the sky from December 20 to 25, and fireworks go up from New Year's Eve evening through New
+   Year's Day. `count` is an element that gets a countdown: to Christmas from December 1, then to
+   the new year from December 26. ?date=12-25 previews a date.
+   lakeScene({ canvas, host, name, count, rays, reduce }) fills `canvas` to cover `host`; the shore line is
    kept just above `name`, `rays: false` leaves the rays out, `reduce` draws one still frame.
    Drawn into a small pixel buffer (one buffer pixel = 2 CSS px) and scaled up unsmoothed.
    - Water: a lattice of dots over a two-buffer ripple simulation. The rays' wakes, the cursor and
@@ -11,7 +16,7 @@
    - Ray: glides toward a point that wanders on a sum-of-sines path, with a speed cap so it cuts
      corners. Wings roll in a slow wave from body to tip; the tail is a chain dragged behind.
      It veers off when the cursor comes close. No fast motion, no colour changes. */
-window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduce = false }) => {
+window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays = true, reduce = false }) => {
   const ctx = cv.getContext("2d"), S = 2, G = 11, TAU = Math.PI * 2, TAIL = 18;
   const rgb = (h) => { const n = parseInt(h.slice(1), 16); return (0xff000000 | (n & 255) << 16 | (n >> 8 & 255) << 8 | n >> 16) >>> 0; };
   const DOTC = rgb("#7fb4e6"), DOTA = [0.09, 0.17, 0.3, 0.52];
@@ -30,9 +35,13 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
     far: hexes("1a2548 4d4a88 7a86b8 86a3cc"), farTop: hexes("26325a 6f5c9c 99a0cc a3bbdc"), mid: hexes("131d3c 2c3a6c 566a9c 5f82b4"),
     seam: hexes("081422 0c1e30 263445 34455a"), haze: hexes("2a4266 4a6a9a 8fb2d8 a9cdea"), rim: hexes("7d9ccc f09a7c ffd9a0 fff4d6"),
     moss: hexes("12332f 245a55 4d8a52 5da456"), pine: hexes("050e18 081725 1a3d33 245040"), gate: hexes("3d161a 8f2f2c c8452f d4553a"),
-    cloud: hexes("243250 e9a9a0 fff0dc ffffff"), cloudLo: hexes("19243c 85669a d9c2c0 cfdcec"), fish: hexes("4f7fb4 6f9bd0 a8d0f2 c4e2fb"), bird: hexes("0a1220 141c33 2a3850 2f3f5a"),
+    cloud: hexes("243250 e9a9a0 fff0dc ffffff"), cloudLo: hexes("19243c 85669a d9c2c0 cfdcec"), fish: hexes("4f7fb4 6f9bd0 a8d0f2 c4e2fb"), bird: hexes("0a1220 141c33 2a3850 2f3f5a"), tree: hexes("0d3324 14503a 1f7a48 23884e"),
   };
   const WATER0 = hexes("f1faff c9e8fb 98cdf0 6aaadb 467fb6"), WHITE = rgb("#ffffff"), INK = rgb("#050b14"), RAINC = rgb("#cfe4ff"), LAMP = rgb("#ffd98a"), KOI = hexes("ff8a3c fff3e6");
+  const GOLD = rgb("#ffd24a"), BULBS = hexes("ff4d4d ffd24a 6fc3ff ff7ac0"), SPARK = hexes("ec65a6 ff7a2e ffd24a 7fe0ff ffffff 8be28b");
+  // Santa, drawn a letter per pixel: the sleigh, then a deer repeated three times with the reins between
+  const SLEIGH = ["....rw......", "...rrr......", "bb.ssw......", "kbbrrrr...kk", "kkkkkkkkkkk.", ".gggggggggg."], DEER = ["......d.", ".....dbb", ".bbbbbb.", "bbbbbbb."], LEGS = [".b....b.", "b......b"];
+  const INKS = { r: rgb("#e0343f"), w: WHITE, s: rgb("#f3c9a2"), b: rgb("#8a5a34"), d: rgb("#5a3a20"), k: rgb("#9c1f2c"), g: GOLD, n: rgb("#ff3b3b"), l: rgb("#c9a56c") };
   const WX = { clear: { g: 0, clouds: 1 }, partly: { g: 0.15, clouds: 3 }, cloudy: { g: 0.45, clouds: 6 }, overcast: { g: 0.8, clouds: 8 },
     fog: { g: 0.55, clouds: 2, fog: 1 }, rain: { g: 0.85, clouds: 8, rain: 1 }, storm: { g: 0.95, clouds: 8, rain: 2, bolt: 1 } };
   let SKY, LAKE, ROCK, WATER; const C = { white: WHITE, star: rgb("#c9dbf5"), moon: rgb("#e6edf7") };
@@ -50,16 +59,24 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
   let W = 0, H = 0, img, buf, gw = 0, gh = 0, cur, prev, rays = [], mouse = null, last = 0, acc = 0, raf = 0, visible = true;
-  let scene, skyM, shore = 0, skyTop = 36, top, stars = [], falls = [], mist = [], fallAcc = 0, mistAcc = 0;
+  let scene, skyM, shore = 0, skyTop = 36, peak = 0, top, stars = [], falls = [], mist = [], fallAcc = 0, mistAcc = 0;
   let clouds = [], drops = [], schools = [], lamps = [], beacons = [], jump = null, jumpIn = 4000, birds = null, birdIn = 7000, flash = 0, boltIn = 5000, rainAcc = 0;
+  let shift = 0, bulbs = [], star = 0, santa = null, santaIn = 3500, rockets = [], sparks = [], fwIn = 600;
 
   // Where the sun and moon are over San Francisco right now (low-precision almanac formulas, good to about a degree).
-  const q = new URLSearchParams(location.search), hourArg = parseFloat(q.get("hour")), LAT = 37.77 * RAD, LON = -122.42;
+  const q = new URLSearchParams(location.search), hourArg = parseFloat(q.get("hour")), dateArg = /^(\d\d?)-(\d\d?)$/.exec(q.get("date") || ""), LAT = 37.77 * RAD, LON = -122.42;
   const env = { el: 0, az: 180, mel: -90, maz: 0, phase: 0, night: 0, sky: WX[q.get("sky")] ? q.get("sky") : "clear", wind: 8 };
   env.wx = WX[env.sky];
+  const FMT = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", hourCycle: "h23" });
+  const pacific = (ms) => { const o = {}; for (const p of FMT.formatToParts(new Date(ms))) o[p.type] = +p.value; return o; };
   function look() {
-    let ms = Date.now();
-    if (hourArg >= 0 && hourArg <= 24) { const p = new Date(new Date(ms).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })); ms += (hourArg - p.getHours() - p.getMinutes() / 60) * 3600000; }
+    let ms = Date.now(), p = pacific(ms);
+    if (dateArg) { ms += Date.UTC(p.year, dateArg[1] - 1, +dateArg[2]) - Date.UTC(p.year, p.month - 1, p.day); p = pacific(ms); }
+    if (hourArg >= 0 && hourArg <= 24) { ms += (hourArg - p.hour - p.minute / 60) * 3600000; p = pacific(ms); }
+    shift = ms - Date.now(); // how far a previewed date or hour is from the real clock
+    env.snow = (p.month === 11 && p.day >= 15) || p.month === 12 || (p.month === 1 && p.day === 1); // the season of the tree and the snow
+    env.santa = p.month === 12 && p.day >= 20 && p.day <= 25;
+    env.fireworks = (p.month === 12 && p.day === 31 && p.hour >= 18) || (p.month === 1 && p.day === 1);
     const d = ms / 86400000 - 10957.5, g = (357.529 + 0.98560028 * d) * RAD, e = (23.439 - 0.00000036 * d) * RAD;
     const L = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * RAD, lst = ((18.697374558 + 24.06570982441908 * d) * 15 + LON) * RAD;
     const at = (lon) => { // a point on the ecliptic, as height above the horizon and compass bearing
@@ -74,12 +91,12 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
   // Blend the four palettes for the sun's height, then grey them down for cloud and rain.
   function theme() {
     let k = 0; while (k < 2 && env.el > EL[k + 1]) k++;
-    const t = clamp((env.el - EL[k]) / (EL[k + 1] - EL[k]), 0, 1), g = env.wx.g, dark = env.wx.rain ? 0.24 : g > 0.7 ? 0.1 : 0;
+    const t = clamp((env.el - EL[k]) / (EL[k + 1] - EL[k]), 0, 1), g = env.wx.g, dark = env.wx.rain ? (env.snow ? 0.06 : 0.24) : g > 0.7 ? 0.1 : 0;
     const tone = (c, a) => { const l = (c & 255) * 0.3 + (c >> 8 & 255) * 0.59 + (c >> 16 & 255) * 0.11; return mix(mix(c, (0xff000000 | Math.min(255, l * 1.08) << 16 | (l * 0.98) << 8 | (l * 0.92)) >>> 0, a), INK, dark); };
     const set = (name, a) => PAL[name][k].map((c, i) => tone(mix(c, PAL[name][k + 1][i], t), a));
     SKY = set("sky", g * 0.85); LAKE = set("lake", g * 0.5); LAKE[LAKE.length - 1] = INK; ROCK = set("rock", g * 0.4);
-    for (const n of ["far", "farTop", "mid", "seam", "haze", "rim", "moss", "pine", "gate", "cloud", "cloudLo", "fish", "bird"]) C[n] = tone(mix(PAL[n][k], PAL[n][k + 1], t), g * 0.4);
-    C.rim = mix(C.rim, ROCK[2], g * 0.7); C.cloud = mix(C.cloud, C.cloudLo, g * 0.5);
+    for (const n of ["far", "farTop", "mid", "seam", "haze", "rim", "moss", "pine", "gate", "cloud", "cloudLo", "fish", "bird", "tree"]) C[n] = tone(mix(PAL[n][k], PAL[n][k + 1], t), g * 0.4);
+    C.snow = mix(WHITE, C.haze, 0.12); C.rim = mix(C.rim, ROCK[2], g * 0.7); C.cloud = mix(C.cloud, C.cloudLo, g * 0.5);
     C.sun = mix(rgb("#ffe7c2"), rgb("#fffbe8"), clamp(env.el / 20, 0, 1));
     WATER = WATER0.map((c) => mix(c, PAL.lake[0][2], 0.3 * env.night + (env.wx.rain ? 0.12 : 0)));
   }
@@ -114,7 +131,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
     const ridge = (x, s, base, amp) => Math.max(0, Math.round(base - amp * (0.55 * vn(x / (W * 0.11), s) + 0.3 * vn(x / (W * 0.045), s + 7) + 0.15 * vn(x / (W * 0.018), s + 13))));
     for (let x = 0; x < W; x++) {
       let y0 = ridge(x, 11, shore - V * 0.045, V * 0.13);
-      for (let y = y0; y < shore; y++) paint(y * W + x, y === y0 ? C.farTop : C.far);
+      for (let y = y0; y < shore; y++) paint(y * W + x, env.snow && y < y0 + 2 ? mix(C.snow, C.far, 0.25) : y === y0 ? C.farTop : C.far);
       y0 = ridge(x, 29, shore - V * 0.012, V * 0.085);
       for (let y = y0; y < shore; y++) paint(y * W + x, C.mid);
     }
@@ -149,7 +166,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
       if (inFalls(x, 1)) y += 3;
       top[x] = y;
       for (let yy = y; yy < shore; yy++) {
-        let c = yy === y ? C.rim : yy <= y + 2 ? C.moss
+        let c = env.snow && yy <= y + 2 ? (yy === y ? C.snow : mix(C.snow, C.haze, 0.3)) : yy === y ? C.rim : yy <= y + 2 ? C.moss
           : hash(x * 13 + 7) > 0.88 && vn(yy / 9, x) > 0.35 ? C.seam // cracks
           : ROCK[Math.min(2, Math.floor((vn(x / 7, 41) * 0.55 + vn(yy / 5 + Math.floor(x / 6) * 3.7, 77) * 0.45) * 3))];
         if (yy > y + 2 && (yy - y) % 17 === 9 && hash(x * 5 + yy) > 0.3) c = mix(c, C.rim, 0.16); // ledges
@@ -166,7 +183,22 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
       const h = 7 + Math.floor(hash(k * 71 + 5) * 9);
       for (let r = 0; r < h; r++) {
         const y = top[x] - h + r, half = r >= h - 2 ? 0 : Math.floor(((r % 4) + 1) * 0.5 + r * 0.2);
-        if (y >= 0) for (let d = -half; d <= half; d++) paint(y * W + x + d, C.pine);
+        if (y >= 0) for (let d = -half; d <= half; d++) paint(y * W + x + d, env.snow && r % 4 === 0 ? C.snow : C.pine);
+      }
+    }
+    peak = shore; for (let x = 0; x < W; x++) if (top[x] < peak) peak = top[x]; // the highest cliff top
+    bulbs = []; star = 0;
+    if (env.snow) { // the Christmas tree: three tiers on the right-hand cliff, strung with lights, a star on top
+      const tx = Math.round(W * 0.61), h = Math.round(clamp(V * 0.1, 14, 38)), base = top[tx], tier = (h - 2) / 3;
+      if (base < shore - 6 && base - h > 3) {
+        for (let r = 0; r < h; r++) {
+          const y = base - h + r, k = Math.min(2, Math.floor(r / tier)), half = r >= h - 2 ? 0 : Math.round((r - k * tier) * 0.62 + k * 1.6 + 0.5);
+          for (let d = -half; d <= half; d++) {
+            paint(y * W + tx + d, r >= h - 2 ? C.seam : env.snow && r - k * tier < 1 ? C.snow : C.tree);
+            if (r > 1 && r < h - 2 && (r + d) % 3 === 0 && hash(r * 31 + d * 17 + 5) > 0.45) bulbs.push({ i: y * W + tx + d, c: BULBS[Math.floor(hash(r * 7 + d * 3 + 1) * 4)], ph: hash(r + d * 9) * TAU });
+          }
+        }
+        star = (base - h - 1) * W + tx;
       }
     }
     const ln = LAKE.length - 1;
@@ -208,7 +240,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
     // schools follow one wandering path, each fish a little behind and beside the last; the koi go alone
     schools = Array.from({ length: small ? 2 : 3 }, (_, i) => ({ s: i * 2.3, ph: i * 2.1 + 0.7, spd: 0.00011 + i * 0.00002, fx: 0.3 + 0.4 * ((i * 0.41 + 0.2) % 1), fy: 0.34 + 0.4 * ((i * 0.57 + 0.1) % 1), n: small ? 5 : 7 }))
       .concat(Array.from({ length: small ? 1 : 2 }, (_, i) => ({ s: i * 3.1 + 1, ph: i * 1.3 + 4, spd: 0.00006 + i * 0.000015, fx: 0.35 + 0.3 * i, fy: 0.5 - 0.12 * i, n: 1, koi: true })));
-    jump = birds = null;
+    jump = birds = santa = null; rockets = []; sparks = [];
     const n = wantRays ? (small ? 2 : 4) : 0;
     rays = Array.from({ length: n }, (_, i) => {
       const f = { k: KIND[i], sz: [2.1, 1.65, 1.3, 1][i], s: i * 2.1, ph: i * 1.7, spd: 0.00017 - i * 0.00002,
@@ -266,12 +298,36 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
     mist = mist.filter((m) => m.life > 0);
     for (const c of clouds) { c.x += c.sp * (1 + env.wind / 15) * dt; if (c.x > W) c.x = -c.w; }
     for (const o of schools) o.s += o.spd * dt;
-    if (env.wx.rain) {
+    if (env.snow) for (const d of drops) { // flakes fall slowly and sway
+      d.y += d.sp * 0.11 * dt; d.x += (Math.sin(d.y * 0.05 + d.sp * 40) * 0.012 - 0.004 - env.wind * 0.0004) * dt;
+      if (d.y > H) { d.y -= H; d.x = Math.random() * W * 1.15; } if (d.x < -2) d.x += W + 4;
+    } else if (env.wx.rain) {
       const wind = 0.05 + env.wind * 0.003;
       for (const d of drops) { d.y += d.sp * dt; d.x -= wind * dt; if (d.y > H) { d.y -= H; d.x = Math.random() * W * 1.15; } }
       rainAcc += dt; if (rainAcc > 90 / env.wx.rain) { rainAcc = 0; poke(Math.random() * W, shore + 8 + Math.random() * (H - shore - 12), 0.2); }
     }
-    if (env.wx.bolt) { boltIn -= dt; if (boltIn <= 0) { flash = 1; boltIn = 7000 + Math.random() * 12000; } }
+    if (env.santa) {
+      if (santa) { santa.x += santa.dir * 0.05 * dt; if (santa.x < -70 || santa.x > W + 70) { santa = null; santaIn = 12000 + Math.random() * 16000; } }
+      else if ((santaIn -= dt) <= 0) { const dir = Math.random() < 0.5 ? 1 : -1; santa = { x: dir > 0 ? -60 : W + 60, y: skyTop + 4 + Math.random() * Math.max(4, peak - 16 - skyTop), dir }; }
+    }
+    if (env.fireworks && (fwIn -= dt) <= 0) { // a rocket goes up from behind the hills
+      fwIn = (env.night > 0.5 ? 110 : 650) + Math.random() * (env.night > 0.5 ? 320 : 800);
+      rockets.push({ x: W * (0.04 + Math.random() * 0.92), y: shore - 3, ty: skyTop + 4 + Math.random() * Math.max(8, shore * 0.72 - skyTop), c: SPARK[Math.floor(Math.random() * SPARK.length)] });
+    }
+    for (const r of rockets) {
+      r.y -= 0.14 * dt;
+      if (r.y <= r.ty) { // and bursts into a ring of sparks that slow, sink and fade
+        r.done = true;
+        for (let i = 0, n = 30 + Math.floor(Math.random() * 22), sp = 0.04 + Math.random() * 0.035, c2 = SPARK[Math.floor(Math.random() * SPARK.length)]; i < n; i++) {
+          const a = TAU * i / n + Math.random() * 0.2, inner = i % 3 === 0, v = sp * (inner ? 0.45 : 0.8 + Math.random() * 0.35);
+          sparks.push({ x: r.x, y: r.y, px: r.x, py: r.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, c: inner ? c2 : r.c });
+        }
+      }
+    }
+    if (rockets.length) rockets = rockets.filter((r) => !r.done);
+    for (const k of sparks) { k.px = k.x; k.py = k.y; k.x += k.vx * dt; k.y += k.vy * dt; k.vy += 0.00004 * dt; k.vx *= 1 - 0.0012 * dt; k.vy *= 1 - 0.0008 * dt; k.life -= dt / 1600; }
+    if (sparks.length) sparks = sparks.filter((k) => k.life > 0);
+    if (env.wx.bolt && !env.snow) { boltIn -= dt; if (boltIn <= 0) { flash = 1; boltIn = 7000 + Math.random() * 12000; } }
     if (flash > 0) flash -= dt / 260;
     jumpIn -= dt; // now and then a fish leaves the water
     if (!jump && jumpIn <= 0) { jump = { x: W * (0.12 + Math.random() * 0.76), y: shore + 18 + Math.random() * (H - shore) * 0.45, u: 0, dir: Math.random() < 0.5 ? -1 : 1, h: 9 + Math.random() * 8, d: 10 + Math.random() * 8 }; poke(jump.x, jump.y, 1.1); }
@@ -319,6 +375,8 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
       }
     }
     if (flash > 0) for (let i = 0, a = flash * 0.42, e = shore * W; i < e; i++) if (skyM[i]) buf[i] = mix(buf[i], WHITE, a);
+    for (const b of bulbs) buf[b.i] = Math.sin(t * 0.004 + b.ph) > -0.3 ? b.c : mix(b.c, C.tree, 0.7);
+    if (star) { const c = Math.sin(t * 0.005) > -0.6 ? GOLD : mix(GOLD, WHITE, 0.6); for (const o of [0, -1, 1, -W, W]) buf[star + o] = c; }
     if (dusk > 0.05) { // lamps along the bridge deck and a slow red light on each tower
       for (const i of lamps) buf[i] = mix(buf[i], LAMP, env.night * 0.9);
       if (Math.floor(t / 900) % 2 === 0) for (const i of beacons) buf[i] = mix(buf[i], KOI[0], env.night);
@@ -388,7 +446,24 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
       const rank = (i + 1) >> 1, bx = birds.x - birds.dir * rank * 7, by = birds.y + (i % 2 ? -1 : 1) * rank * 4, up = Math.sin(t * 0.012 + i) > 0;
       for (let k = -2; k <= 2; k++) dab(bx + k, by - (up ? Math.abs(k) : k === -2 || k === 2 ? 1 : 0), C.bird, 1);
     }
-    if (env.wx.rain) for (let i = 0, m = Math.round(drops.length * env.wx.rain / 2); i < m; i++) { const d = drops[i]; dab(d.x, d.y, RAINC, 0.42); dab(d.x, d.y - 1, RAINC, 0.42); dab(d.x + 1, d.y - 2, RAINC, 0.3); }
+    const spot = (x, y, c, a) => { if (y < shore) dab(x, y, c, a); }; // fireworks stay above the water, with a glint on the lake below
+    for (const r of rockets) { spot(r.x, r.y, WHITE, 0.9); spot(r.x, r.y + 2, r.c, 0.5); spot(r.x, r.y + 4, r.c, 0.25); }
+    for (const k of sparks) {
+      const a = Math.min(1, k.life * 1.6) * (k.life < 0.3 && hash(Math.round(k.x * 7 + k.y * 13) + ft) > 0.5 ? 0.3 : 1); // they flicker as they die
+      spot(k.x, k.y, k.c, a); spot(k.px, k.py, k.c, a * 0.45); spot(2 * k.px - k.x, 2 * k.py - k.y, k.c, a * 0.2);
+      dab(k.x, shore + 2 + (shore - k.y) * 0.4, k.c, 0.16 * a);
+    }
+    if (santa) { // sleigh and three reindeer, with a few gold sparks behind
+      const fr = Math.floor(t / 160) % 2, y0 = Math.round(santa.y + Math.sin(santa.x * 0.03) * 3);
+      for (let r = 0; r < 6; r++) {
+        const deer = r === 0 ? "........" : r === 5 ? LEGS[fr] : DEER[r - 1], gap = r === 3 ? "l" : ".";
+        const row = SLEIGH[r] + gap + gap + deer + gap + deer + gap + (r === 2 ? ".....dbn" : deer); // the lead deer has the red nose
+        for (let k = 0; k < row.length; k++) if (row[k] !== ".") dab(santa.x + santa.dir * (k - 20), y0 + r, INKS[row[k]], 1);
+      }
+      for (let k = 0; k < 5; k++) dab(santa.x - santa.dir * (23 + k * 4 + hash(ft + k) * 3), y0 + 1 + hash(ft * 3 + k) * 4, GOLD, 0.8 - k * 0.14);
+    }
+    if (env.snow) for (let i = 0, m = Math.round(drops.length * (env.wx.rain > 1 ? 1 : env.wx.rain ? 0.6 : 0.22)); i < m; i++) { const d = drops[i]; dab(d.x, d.y, WHITE, 0.9); if (i % 6 === 0) dab(d.x + 1, d.y, WHITE, 0.6); }
+    else if (env.wx.rain) for (let i = 0, m = Math.round(drops.length * env.wx.rain / 2); i < m; i++) { const d = drops[i]; dab(d.x, d.y, RAINC, 0.42); dab(d.x, d.y - 1, RAINC, 0.42); dab(d.x + 1, d.y - 2, RAINC, 0.3); }
     ctx.putImageData(img, 0, 0);
   }
   function frame(now) {
@@ -413,6 +488,16 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
   document.addEventListener("visibilitychange", start);
   addEventListener("resize", () => { size(); if (reduce) render(); });
   const refresh = () => { if (!W) return; look(); build(); if (reduce) render(); };
+  // Countdown label: to Christmas (midnight on the 25th, Pacific) from December 1, then to the new year from the 26th.
+  function tick() {
+    if (!tag) return;
+    const now = Date.now() + shift, p = pacific(now), two = (n) => String(n).padStart(2, "0");
+    const to = p.month !== 12 ? null : p.day < 25 ? ["Christmas", Date.UTC(p.year, 11, 25, 8)] : p.day > 25 ? [String(p.year + 1), Date.UTC(p.year + 1, 0, 1, 8)] : null;
+    let text = p.month === 12 && p.day === 25 ? "Merry Christmas" : p.month === 1 && p.day === 1 ? "Happy New Year" : "";
+    if (to) { const sec = Math.max(0, Math.floor((to[1] - now) / 1000)); text = to[0] + " in " + Math.floor(sec / 86400) + "d " + two(Math.floor(sec % 86400 / 3600)) + "h " + two(Math.floor(sec % 3600 / 60)) + "m" + (reduce ? "" : " " + two(sec % 60) + "s"); }
+    if (tag.textContent !== text) tag.textContent = text;
+    tag.hidden = !text;
+  }
   function weather() {
     const use = (sky, wind) => { if (WX[q.get("sky")]) sky = q.get("sky"); env.wind = wind; if (sky !== env.sky) { env.sky = sky; env.wx = WX[sky]; refresh(); } };
     fetch("/weather.json", { cache: "no-store" }).then((r) => r.json())
@@ -420,5 +505,6 @@ window.lakeScene = ({ canvas: cv, host: hero, name, rays: wantRays = true, reduc
   }
   setInterval(refresh, 60000); setInterval(weather, 600000); weather();
   size(); if (reduce) render(); else start();
+  tick(); setInterval(tick, 1000);
   if (document.fonts) document.fonts.ready.then(() => { size(true); if (reduce) render(); }); // the name moves once its font loads
 };
