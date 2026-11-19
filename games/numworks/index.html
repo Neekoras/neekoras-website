@@ -52,6 +52,7 @@ a{color:inherit;text-decoration:none}
 .nw-panel h2,.nw-feature h2{font:700 clamp(24px,2.6vw,34px)/1.05 var(--sans);letter-spacing:-.035em;margin-bottom:8px}
 .nw-panel p,.nw-feature p{max-width:60ch;color:var(--soft)}
 .nw-panel p.err{color:var(--sig)}
+.nw-panel p a{color:inherit;text-decoration:underline;text-underline-offset:4px}
 .nw-panel p.ok{color:var(--ink)}
 .nw-panel-actions,.nw-feature-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .nw-btn,.nw-dl,.nw-pick{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:0 22px;border:0;border-radius:99px;font:500 12px/1 var(--mono);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;cursor:pointer;transition:transform .3s var(--out),background .2s,color .2s,box-shadow .2s,opacity .2s}
@@ -103,6 +104,7 @@ footer a:hover{color:var(--ink)}
     <p>Games for the NumWorks graphing calculator. Plug yours in, pick some games and install them from this page.</p>
   </div>
   <ol class="nw-steps" id="nw-steps">
+    <li><span>Update the calculator first if its software is older than version 26: <a href="https://www.numworks.com/calculator/update/" target="_blank" rel="noopener">numworks.com/calculator/update</a>. On older software the games restart it, which erases everything on it.</span></li>
     <li><span>Plug your calculator into this computer with its USB cable.</span></li>
     <li><span>Click Connect calculator and choose NumWorks Calculator from the list.</span></li>
     <li><span>Pick your games, then install them. Keep it plugged in until it says done.</span></li>
@@ -186,7 +188,25 @@ footer a:hover{color:var(--ink)}
       if (cal && !busy) meter(u / cal.space, mb(u) + ' of ' + mb(cal.space) + ' picked' + (n ? '' : '. Pick games to install.'), u > cal.space);
     }
 
+    // The games are built for current NumWorks software. On older versions they restart the
+    // calculator when they open or save, and a restart erases everything on it.
+    var MIN_SOFTWARE = 26;
     function connected(info){
+      var major = parseInt(info.version, 10);
+      if (major > 0 && major < MIN_SOFTWARE) {
+        cal = null;
+        $('nw-p-label').textContent = 'Update needed';
+        $('nw-p-title').textContent = info.model + ', software ' + info.version;
+        var t = $('nw-p-text'); t.className = 'err';
+        t.innerHTML = 'These games need NumWorks software ' + MIN_SOFTWARE + ' or newer. On older software they restart the calculator, which erases everything on it. ' +
+          'Update at <a href="https://www.numworks.com/calculator/update/" target="_blank" rel="noopener">numworks.com/calculator/update</a>, then run the update a second time so both copies of the software are current. After that, plug the calculator back in and connect again.';
+        $('nw-install').hidden = true;
+        $('nw-connect').textContent = 'Connect calculator';
+        $('nw-connect').classList.remove('ghost');
+        $('nw-meter').hidden = $('nw-meter-text').hidden = true;
+        refresh();
+        return;
+      }
       cal = info;
       var have = info.apps.map(function(a){ return norm(a.name); });
       if (have.length) {
@@ -205,7 +225,8 @@ footer a:hover{color:var(--ink)}
 
     function setup(){
       if (!usb) {
-        $('nw-steps').innerHTML = '<li><span>Download a game below. It saves as a file ending in .nwa.</span></li>' +
+        $('nw-steps').innerHTML = '<li><span>Update the calculator first if its software is older than version 26: <a href="https://www.numworks.com/calculator/update/" target="_blank" rel="noopener">numworks.com/calculator/update</a>. On older software the games restart it, which erases everything on it.</span></li>' +
+          '<li><span>Download a game below. It saves as a file ending in .nwa.</span></li>' +
           '<li><span>Plug your calculator in and open <a href="https://my.numworks.com/apps" target="_blank" rel="noopener">my.numworks.com/apps</a> in Chrome or Edge.</span></li>' +
           '<li><span>Add the files and click Install. Keep the calculator plugged in until it finishes.</span></li>';
         say('Use Chrome or Edge to install from here', 'This browser cannot talk to a calculator over USB. Open this page in Chrome or Edge on a computer to install with one click, or download the games below.');

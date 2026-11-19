@@ -47,7 +47,7 @@ def file_for(game):
 
 def flash_size(path):
     """Bytes the app takes on the calculator: its header plus every loaded section with contents.
-    Comes out a little under what the linker produces, so a small margin is added."""
+    Comes out up to about 400 bytes under what NumWorks' linker produces, so a margin is added."""
     b = open(path, "rb").read()
     if b[:4] != b"\x7fELF" or b[4] != 1 or b[5] != 1:
         raise ValueError(f"{path} is not a 32-bit little-endian ELF file")
@@ -59,7 +59,7 @@ def flash_size(path):
         if flags & 2 and typ not in (8, 0x70000001):  # loaded, and not .bss or unwind tables
             a = max(align, 1)
             total = (total + a - 1) // a * a + size
-    return total + 256
+    return total + 512
 
 
 def main():
