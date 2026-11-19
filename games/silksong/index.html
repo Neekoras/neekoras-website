@@ -60,7 +60,7 @@
         // this site's server with the player's save code when the game crashes (Unity's error alert), or when the
         // player presses "Report a problem" in the cloud panel. Repeated lines are folded into one with a count.
         // This page's build. version.txt next to the page holds the same string; bump both on every deploy.
-        window.SK_BUILD = "2026-11-13.1";
+        window.SK_BUILD = "2026-11-19.1";
         (function () {
             const LOG = [], MAX = 600, start = Date.now();
             let last = null, sent = 0;
@@ -798,7 +798,7 @@
         // which also makes browsers replace the copy they saved).
         const PATCH = "https://neekoras.com/games/silksong/patch/";
         const realFetch = window.fetch.bind(window);
-        const CATALOG_URL = PATCH + (USE_SPLIT ? "catalog.v5g.bin" : "catalog.v4i.bin");      // v5g/v4i: v5f/v4h with the CRC/size of the preload-fixed audio-atmos (SERVED below); v5f/v4h: v5d/v4g with sprites-scenery s1 and prefabs v6 (textures in group bundles, below); v4b: scene dependency lists trimmed to what each scene references, plus the title set; v4d: hornet_scenes CRC of the audio-patched copy; v5: scenes from the split bundles; v4e/v5b: prefabs v5 + menu_title v2
+        const CATALOG_URL = PATCH + (USE_SPLIT ? "catalog.v5h.bin" : "catalog.v4i.bin");      // v5h: v5g with the CRC/size of the Belltown_Shrine scene bundle below (PATCHED, w1); v5g/v4i: v5f/v4h with the CRC/size of the preload-fixed audio-atmos (SERVED below); v5f/v4h: v5d/v4g with sprites-scenery s1 and prefabs v6 (textures in group bundles, below); v4b: scene dependency lists trimmed to what each scene references, plus the title set; v4d: hornet_scenes CRC of the audio-patched copy; v5: scenes from the split bundles; v4e/v5b: prefabs v5 + menu_title v2
         // audio-atmos v1: m_PreloadAudioData switched on for the 9 atmos clips that had it off (atmos_web_memory is the Memory_Needolin atmos), nothing else changed
         const SERVED = { "packed-scenes-menu_title_scenes_all_ca92c585bc287234740cb53ded3c68d5.bundle": "menu_title.v2.bundle",
             "packed-audio-atmos_assets_all_b008c5fdb92b5563eaaf822ba425dd8d.bundle": "audio-atmos.v1.bundle" };
@@ -823,7 +823,11 @@
             // other files point at directly stay. Its sprites, animations and materials point at the groups (agents/split2)
             "packed-sprites-scenery_assets_all_39cc8fd6577083e676edf1e1a61fcaa9.bundle": { file: "sprites-scenery.s1.deflate", csize: 48958233, usize: 55069539, tag: "s1", old: [] },
             // prefabs v6: v5 with 128 of its 144 Texture2D objects moved the same way into the PAYLOAD_P6 group bundles (agents/split2)
-            "packed-prefabs_assets_all_b19c0cf6b825f4cf18264a6c8f5765a6.bundle": { file: "prefabs.v6.deflate", csize: 37842646, usize: 42280898, tag: "v6", old: ["v1", "v2", "v3", "v4", "v5"] }
+            "packed-prefabs_assets_all_b19c0cf6b825f4cf18264a6c8f5765a6.bundle": { file: "prefabs.v6.deflate", csize: 37842646, usize: 42280898, tag: "v6", old: ["v1", "v2", "v3", "v4", "v5"] },
+            // Belltown_Shrine w1: after the Widow dies her FSM goes from "Hornet Connect" straight to "Final Bind Burst". The bind prompt loop in
+            // between waits on an animation signal that never arrives in this build, so the game hung there and the Needolin memory never loaded.
+            // The split build only; ?nosplit still has the hang.
+            "packed-scenes-hornet_split_belltown_shrine_52903872cd6384ce735074c913180c19.bundle": { file: "split/packed-scenes-hornet_split_belltown_shrine_52903872cd6384ce735074c913180c19.w1.deflate", csize: 374546, usize: 549000, tag: "w1", old: [] }
         };
         // Bundles still installed from the port's zip but rewritten on the way in by an APT2 edit script
         // (audiopatch.js, made by agents/audiopatch/patch_audio.py): AudioClip references written back into the
