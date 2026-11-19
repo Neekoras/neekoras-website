@@ -47,8 +47,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 #air{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
 .hero>div,.hero>dl,.hero>.down{position:relative;z-index:1}
 .until{position:absolute;z-index:1;left:var(--pad);top:56px;padding:6px 10px;background:color-mix(in srgb,var(--bg) 70%,transparent);font-variant-numeric:tabular-nums;pointer-events:none}
+.until span{display:block}.until span[hidden]{display:none}.until span+span{margin-top:2px}
 h1{font:700 clamp(56px,11.5vw,176px)/.86 var(--sans);letter-spacing:-.055em;text-transform:lowercase}
 .ln{display:block;overflow:hidden;padding-bottom:.1em;margin-bottom:-.1em}
+.ln.hi{font-size:.26em;font-weight:500;line-height:1.1;letter-spacing:-.03em;padding-left:.12em;margin-bottom:.12em;opacity:.8;text-shadow:0 1px 14px rgba(5,11,20,.4)}
 .ln>span{display:block;transform:translateY(105%);animation:rise 1s var(--out) forwards;animation-delay:var(--d,0ms)}
 @keyframes rise{to{transform:none}}
 h1 i{font-style:normal;color:var(--sig)}
@@ -176,7 +178,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
   <canvas id="air" aria-hidden="true"></canvas>
   <p class="until mono" id="until" hidden></p>
   <div>
-    <h1><span class="ln"><span style="--d:60ms">hi, i’m</span></span><span class="ln"><span style="--d:170ms">nicholas<i>.</i></span></span></h1>
+    <h1><span class="ln hi"><span style="--d:60ms">hi, i’m</span></span><span class="ln"><span style="--d:170ms">nicholas<i>.</i></span></span></h1>
     <p class="lede">Software developer in the Bay Area. I build working products in a day, and I have won hackathons at Y Combinator, AGI House and Entrepreneurs First.</p>
   </div>
   <dl class="spec mono" id="spec">
@@ -254,7 +256,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
   </div>
 </div>
 
-<script src="/scene.js?v=2"></script>
+<script src="/scene.js?v=3"></script>
 <script>
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches, fine = matchMedia("(hover:hover) and (pointer:fine)").matches;
 const $ = (s) => document.querySelector(s);

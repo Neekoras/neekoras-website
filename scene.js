@@ -6,7 +6,8 @@
    The calendar is California's too. From mid-November to New Year's Day there is a lit tree on
    the cliff and snow: light flurries always, heavier when the real weather is rain. Santa crosses
    the sky from December 20 to 25, and fireworks go up from New Year's Eve evening through New
-   Year's Day. `count` is an element that gets a countdown: to Christmas from December 1, then to
+   Year's Day. `count` is an element that gets a small status line (the time in San Francisco, the
+   temperature and the weather) and under it a countdown: to Christmas from December 1, then to
    the new year from December 26. ?date=12-25 previews a date.
    lakeScene({ canvas, host, name, count, rays, reduce }) fills `canvas` to cover `host`; the shore line is
    kept just above `name`, `rays: false` leaves the rays out, `reduce` draws one still frame.
@@ -61,6 +62,10 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
   let W = 0, H = 0, img, buf, gw = 0, gh = 0, cur, prev, rays = [], mouse = null, last = 0, acc = 0, raf = 0, visible = true;
   let scene, skyM, shore = 0, skyTop = 36, peak = 0, top, stars = [], falls = [], mist = [], fallAcc = 0, mistAcc = 0;
   let clouds = [], drops = [], schools = [], lamps = [], beacons = [], jump = null, jumpIn = 4000, birds = null, birdIn = 7000, flash = 0, boltIn = 5000, rainAcc = 0;
+  const LABEL = { clear: "Clear", partly: "Partly cloudy", cloudy: "Cloudy", overcast: "Overcast", fog: "Fog", rain: "Rain", storm: "Storm" };
+  const CLOCK = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" });
+  let lineNow, lineCount;
+  if (tag) { lineNow = document.createElement("span"); lineCount = document.createElement("span"); tag.replaceChildren(lineNow, lineCount); tag.hidden = false; }
   let shift = 0, bulbs = [], star = 0, santa = null, santaIn = 3500, rockets = [], sparks = [], fwIn = 600;
 
   // Where the sun and moon are over San Francisco right now (low-precision almanac formulas, good to about a degree).
@@ -488,20 +493,30 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
   document.addEventListener("visibilitychange", start);
   addEventListener("resize", () => { size(); if (reduce) render(); });
   const refresh = () => { if (!W) return; look(); build(); if (reduce) render(); };
-  // Countdown label: to Christmas (midnight on the 25th, Pacific) from December 1, then to the new year from the 26th.
+  // The label: the time, temperature and weather in San Francisco, and under it a countdown to
+  // Christmas (midnight on the 25th, Pacific) from December 1, then to the new year from the 26th.
   function tick() {
     if (!tag) return;
     const now = Date.now() + shift, p = pacific(now), two = (n) => String(n).padStart(2, "0");
+    const status = "San Francisco " + CLOCK.format(now) + (env.known && env.temp != null ? " · " + Math.round(env.temp * 9 / 5 + 32) + "°F" : "") + (env.known ? " · " + LABEL[env.sky] : "");
+    if (lineNow.textContent !== status) lineNow.textContent = status;
     const to = p.month !== 12 ? null : p.day < 25 ? ["Christmas", Date.UTC(p.year, 11, 25, 8)] : p.day > 25 ? [String(p.year + 1), Date.UTC(p.year + 1, 0, 1, 8)] : null;
     let text = p.month === 12 && p.day === 25 ? "Merry Christmas" : p.month === 1 && p.day === 1 ? "Happy New Year" : "";
     if (to) { const sec = Math.max(0, Math.floor((to[1] - now) / 1000)); text = to[0] + " in " + Math.floor(sec / 86400) + "d " + two(Math.floor(sec % 86400 / 3600)) + "h " + two(Math.floor(sec % 3600 / 60)) + "m" + (reduce ? "" : " " + two(sec % 60) + "s"); }
-    if (tag.textContent !== text) tag.textContent = text;
-    tag.hidden = !text;
+    if (lineCount.textContent !== text) lineCount.textContent = text;
+    lineCount.hidden = !text;
   }
-  function weather() {
-    const use = (sky, wind) => { if (WX[q.get("sky")]) sky = q.get("sky"); env.wind = wind; if (sky !== env.sky) { env.sky = sky; env.wx = WX[sky]; refresh(); } };
-    fetch("/weather.json", { cache: "no-store" }).then((r) => r.json())
-      .then((j) => use(WX[j.sky] && Date.now() - Date.parse(j.at) < 3 * 3600000 ? j.sky : "clear", clamp(+j.wind || 8, 0, 60))).catch(() => use("clear", 8));
+  function weather() { // `known` is false when the file is missing or stale, and then the label shows only the time
+    const use = (sky, wind, temp, known) => {
+      if (WX[q.get("sky")]) { sky = q.get("sky"); known = true; }
+      env.wind = wind; env.temp = temp; env.known = known;
+      if (sky !== env.sky) { env.sky = sky; env.wx = WX[sky]; refresh(); }
+      tick();
+    };
+    fetch("/weather.json", { cache: "no-store" }).then((r) => r.json()).then((j) => {
+      const fresh = !!WX[j.sky] && Date.now() - Date.parse(j.at) < 3 * 3600000;
+      use(fresh ? j.sky : "clear", clamp(+j.wind || 8, 0, 60), fresh && typeof j.temp === "number" ? j.temp : null, fresh);
+    }).catch(() => use("clear", 8, null, false));
   }
   setInterval(refresh, 60000); setInterval(weather, 600000); weather();
   size(); if (reduce) render(); else start();
