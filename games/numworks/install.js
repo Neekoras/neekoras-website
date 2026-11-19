@@ -1,21 +1,24 @@
 /*
  * Puts games on a NumWorks calculator straight from the page, over USB (WebUSB, Chrome and Edge).
  *
- * The calculator speaks DFU (with ST's DfuSe extensions) while it shows its "connected" screen. We read
- * its software headers to find where third-party apps go, ask the server to link each game for that
- * spot (/games/numworks/api/link), then erase and write the app area one after another.
+ * The calculator speaks DFU (with ST's DfuSe extensions) while it shows its "connected" screen. We ask
+ * which of its two software slots is running, read that slot's header to find where third-party apps
+ * go, ask the server to link each game for that spot (/games/numworks/api/link), then erase and write
+ * the app area one after another. Last comes a DFU "leave" at the start of the app area, the way
+ * NumWorks' own installer ends: the calculator goes back to its home screen with the new apps.
  *
  *   NWInstall.supported            true when this browser can talk to USB devices
  *   NWInstall.connect()            asks the user to pick the calculator; resolves to its info
- *   NWInstall.install(files, cb)   replaces the calculator's apps with these .nwa files, in order
+ *   NWInstall.install(files, cb)   replaces the calculator's apps with these .nwa files, in order,
+ *                                  then ends the connection; connect() again before another install
  */
 (function () {
   var SECTOR = 0x10000; // Epsilon lines apps up on 64 KiB boundaries on every model
-  var APP_MAGIC = 0xdec0beba, KERNEL_MAGIC = 0xdec00df0, USERLAND_MAGIC = 0xdec0edfe;
+  var APP_MAGIC = 0xdec0beba, KERNEL_MAGIC = 0xdec00df0, USERLAND_MAGIC = 0xdec0edfe, SLOT_MAGIC = 0xefeedbba;
   var DNLOAD = 1, UPLOAD = 2, GETSTATUS = 3, CLRSTATUS = 4, ABORT = 6;
-  var IDLE = 2, DNBUSY = 4, ERROR = 10;
+  var IDLE = 2, DNBUSY = 4, MANIFEST = 7, ERROR = 10;
 
-  var dev = null, ifnum = 0, xfer = 2048, map = [], info = null;
+  var dev = null, ifnum = 0, xfer = 2048, map = [], info = null, flashAlt = 0, ramAlt = null;
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function u32(b, o) { return (b[o] | b[o + 1] << 8 | b[o + 2] << 16 | b[o + 3] << 24) >>> 0; }
@@ -102,6 +105,24 @@
     }
   }
 
+  // Ends the session the way NumWorks' own installer does: point at the start of the running slot's
+  // app area and send an empty download. The calculator leaves its connected screen and stops
+  // answering DFU. The address must be that app area: any other one makes the calculator restart.
+  async function leave(addr) {
+    await idle();
+    await command(0x21, addr);
+    await out(DNLOAD, 2, new Uint8Array(0));
+    try {
+      for (var i = 0; i < 40; i++) {
+        var s = await status();
+        if (s.state === MANIFEST) break;
+        await sleep(Math.max(s.wait, 25));
+      }
+    } catch (e) {} // already gone back to its home screen
+    try { await dev.close(); } catch (e) {}
+    dev = null; info = null;
+  }
+
   // DFU's functional descriptor says how big each transfer may be.
   async function transferSize() {
     var head = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0200, index: 0 }, 9);
@@ -112,8 +133,47 @@
     return 2048;
   }
 
-  // Finds the running software's userland header, which says where apps live and what RAM they get.
+  // Reads one userland header: where apps live, what RAM they get and where the trampoline is.
+  function layoutFrom(h, at, slot, version) {
+    if (u32(h, 0) !== USERLAND_MAGIC) return null;
+    var foot = -1;
+    for (var w = 2; w < 20; w++) if (u32(h, w * 4) === USERLAND_MAGIC) { foot = w; break; }
+    if (foot < 9) return null;
+    var vec = (foot + 1) * 4, draw = u32(h, vec + 8);
+    var L = {
+      slot: slot, version: version,
+      start: u32(h, 20), end: u32(h, 24), ram: u32(h, 28), ramEnd: u32(h, 32),
+      tramp: at + vec + 8,
+    };
+    return (draw & 1) && L.start % SECTOR === 0 && L.start < L.end && L.ram < L.ramEnd ? L : null;
+  }
+
+  // A calculator holds two copies of its software, in two slots, and runs one of them. It leaves a
+  // note at the start of its RAM saying which: a magic number, the running kernel's header, the
+  // running userland's header, the magic number again. NumWorks' own installer reads the same note.
+  async function runningSlot() {
+    if (!ramAlt) return null;
+    var note = null;
+    try {
+      await dev.selectAlternateInterface(ifnum, ramAlt.alt);
+      var b = await read(ramAlt.start, 16);
+      if (b.length === 16 && u32(b, 0) === SLOT_MAGIC && u32(b, 12) === SLOT_MAGIC) note = { kernel: u32(b, 4), userland: u32(b, 8) };
+    } catch (e) {}
+    await dev.selectAlternateInterface(ifnum, flashAlt);
+    return note;
+  }
+
+  // Finds the running software's userland header. Games written beside the other slot are never
+  // shown, so the slot comes from the calculator's own note; only software too old to leave one is
+  // found by looking at both slots.
   async function readLayout() {
+    var note = await runningSlot();
+    if (note) {
+      var k0 = await read(note.kernel, 0x18);
+      var L0 = layoutFrom(await read(note.userland, 0x60), note.userland, (note.userland & 0xffc00000) >>> 0,
+        u32(k0, 0) === KERNEL_MAGIC ? cstr(k0, 4) : "");
+      if (L0) return L0;
+    }
     var found = [];
     for (var slot of [0x90000000, 0x90400000]) {
       var s = sectorAt(slot);
@@ -126,21 +186,13 @@
         if (!hs || !hs.read) continue;
         var h = await read(slot + off, 0x60);
         if (u32(h, 0) !== USERLAND_MAGIC) continue;
-        var foot = -1;
-        for (var w = 2; w < 20; w++) if (u32(h, w * 4) === USERLAND_MAGIC) { foot = w; break; }
-        if (foot < 9) continue;
-        var vec = (foot + 1) * 4, draw = u32(h, vec + 8);
-        var L = {
-          slot: slot, version: version,
-          start: u32(h, 20), end: u32(h, 24), ram: u32(h, 28), ramEnd: u32(h, 32),
-          tramp: slot + off + vec + 8,
-        };
-        if ((draw & 1) && L.start % SECTOR === 0 && L.start < L.end && L.ram < L.ramEnd) found.push(L);
+        var L = layoutFrom(h, slot + off, slot, version);
+        if (L) found.push(L);
         break;
       }
     }
     if (!found.length) fail("This calculator's software is too old to install games from here. Update it at numworks.com/update, then try again.");
-    found.sort(function (a, b) { return b.version.localeCompare(a.version, undefined, { numeric: true }); });
+    if (found.length > 1) fail("This calculator did not say which copy of its software is running, so games cannot be put in the right place. Update it at numworks.com/update, then try again.");
     return found[0];
   }
 
@@ -190,7 +242,9 @@
       console.warn("NumWorks installer: DFU interfaces seen", alts);
       fail("The calculator is not ready yet. Unplug it, plug it back in, wait for its screen to say it is connected, then click Connect again.");
     }
-    ifnum = flash.iface;
+    ifnum = flash.iface; flashAlt = flash.alt;
+    var sram = alts.filter(function (a) { return /^@SRAM/.test(a.name) && a.iface === flash.iface; })[0];
+    ramAlt = sram ? { alt: sram.alt, start: parseInt(sram.name.split("/")[1], 16) } : null;
     await dev.claimInterface(ifnum);
     await dev.selectAlternateInterface(ifnum, flash.alt);
     map = parseMap(flash.name);
@@ -261,7 +315,9 @@
       for (var b = 0; b < 32; b++) if (back[b] !== images[k].data[b]) fail("Writing did not stick. Unplug the calculator, plug it back in and try again.");
     }
     info.apps = await readApps(L);
-    return info;
+    var after = info;
+    await leave(L.start);
+    return after;
   }
 
   window.NWInstall = {

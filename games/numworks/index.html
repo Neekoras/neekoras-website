@@ -145,7 +145,7 @@ footer a:hover{color:var(--ink)}
 </footer>
 
 <script>document.getElementById("yr").textContent = new Date().getFullYear();</script>
-<script src="/games/numworks/install.js?v=3"></script>
+<script src="/games/numworks/install.js?v=4"></script>
 <script>
   (function(){
     var base = '/games/numworks/release/';
@@ -243,6 +243,11 @@ footer a:hover{color:var(--ink)}
               : 'The calculator has no games from here on it now.', 'ok');
           meter(1, mb(used()) + ' of ' + mb(cal.space) + ' used');
           refresh();
+          // the install ends the connection, so the next change starts with Connect again
+          cal = null;
+          $('nw-install').hidden = true;
+          $('nw-connect').textContent = 'Connect calculator';
+          $('nw-connect').classList.remove('ghost');
         }, function(e){
           busy = false; refresh();
           $('nw-p-label').textContent = 'Stopped';
