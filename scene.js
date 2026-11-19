@@ -61,16 +61,21 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
 
   let W = 0, H = 0, img, buf, gw = 0, gh = 0, cur, prev, rays = [], mouse = null, last = 0, acc = 0, raf = 0, visible = true;
   let scene, skyM, shore = 0, skyTop = 36, peak = 0, top, stars = [], falls = [], mist = [], fallAcc = 0, mistAcc = 0;
+  let surge = 0, flow = 0, lastY = scrollY; // surge: how hard the page is being scrolled, 0 to 1
   let clouds = [], drops = [], schools = [], lamps = [], beacons = [], jump = null, jumpIn = 4000, birds = null, birdIn = 7000, flash = 0, boltIn = 5000, rainAcc = 0;
   const LABEL = { clear: "Clear", partly: "Partly cloudy", cloudy: "Cloudy", overcast: "Overcast", fog: "Fog", rain: "Rain", storm: "Storm" };
   const CLOCK = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" });
   let lineNow, lineCount;
-  if (tag) { lineNow = document.createElement("span"); lineCount = document.createElement("span"); tag.replaceChildren(lineNow, lineCount); tag.hidden = false; }
+  if (tag) { lineNow = document.createElement(reduce ? "span" : "button"); if (!reduce) { lineNow.type = "button"; lineNow.title = "Play a whole day in ten seconds"; lineNow.addEventListener("click", () => play()); } lineCount = document.createElement("span"); tag.replaceChildren(lineNow, lineCount); tag.hidden = false; }
+  let warp = 0, lapse = null, orbs = [], gate = null, wish = null, real = { sky: "clear", known: false }, typed = ""; // warp: how far the time-lapse has run ahead of the clock
+  const CARS = Array.from({ length: 9 }, (_, i) => ({ sp: 0.000034 + hash(i * 17 + 3) * 0.000026, ph: hash(i * 29 + 5), dir: i % 2 ? 1 : -1 }));
+  const HEAD = rgb("#fff3c4"), TAILC = rgb("#ff5a4a");
+  const WORDS = { rain: "rain", storm: "storm", thunder: "storm", fog: "fog", snow: "rain", sun: "clear", clear: "clear", cloud: "cloudy" };
   let shift = 0, bulbs = [], star = 0, santa = null, santaIn = 3500, rockets = [], sparks = [], fwIn = 600;
 
   // Where the sun and moon are over San Francisco right now (low-precision almanac formulas, good to about a degree).
   const q = new URLSearchParams(location.search), hourArg = parseFloat(q.get("hour")), dateArg = /^(\d\d?)-(\d\d?)$/.exec(q.get("date") || ""), LAT = 37.77 * RAD, LON = -122.42;
-  const env = { el: 0, az: 180, mel: -90, maz: 0, phase: 0, night: 0, sky: WX[q.get("sky")] ? q.get("sky") : "clear", wind: 8 };
+  const env = { el: 0, az: 180, mel: -90, maz: 0, phase: 0, night: 0, sky: WX[q.get("sky")] ? q.get("sky") : "clear", wind: 8, wished: false };
   env.wx = WX[env.sky];
   const FMT = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", hourCycle: "h23" });
   const pacific = (ms) => { const o = {}; for (const p of FMT.formatToParts(new Date(ms))) o[p.type] = +p.value; return o; };
@@ -78,8 +83,10 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     let ms = Date.now(), p = pacific(ms);
     if (dateArg) { ms += Date.UTC(p.year, dateArg[1] - 1, +dateArg[2]) - Date.UTC(p.year, p.month - 1, p.day); p = pacific(ms); }
     if (hourArg >= 0 && hourArg <= 24) { ms += (hourArg - p.hour - p.minute / 60) * 3600000; p = pacific(ms); }
-    shift = ms - Date.now(); // how far a previewed date or hour is from the real clock
-    env.snow = (p.month === 11 && p.day >= 15) || p.month === 12 || (p.month === 1 && p.day === 1); // the season of the tree and the snow
+    ms += warp; p = pacific(ms);
+    shift = ms - Date.now(); // how far a previewed date or hour, or the time-lapse, is from the real clock
+    env.tree = (p.month === 11 && p.day >= 15) || p.month === 12 || (p.month === 1 && p.day === 1); // the season of the tree and the snow
+    env.snow = env.tree || !!(wish && wish.snow); // typing "snow" brings the snow without the tree
     env.santa = p.month === 12 && p.day >= 20 && p.day <= 25;
     env.fireworks = (p.month === 12 && p.day === 31 && p.hour >= 18) || (p.month === 1 && p.day === 1);
     const d = ms / 86400000 - 10957.5, g = (357.529 + 0.98560028 * d) * RAD, e = (23.439 - 0.00000036 * d) * RAD;
@@ -120,6 +127,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     const g = env.wx.g, sr = Math.max(8, V * 0.05), hz = shore - V * 0.04, n = SKY.length - 1;
     const lift = (el) => hz - (el < 0 ? el / 80 : Math.pow(Math.min(1, el / 80), 0.75)) * (hz - skyTop - sr), across = (az) => W * (0.4 + (az - 180) / 300); // the view looks south: east on the left, and noon sits over the gap
     const sx = across(env.az), sy = lift(env.el), glow = (1 - g * 0.8) * (2.8 - 1.3 * clamp(env.el / 20, 0, 1)) * clamp((env.el + 9) / 9, 0, 1);
+    orbs = sy < shore && g < 0.7 ? [{ x: sx, y: sy, r: sr }] : []; // what a click can land on to play the day
     for (let y = 0; y < shore; y++) for (let x = 0; x < W; x++) {
       const d = Math.hypot(x - sx, (y - sy) * 1.15);
       const f = Math.min(n, Math.pow(y / shore, 1.25) * n + Math.max(0, 1 - d / (sr * 5)) * glow), i = Math.floor(f);
@@ -127,6 +135,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     }
     if (env.mel > 2 && env.el < 5 && g < 0.7) { // the moon, lit on the side that faces the sun
       const mx = Math.round(across(env.maz)), my = Math.round(lift(env.mel)), mr = Math.round(sr * 0.8), c = Math.cos(env.phase * TAU);
+      orbs.push({ x: mx, y: my, r: mr });
       for (let dy = -mr; dy <= mr; dy++) for (let dx = -mr; dx <= mr; dx++) {
         const x = mx + dx, y = my + dy, lim = Math.sqrt(Math.max(0, mr * mr - dy * dy));
         if (x < 0 || x >= W || y < 0 || y >= shore || Math.abs(dx) > lim) continue;
@@ -151,7 +160,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
       const leg = W > 500 ? 3 : 2, t1 = Math.round(b0 + span * 0.27), t2 = Math.round(b0 + span * 0.73), tt = deck - th, col = mix(C.gate, C.haze, 0.12), thin = mix(col, C.haze, 0.45);
       const cable = (x) => x < t1 ? tt + (deck - 1 - tt) * Math.pow((t1 - x) / (t1 - b0), 1.25) : x > t2 + leg ? tt + (deck - 1 - tt) * Math.pow((x - t2 - leg) / (b1 - t2 - leg), 1.25)
         : tt + (deck - 2 - tt) * (1 - Math.pow(2 * (x - t1 - leg / 2) / (t2 - t1) - 1, 2));
-      lamps = []; beacons = [];
+      lamps = []; beacons = []; gate = { b0, b1, deck };
       for (let x = b0; x <= b1; x++) {
         const cy = Math.round(cable(x));
         if ((x - b0) % 4 === 0) for (let y = cy + 1; y < deck; y++) paint(y * W + x, thin);
@@ -193,7 +202,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     }
     peak = shore; for (let x = 0; x < W; x++) if (top[x] < peak) peak = top[x]; // the highest cliff top
     bulbs = []; star = 0;
-    if (env.snow) { // the Christmas tree: three tiers on the right-hand cliff, strung with lights, a star on top
+    if (env.tree) { // the Christmas tree: three tiers on the right-hand cliff, strung with lights, a star on top
       const tx = Math.round(W * 0.61), h = Math.round(clamp(V * 0.1, 14, 38)), base = top[tx], tier = (h - 2) / 3;
       if (base < shore - 6 && base - h > 3) {
         for (let r = 0; r < h; r++) {
@@ -245,6 +254,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     // schools follow one wandering path, each fish a little behind and beside the last; the koi go alone
     schools = Array.from({ length: small ? 2 : 3 }, (_, i) => ({ s: i * 2.3, ph: i * 2.1 + 0.7, spd: 0.00011 + i * 0.00002, fx: 0.3 + 0.4 * ((i * 0.41 + 0.2) % 1), fy: 0.34 + 0.4 * ((i * 0.57 + 0.1) % 1), n: small ? 5 : 7 }))
       .concat(Array.from({ length: small ? 1 : 2 }, (_, i) => ({ s: i * 3.1 + 1, ph: i * 1.3 + 4, spd: 0.00006 + i * 0.000015, fx: 0.35 + 0.3 * i, fy: 0.5 - 0.12 * i, n: 1, koi: true })));
+    for (const o of schools) if (o.koi) { const [x, y] = swim(o, o.s), [x1, y1] = swim(o, o.s + 0.012), l = Math.hypot(x1 - x, y1 - y) || 1; Object.assign(o, { x, y, ox: 0, oy: 0, dx: (x1 - x) / l, dy: (y1 - y) / l }); }
     jump = birds = santa = null; rockets = []; sparks = [];
     const n = wantRays ? (small ? 2 : 4) : 0;
     rays = Array.from({ length: n }, (_, i) => {
@@ -297,12 +307,25 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
       for (const t of f.tail) { const dx = t.x - px, dy = t.y - py, d = Math.hypot(dx, dy) || 1; t.x = px + (dx / d) * 3; t.y = py + (dy / d) * 3; px = t.x; py = t.y; }
       f.wake += dt; if (f.wake > 420) { f.wake = 0; poke(f.x, f.y, 0.12 * f.sz); }
     }
-    fallAcc += dt; if (fallAcc > 240) { fallAcc = 0; for (const f of falls) poke(f.x + Math.random() * f.w, shore + 7, 0.02 * f.w); } // the falls keep the lake moving
-    mistAcc += dt; if (mistAcc > 110 && mist.length < 22) { mistAcc = 0; const f = falls[Math.random() < 0.8 ? 0 : 1]; mist.push({ x: f.x - 2 + Math.random() * (f.w + 4), y: shore - 2, vx: (Math.random() - 0.5) * 0.014, vy: -(0.005 + Math.random() * 0.009), life: 1 }); }
+    surge *= Math.pow(0.9975, dt); flow += dt * (1 + 2.6 * surge); // scrolling makes the falls pour harder, then they calm
+    fallAcc += dt * (1 + 5 * surge); if (fallAcc > 240) { fallAcc = 0; for (const f of falls) poke(f.x + Math.random() * f.w, shore + 7, (0.02 + 0.05 * surge) * f.w); } // the falls keep the lake moving
+    mistAcc += dt * (1 + 4 * surge); if (mistAcc > 110 && mist.length < 22 + 26 * surge) { mistAcc = 0; const f = falls[Math.random() < 0.8 ? 0 : 1]; mist.push({ x: f.x - 2 + Math.random() * (f.w + 4), y: shore - 2, vx: (Math.random() - 0.5) * 0.014, vy: -(0.005 + Math.random() * 0.009), life: 1 }); }
     for (const m of mist) { m.x += m.vx * dt; m.y += m.vy * dt; m.life -= dt / 2600; }
     mist = mist.filter((m) => m.life > 0);
-    for (const c of clouds) { c.x += c.sp * (1 + env.wind / 15) * dt; if (c.x > W) c.x = -c.w; }
-    for (const o of schools) o.s += o.spd * dt;
+    for (const c of clouds) { c.x += c.sp * (1 + env.wind / 15) * dt * (lapse ? 9 : 1); if (c.x > W) c.x = -c.w; }
+    for (const o of schools) {
+      o.s += o.spd * dt;
+      if (!o.koi) continue; // the koi leave their path to come and look at the pointer, circling just short of it
+      const [bx, by] = swim(o, o.s); let tx = 0, ty = 0;
+      if (mouse && mouse.y > shore + 8) {
+        const mx = mouse.x + 11 * Math.cos(o.s * 38 + o.ph), my = mouse.y + 6 * Math.sin(o.s * 38 + o.ph), d = Math.hypot(mx - bx, my - by);
+        if (d < 130) { tx = mx - bx; ty = my - by; }
+      }
+      const k = 1 - Math.pow(0.9978, dt); o.ox += (tx - o.ox) * k; o.oy += (ty - o.oy) * k;
+      const x = bx + o.ox, y = clamp(by + o.oy, shore + 12, H - 6), vx = x - o.x, vy = y - o.y, v = Math.hypot(vx, vy);
+      if (v > 0.0005 * dt) { const h = 1 - Math.pow(0.994, dt); o.dx += (vx / v - o.dx) * h; o.dy += (vy / v - o.dy) * h; const l = Math.hypot(o.dx, o.dy) || 1; o.dx /= l; o.dy /= l; }
+      o.x = x; o.y = y;
+    }
     if (env.snow) for (const d of drops) { // flakes fall slowly and sway
       d.y += d.sp * 0.11 * dt; d.x += (Math.sin(d.y * 0.05 + d.sp * 40) * 0.012 - 0.004 - env.wind * 0.0004) * dt;
       if (d.y > H) { d.y -= H; d.x = Math.random() * W * 1.15; } if (d.x < -2) d.x += W + 4;
@@ -385,6 +408,11 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     if (dusk > 0.05) { // lamps along the bridge deck and a slow red light on each tower
       for (const i of lamps) buf[i] = mix(buf[i], LAMP, env.night * 0.9);
       if (Math.floor(t / 900) % 2 === 0) for (const i of beacons) buf[i] = mix(buf[i], KOI[0], env.night);
+      if (gate) for (let k = 0, n = W < 330 ? 4 : CARS.length, span = gate.b1 - gate.b0; k < n; k++) { // traffic: headlights one way, tail lights the other
+        const c = CARS[k], u = (t * c.sp + c.ph) % 1, x = Math.round(c.dir > 0 ? gate.b0 + u * span : gate.b1 - u * span), i = gate.deck * W + x;
+        buf[i] = mix(buf[i], c.dir > 0 ? HEAD : TAILC, env.night * 0.95);
+        if (x > gate.b0 && x < gate.b1) buf[i + c.dir] = mix(buf[i + c.dir], c.dir > 0 ? HEAD : TAILC, env.night * 0.4); // the glow ahead of it
+      }
     }
     // the lake mirrors what is above the shore, squashed and wobbling, fading into the water
     const RH = Math.min(Math.round(H * 0.11), H - shore - 2);
@@ -398,7 +426,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     const ft = Math.floor(t / 110);
     for (const f of falls) {
       for (let i = 0; i < f.w; i++) {
-        const c = f.col[i], x = f.x + i, off = t * c.sp + c.ph, edge = i === 0 || i === f.w - 1 ? 1 : 0;
+        const c = f.col[i], x = f.x + i, off = flow * c.sp + c.ph, edge = i === 0 || i === f.w - 1 ? 1 : 0;
         for (let y = f.top; y < shore; y++) {
           const v = hash(Math.floor((y - off) / c.len) * 7919 + i * 104729);
           buf[y * W + x] = WATER[Math.min(4, (y < f.top + 2 || v < 0.16 ? 0 : v < 0.42 ? 1 : v < 0.74 ? 2 : 3) + edge)];
@@ -421,7 +449,8 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     for (let n = 0; n < schools.length; n++) {
       const o = schools[n], dim = 1 - 0.45 * env.night;
       for (let i = 0; i < o.n; i++) {
-        const si = o.s - i * 0.03, [x, y] = swim(o, si), [x1, y1] = swim(o, si + 0.012), l = Math.hypot(x1 - x, y1 - y) || 1, dx = (x1 - x) / l, dy = (y1 - y) / l;
+        const si = o.s - i * 0.03; let [x, y] = swim(o, si), [x1, y1] = swim(o, si + 0.012), l = Math.hypot(x1 - x, y1 - y) || 1, dx = (x1 - x) / l, dy = (y1 - y) / l;
+        if (o.koi) { x = o.x; y = o.y; dx = o.dx; dy = o.dy; }
         const off = o.koi ? 0 : ((i * 7 + n * 3) % 5 - 2) * 2.4 + Math.sin(t * 0.003 + i), hx = x - dy * off, hy = y + dx * off, wag = Math.round(Math.sin(t * 0.012 + i * 2 + n));
         if (o.koi) {
           for (let j = 0; j < 6; j++) { const c = KOI[j === 1 || j === 4 ? 1 : 0]; dab(hx - dx * j, hy - dy * j, c, 0.9 * dim); if (j > 0 && j < 4) dab(hx - dx * j - dy, hy - dy * j + dx, c, 0.9 * dim); }
@@ -473,6 +502,11 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
   }
   function frame(now) {
     raf = 0; const dt = Math.min(now - last, 100); last = now;
+    if (lapse) { // a whole day in ten seconds, then back to the real clock
+      const u = Math.min(1, (now - lapse.t0) / 10000);
+      warp = u < 1 ? 86400000 * u * u * (3 - 2 * u) : 0; if (u >= 1) lapse = null;
+      if (!lapse || now - lapse.at > 45) { if (lapse) lapse.at = now; look(); build(); tick(); }
+    }
     step(dt); render(now);
     if (visible && !document.hidden) raf = requestAnimationFrame(frame);
   }
@@ -480,13 +514,16 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
 
   const at = (e) => { const r = hero.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; };
   let lastNode = -1;
+  const onOrb = (p) => !reduce && orbs.some((o) => Math.hypot(p.x - o.x, p.y - o.y) < Math.max(o.r * 1.5, 11));
+  const play = () => { if (!lapse && !reduce) { lapse = { t0: performance.now(), at: 0 }; start(); } };
   hero.addEventListener("pointermove", (e) => {
-    const p = at(e); if (e.pointerType === "mouse") mouse = p;
+    const p = at(e); if (e.pointerType === "mouse") { mouse = p; hero.style.cursor = onOrb(p) ? "pointer" : ""; }
     const node = Math.round(p.y / G) * gw + Math.round(p.x / G); if (node !== lastNode && p.y > shore) { lastNode = node; poke(p.x, p.y, 0.18); }
   });
   hero.addEventListener("pointerleave", () => { mouse = null; });
+  addEventListener("scroll", () => { const y = scrollY; surge = Math.min(1, surge + Math.abs(y - lastY) / 420); lastY = y; }, { passive: true });
   hero.addEventListener("pointerdown", (e) => { // a click drops a ring into the water and nudges nearby rays away
-    const p = at(e); poke(p.x, p.y, 2);
+    const p = at(e); if (onOrb(p)) { play(); return; } poke(p.x, p.y, 2);
     for (const f of rays) { const dx = f.x - p.x, dy = f.y - p.y, d = Math.hypot(dx, dy) || 1; if (d < 130) { f.vx += (dx / d) * 0.07; f.vy += (dy / d) * 0.07; } }
   });
   new IntersectionObserver((es) => { visible = es[0].isIntersecting; start(); }).observe(hero);
@@ -498,7 +535,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
   function tick() {
     if (!tag) return;
     const now = Date.now() + shift, p = pacific(now), two = (n) => String(n).padStart(2, "0");
-    const status = "San Francisco " + CLOCK.format(now) + (env.known && env.temp != null ? " · " + Math.round(env.temp * 9 / 5 + 32) + "°F" : "") + (env.known ? " · " + LABEL[env.sky] : "");
+    const status = "San Francisco " + CLOCK.format(now) + (env.known && env.temp != null ? " · " + Math.round(env.temp * 9 / 5 + 32) + "°F" : "") + (env.known ? " · " + (wish && wish.snow ? "Snow" : LABEL[env.sky]) : "");
     if (lineNow.textContent !== status) lineNow.textContent = status;
     const to = p.month !== 12 ? null : p.day < 25 ? ["Christmas", Date.UTC(p.year, 11, 25, 8)] : p.day > 25 ? [String(p.year + 1), Date.UTC(p.year + 1, 0, 1, 8)] : null;
     let text = p.month === 12 && p.day === 25 ? "Merry Christmas" : p.month === 1 && p.day === 1 ? "Happy New Year" : "";
@@ -506,18 +543,32 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     if (lineCount.textContent !== text) lineCount.textContent = text;
     lineCount.hidden = !text;
   }
-  function weather() { // `known` is false when the file is missing or stale, and then the label shows only the time
-    const use = (sky, wind, temp, known) => {
-      if (WX[q.get("sky")]) { sky = q.get("sky"); known = true; }
-      env.wind = wind; env.temp = temp; env.known = known;
-      if (sky !== env.sky) { env.sky = sky; env.wx = WX[sky]; refresh(); }
-      tick();
-    };
+  // The sky shown is the last word typed (for a minute), else a previewed ?sky=, else the real weather.
+  function apply() { // `known` is false when the weather file is missing or stale, and then the label shows only the time
+    const sky = wish ? wish.sky : WX[q.get("sky")] ? q.get("sky") : real.sky, snow = !!(wish && wish.snow);
+    env.known = real.known || !!wish || !!WX[q.get("sky")];
+    if (sky !== env.sky || snow !== env.wished) { env.sky = sky; env.wx = WX[sky]; env.wished = snow; refresh(); }
+    tick();
+  }
+  function weather() {
+    const use = (sky, wind, temp, known) => { real = { sky, known }; env.wind = wind; env.temp = temp; apply(); };
     fetch("/weather.json", { cache: "no-store" }).then((r) => r.json()).then((j) => {
       const fresh = !!WX[j.sky] && Date.now() - Date.parse(j.at) < 3 * 3600000;
       use(fresh ? j.sky : "clear", clamp(+j.wind || 8, 0, 60), fresh && typeof j.temp === "number" ? j.temp : null, fresh);
     }).catch(() => use("clear", 8, null, false));
   }
+  // Weather words: type rain, snow, storm, fog, cloud or sun anywhere on the page and the sky does it for a minute.
+  addEventListener("keydown", (e) => {
+    const el = e.target;
+    if (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1 || (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)))) return;
+    typed = (typed + e.key.toLowerCase()).slice(-8);
+    for (const w in WORDS) if (typed.endsWith(w)) {
+      typed = ""; if (wish) clearTimeout(wish.end);
+      wish = { sky: WORDS[w], snow: w === "snow", end: setTimeout(() => { wish = null; apply(); }, 60000) };
+      apply(); if (WORDS[w] === "storm") flash = 1;
+      break;
+    }
+  });
   setInterval(refresh, 60000); setInterval(weather, 600000); weather();
   size(); if (reduce) render(); else start();
   tick(); setInterval(tick, 1000);

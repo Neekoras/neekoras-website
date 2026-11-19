@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#050b14;--ink:#eef2f6;--soft:#7f8c9c;--line:#17222f;--sig:#f2a7c3;--glow:#b7a6ff;--warn:#ff8a5c;--well:#0a1320;--edge:#2a3747;--on:#0b0710;--dim:#74818f;
+:root{--bg:#050b14;--ink:#eef2f6;--soft:#7f8c9c;--line:#17222f;--sig:#f2a7c3;--glow:#b7a6ff;--tint:#d3caf5;--warn:#ff8a5c;--well:#0a1320;--edge:#2a3747;--on:#0b0710;--dim:#74818f;
   --out:cubic-bezier(.16,1,.3,1);--sans:"Schibsted Grotesk",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--pad:clamp(16px,3vw,40px)}
 *{box-sizing:border-box;margin:0}
 html{scroll-behavior:smooth;scroll-padding-top:24px;background:var(--bg)}
@@ -35,7 +35,11 @@ a{color:inherit;text-decoration:none}
 .sky canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
 .sky>.wrap{position:relative;z-index:1}
 .until{position:absolute;left:0;top:8px;padding:6px 10px;background:color-mix(in srgb,var(--bg) 70%,transparent);font-variant-numeric:tabular-nums;pointer-events:none}
-.until span{display:block}.until span[hidden]{display:none}.until span+span{margin-top:2px}
+.until span{display:block}.until span[hidden]{display:none}.until button+span{margin-top:2px}.until span+span{margin-top:2px}
+/* the clock line is a button: it plays the whole day in ten seconds */
+.until button{all:unset;display:block;box-sizing:border-box;margin:-16px -10px;padding:16px 10px;pointer-events:auto;cursor:pointer;transition:color .2s}
+.until button:hover{color:var(--tint)}
+.until button:focus-visible{outline:2px solid var(--glow);outline-offset:-10px}
 
 /* top bar */
 .bar{display:flex;justify-content:space-between;align-items:center;height:48px}
@@ -44,7 +48,7 @@ a{color:inherit;text-decoration:none}
 
 /* wordmark */
 .top{padding-top:clamp(116px,14vw,200px)}
-.top h1{font:900 clamp(92px,25.5vw,372px)/.78 var(--sans);letter-spacing:-.065em;text-transform:lowercase;margin-left:-.045em;white-space:nowrap;user-select:none}
+.top h1{font:900 clamp(68px,17vw,248px)/.78 var(--sans);letter-spacing:-.065em;text-transform:lowercase;margin-left:-.045em;white-space:nowrap;user-select:none}
 .under{display:grid;grid-template-columns:1fr auto;gap:20px 40px;align-items:end;margin-top:clamp(22px,3vw,40px);padding-bottom:clamp(28px,4vw,52px)}
 .under p{max-width:38ch;font-size:clamp(16px,1.35vw,19px);line-height:1.45}
 .under p a{text-decoration:underline;text-decoration-color:var(--soft);text-underline-offset:4px;transition:text-decoration-color .2s}
@@ -58,7 +62,7 @@ a{color:inherit;text-decoration:none}
 .find .n{font:400 12px/1 var(--mono);letter-spacing:.02em;text-transform:uppercase;color:var(--soft);white-space:nowrap}
 
 /* the shelf */
-.shelf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(22px,2.6vw,40px) clamp(14px,1.8vw,26px);padding-bottom:clamp(72px,10vw,140px)}
+.shelf{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(22px,2.6vw,40px) clamp(14px,1.8vw,26px);padding-bottom:clamp(72px,10vw,140px)}
 .g{display:flex;flex-direction:column;gap:12px;min-width:0;animation:drop .7s var(--out) both;animation-delay:calc(var(--i,0)*35ms)}
 .g[hidden]{display:none}
 @keyframes drop{from{opacity:0;transform:translateY(18px)}}
@@ -72,7 +76,7 @@ a{color:inherit;text-decoration:none}
 .g:nth-child(4n+1){--r:-1.1deg}.g:nth-child(4n+2){--r:.8deg}.g:nth-child(4n+3){--r:-.5deg}.g:nth-child(4n){--r:1.3deg}
 .g:nth-child(7n){--r:-1.6deg}.g:nth-child(1){--r:-.7deg}
 .lbl{display:flex;flex-direction:column;gap:3px;padding:0 2px}
-.lbl b{font:700 clamp(17px,1.5vw,21px)/1.15 var(--sans);letter-spacing:-.015em}
+.lbl b{font:700 clamp(15px,1.25vw,18px)/1.15 var(--sans);letter-spacing:-.015em}
 .lbl .mono{color:var(--soft)}
 .play{position:absolute;left:12px;bottom:12px;padding:8px 12px 7px;border-radius:99px;border:1px solid color-mix(in srgb,var(--glow) 55%,transparent);background:linear-gradient(100deg,color-mix(in srgb,var(--glow) 26%,rgba(5,11,20,.78)),color-mix(in srgb,var(--sig) 14%,rgba(5,11,20,.78)));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#e6dfff;font-weight:500;line-height:1}
 
@@ -80,14 +84,15 @@ a{color:inherit;text-decoration:none}
 .g:first-child{grid-column:span 2;grid-row:span 2}
 .g:first-child .art{aspect-ratio:auto;flex:1;min-height:0}
 .g:first-child .art.pad img{width:auto;height:68%}
-.g:first-child .lbl b{font-size:clamp(22px,2.4vw,34px)}
+.g:first-child .lbl b{font-size:clamp(19px,1.9vw,27px)}
 
 @media (hover:hover){
   .play{opacity:0;transform:translateY(6px);transition:opacity .25s,transform .35s var(--out)}
   .g:hover .play,.g:focus-visible .play{opacity:1;transform:none}
-  .g:hover .art,.g:focus-visible .art{transform:translateY(-10px) rotate(calc(var(--r,0deg)*-2)) scale(1.025);
+  .g:hover .art,.g:focus-visible .art{transform:perspective(900px) translateY(-10px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) rotate(calc(var(--r,0deg)*var(--flat,-2))) scale(1.025);
     box-shadow:0 34px 50px -28px color-mix(in srgb,var(--c,#000) 70%,transparent)}
-  .g:first-child:hover .art,.g:first-child:focus-visible .art{transform:translateY(-10px) rotate(1.2deg) scale(1.012)}
+  .g:first-child:hover .art,.g:first-child:focus-visible .art{transform:perspective(1400px) translateY(-10px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) rotate(calc(1.2deg*var(--flat,-2)/-2)) scale(1.012)}
+  .g.lean .art{transition:transform .18s ease-out,box-shadow .45s var(--out)}
 }
 @media (hover:none){.g:not(:first-child) .play{display:none}}
 .g:focus-visible{outline:0}
@@ -125,9 +130,9 @@ a{color:inherit;text-decoration:none}
 footer{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-top:6px;padding-bottom:12px;border-top:1px solid var(--line);color:var(--soft)}
 footer>span{line-height:44px}
 
-@media (max-width:1020px){.shelf{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1020px){.shelf{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:700px){
-  .shelf{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .shelf{grid-template-columns:repeat(3,minmax(0,1fr))}
   .under{grid-template-columns:1fr}
   .find{width:100%}.find kbd{display:none}
   .ask{grid-template-columns:1fr}
@@ -136,6 +141,7 @@ footer>span{line-height:44px}
   .g:first-child .art.pad img{height:66%}
   .play{left:8px;bottom:8px;padding:6px 9px 5px;font-size:11px}
 }
+@media (max-width:480px){.shelf{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important;transition-delay:0ms!important}html{scroll-behavior:auto}}
 </style>
 </head>
@@ -260,13 +266,24 @@ footer>span{line-height:44px}
   <span>© <span id="yr">2026</span> Nicholas Lin</span>
 </footer>
 
-<script src="/scene.js?v=3"></script>
+<script src="/scene.js?v=5"></script>
 <script>if (window.lakeScene) lakeScene({ canvas: document.getElementById("air"), host: document.getElementById("sky"), name: document.querySelector(".top h1"), count: document.getElementById("until"), rays: false, reduce: matchMedia("(prefers-reduced-motion: reduce)").matches });</script>
 <script>
 (function(){
   var cards=[].slice.call(document.querySelectorAll('.g')),find=document.getElementById('find'),count=document.getElementById('count'),
       none=document.getElementById('none'),noneQ=document.getElementById('none-q'),game=document.getElementById('ask-game');
   cards.forEach(function(c,i){c.style.setProperty('--i',i)});
+
+  // cards lean toward the pointer: the corner under it dips, and the fixed counter-tilt is dropped while it does
+  if(matchMedia('(hover:hover) and (pointer:fine)').matches&&!matchMedia('(prefers-reduced-motion: reduce)').matches)cards.forEach(function(c,i){
+    var art=c.querySelector('.art'),max=i?7:3.5;
+    c.addEventListener('pointermove',function(e){
+      var r=c.getBoundingClientRect(),x=Math.min(1,Math.max(0,(e.clientX-r.left)/art.offsetWidth)),y=Math.min(1,Math.max(0,(e.clientY-r.top)/art.offsetHeight));
+      art.style.setProperty('--ry',((x-.5)*2*max).toFixed(2)+'deg');art.style.setProperty('--rx',((.5-y)*2*max).toFixed(2)+'deg');art.style.setProperty('--flat','0');
+      c.classList.add('lean');
+    });
+    c.addEventListener('pointerleave',function(){c.classList.remove('lean');art.style.removeProperty('--rx');art.style.removeProperty('--ry');art.style.removeProperty('--flat')});
+  });
 
   // filter the shelf as you type; "/" jumps to the field, Enter opens a single match
   function run(){

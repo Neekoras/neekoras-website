@@ -37,7 +37,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 /* nav: floats over the hero, gets a backdrop once you scroll past it */
 .bar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;justify-content:flex-end;align-items:center;height:48px;padding:0 var(--pad);border-bottom:1px solid transparent;transition:background .3s,border-color .3s}
 .bar.solid{background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom-color:var(--line)}
-.bar nav{display:flex;align-items:center;gap:24px}
+.bar nav{position:relative;display:flex;align-items:center;gap:24px}
+/* marker: a short line on the bar's lower edge that slides to the section being read */
+.bar .mark{position:absolute;left:0;bottom:-3px;width:1px;height:2px;background:linear-gradient(90deg,var(--glow),var(--sig));transform-origin:left;opacity:0;pointer-events:none;transition:transform .5s var(--out),opacity .3s}
+.bar .mark.on{opacity:1}
 .bar a{position:relative;display:inline-flex;align-items:center;height:44px}
 .bar a::after{content:"";position:absolute;left:0;right:0;bottom:10px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .35s var(--out)}
 .bar a:hover::after{transform:scaleX(1);transform-origin:left}
@@ -47,7 +50,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 #air{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
 .hero>div,.hero>dl,.hero>.down{position:relative;z-index:1}
 .until{position:absolute;z-index:1;left:var(--pad);top:56px;padding:6px 10px;background:color-mix(in srgb,var(--bg) 70%,transparent);font-variant-numeric:tabular-nums;pointer-events:none}
-.until span{display:block}.until span[hidden]{display:none}.until span+span{margin-top:2px}
+.until span{display:block}.until span[hidden]{display:none}.until button+span{margin-top:2px}.until span+span{margin-top:2px}
+/* the clock line is a button: it plays the whole day in ten seconds */
+.until button{all:unset;display:block;box-sizing:border-box;margin:-16px -10px;padding:16px 10px;pointer-events:auto;cursor:pointer;transition:color .2s}
+.until button:hover{color:var(--tint)}
+.until button:focus-visible{outline:2px solid var(--glow);outline-offset:-10px}
 h1{font:700 clamp(56px,11.5vw,176px)/.86 var(--sans);letter-spacing:-.055em;text-transform:lowercase}
 .ln{display:block;overflow:hidden;padding-bottom:.1em;margin-bottom:-.1em}
 .ln.hi{font-size:.26em;font-weight:500;line-height:1.1;letter-spacing:-.03em;padding-left:.12em;margin-bottom:.12em;opacity:.8;text-shadow:0 1px 14px rgba(5,11,20,.4)}
@@ -67,8 +74,10 @@ dl,dd{margin:0}
 @keyframes flash{0%,40%{background:color-mix(in srgb,var(--glow) 22%,transparent)}100%{background:transparent}}
 
 /* dna strip */
-.dna{display:grid;grid-template-columns:repeat(100,minmax(0,1fr));gap:2px;margin:24px 0 0}
-.dna i{display:block;aspect-ratio:1;transition:background-color .35s}
+.dna{display:grid;grid-template-columns:repeat(100,minmax(0,1fr));gap:2px;margin:12px 0 -12px;padding:12px 0}
+.dna i{display:block;aspect-ratio:1;transition:background-color .35s,transform .6s cubic-bezier(.3,1.7,.5,1)}
+/* the strand parts under the pointer and closes again behind it */
+.dna i.hot{transform:translateY(var(--dy,-4px));transition:background-color .1s,transform .09s ease-out}
 
 /* command menu */
 .kbtn{margin-left:4px;min-height:28px;border:1px solid var(--edge);padding:3px 7px;color:var(--soft);transition:color .2s,border-color .2s}
@@ -128,8 +137,14 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 .nums{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}
 .num{padding:22px 16px 22px 0;border-right:1px solid var(--line)}
 .num+.num{padding-left:16px}.num:last-child{border-right:0}
-.num b{display:block;font:700 clamp(36px,5vw,72px)/1 var(--sans);letter-spacing:-.05em}
-.num span{display:block;margin-top:8px}
+.num b{display:block;font:700 clamp(36px,5vw,72px)/1 var(--sans);letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+/* each digit is a strip of numbers that rolls up to its place */
+.reel{display:inline-block;height:1em;overflow:hidden;vertical-align:top;padding:0 .04em;margin:0 -.04em}
+.reel>span{display:block;transition:transform var(--t,1.4s) cubic-bezier(.2,.9,.25,1) var(--w,0s)}
+.reel>span>span{display:block;height:1em}
+.pn{font-variant-numeric:normal}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.num>span{display:block;margin-top:8px}
 
 /* exonic */
 .exo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:var(--pad);border-bottom:1px solid var(--line);padding:28px 0 32px;align-items:start}
@@ -173,7 +188,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 </style>
 </head>
 <body>
-<div class="bar mono" id="bar"><nav><a href="#work">Hackathons</a><a href="#exonic">Exonic</a><a href="#focus">Research</a><a href="#contact">Contact</a><a href="/games">Games</a><button class="kbtn mono" id="kbtn" type="button" aria-label="Open command menu" aria-haspopup="dialog">⌘K</button></nav></div>
+<div class="bar mono" id="bar"><nav><a href="#work">Hackathons</a><a href="#exonic">Exonic</a><a href="#focus">Research</a><a href="#contact">Contact</a><a href="/games">Games</a><i class="mark" id="mark" aria-hidden="true"></i><button class="kbtn mono" id="kbtn" type="button" aria-label="Open command menu" aria-haspopup="dialog">⌘K</button></nav></div>
 
 <header class="hero" id="top">
   <canvas id="air" aria-hidden="true"></canvas>
@@ -195,9 +210,9 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 <section class="rv" aria-label="Numbers">
   <div class="sh"><span class="mono soft">Record</span><span class="mono soft">Dec 2025 to Mar 2026</span><i class="rule"></i></div>
   <div class="nums">
-    <div class="num"><b data-count="15" data-post="+">0</b><span class="mono soft">Hackathons entered</span></div>
-    <div class="num"><b data-count="3000" data-post="+" style="color:var(--glow)">0</b><span class="mono soft">Hackers competed against</span></div>
-    <div class="num"><b data-count="20205" data-pre="$" style="color:var(--sig)">$0</b><span class="mono soft">Total won, cash and credits</span></div>
+    <div class="num"><b data-roll>15+</b><span class="mono soft">Hackathons entered</span></div>
+    <div class="num"><b data-roll style="color:var(--glow)">3,000+</b><span class="mono soft">Hackers competed against</span></div>
+    <div class="num"><b data-roll style="color:var(--sig)">$20,205</b><span class="mono soft">Total won, cash and credits</span></div>
   </div>
 </section>
 
@@ -211,7 +226,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
   <div class="sh"><h2>exonic</h2><i class="rule"></i></div>
   <div class="dna" id="dna" aria-hidden="true"></div>
   <div class="exo">
-    <div><div class="rank"><i>#</i><b data-count="2" style="font-weight:inherit">0</b></div><span class="mono soft">Worldwide</span></div>
+    <div><div class="rank" role="img" aria-label="Number 2"><i>#</i><b id="rank" style="font-weight:inherit">2</b></div><span class="mono soft">Worldwide</span></div>
     <div>
       <p class="lead">I finished second in the world designing the piece of DNA that tells a drug where to turn on.</p>
       <p>Synthetic enhancers are short DNA sequences that decide where a gene therapy fires. Get one right and the therapy hits hard inside the target cell and stays silent everywhere else. Gosai et al. showed in 2024 that a deep learning model, Malinois, could design such enhancers from scratch, predicting a 200-base sequence's activity in a given cell line; Exonic pushed the same model past the range its training data covered and built the strongest synthetic enhancer found so far. The tournament opens that problem up: write 200 bases, let the models score them on target and off, and try to beat everyone else's.</p>
@@ -257,7 +272,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
   </div>
 </div>
 
-<script src="/scene.js?v=3"></script>
+<script src="/scene.js?v=5"></script>
 <script>
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches, fine = matchMedia("(hover:hover) and (pointer:fine)").matches;
 const $ = (s) => document.querySelector(s);
@@ -305,18 +320,66 @@ function decode(el, ms = 700) {
 document.querySelectorAll("#spec [data-x]").forEach((el, i) => { const t = el.textContent; el.dataset.txt = t; el.textContent = ""; setTimeout(() => decode(el, 600), 700 + i * 140); });
 if (fine) document.querySelectorAll(".tr>.row").forEach((b) => b.addEventListener("mouseenter", () => decode(b.querySelector("[data-scr]"), 350)));
 
-// reveal + count up
+// rolling digits: every digit of a stat becomes a strip of numbers; it rolls at least once round and stops on its digit
+document.querySelectorAll("[data-roll]").forEach((el) => {
+  const text = el.textContent;
+  if (reduce) return;
+  let n = 0;
+  el.innerHTML = `<span class="sr">${text}</span><span aria-hidden="true">` + [...text].map((ch) => /\d/.test(ch)
+    ? `<span class="reel"><span data-d="${ch}" style="--w:${n * 90}ms;--t:${1200 + n++ * 160}ms">${"01234567890123456789".split("").map((d) => `<span>${d}</span>`).join("")}</span></span>`
+    : `<span class="pn">${ch}</span>`).join("") + "</span>";
+});
+
+// reveal; stats roll when their section arrives
 const io = new IntersectionObserver((es) => es.forEach((e) => {
   if (!e.isIntersecting) return; e.target.classList.add("in"); io.unobserve(e.target);
-  e.target.querySelectorAll("[data-count]").forEach((el) => {
-    const to = +el.dataset.count, pre = el.dataset.pre || "", post = el.dataset.post || "", t0 = performance.now(), dur = reduce ? 1 : 1100;
-    (function step(now) { const p = Math.min(1, (now - t0) / dur), v = Math.round(to * (1 - (1 - p) ** 4)); el.textContent = pre + v.toLocaleString("en-US") + post; if (p < 1) requestAnimationFrame(step); })(t0);
-  });
+  e.target.querySelectorAll(".reel>span").forEach((r) => { r.style.transform = `translateY(-${(10 + +r.dataset.d) * 5}%)`; });
 }), { threshold: 0.15 });
 document.querySelectorAll(".rv").forEach((el) => io.observe(el));
 
+// exonic rank: counts down from 100 to 2 as it moves up the screen, then stays at 2.
+// If the scrolling stops part way it finishes the count by itself, so it never rests on a wrong rank.
+(() => {
+  const el = $("#rank"), box = el.parentNode;
+  if (reduce) return;
+  let shown = 0, idle = 0, done = false;
+  const set = (v) => { if (v !== shown) el.textContent = shown = v; };
+  const stop = () => { done = true; clearTimeout(idle); removeEventListener("scroll", run); removeEventListener("resize", run); };
+  const finish = () => { // run out the rest of the count on a clock
+    const from = shown, t0 = performance.now(), dur = 280 + from * 7; stop();
+    (function step(now) { const p = Math.min(1, (now - t0) / dur); set(2 + Math.round((from - 2) * (1 - p) ** 2)); if (p < 1) requestAnimationFrame(step); })(t0);
+  };
+  function run() {
+    if (done) return;
+    const r = box.getBoundingClientRect(), vh = innerHeight, from = vh - r.height * 0.5, to = vh * 0.4;
+    const p = Math.min(1, Math.max(0, (from - r.top) / Math.max(1, from - to)));
+    set(2 + Math.round(98 * (1 - p) ** 1.6));
+    clearTimeout(idle);
+    if (p >= 1) stop(); else if (p > 0) idle = setTimeout(finish, 260);
+  }
+  addEventListener("scroll", run, { passive: true }); addEventListener("resize", run); run();
+})();
+
 // nav backdrop after the hero
 (() => { const bar = $("#bar"), f = () => bar.classList.toggle("solid", scrollY > innerHeight - 60); addEventListener("scroll", f, { passive: true }); f(); })();
+
+// nav marker: slides under the link for the section in view; hidden over the hero
+(() => {
+  const mark = $("#mark"), links = [...document.querySelectorAll('#bar nav a[href^="#"]')], secs = links.map((a) => $(a.getAttribute("href")));
+  let cur = -1;
+  const place = () => { const a = links[cur]; if (a) mark.style.transform = `translateX(${a.offsetLeft}px) scaleX(${a.offsetWidth})`; };
+  const run = () => {
+    let i = -1; const line = innerHeight * 0.42;
+    secs.forEach((s, k) => { if (s.getBoundingClientRect().top <= line) i = k; });
+    if (i > -1 && innerHeight + scrollY >= document.documentElement.scrollHeight - 4) i = secs.length - 1;
+    if (i === cur) return;
+    if (cur < 0) { mark.style.transition = "none"; cur = i; place(); void mark.offsetWidth; mark.style.transition = ""; } // first show: no slide in from the corner
+    links.forEach((a, k) => k === i ? a.setAttribute("aria-current", "location") : a.removeAttribute("aria-current"));
+    cur = i; place(); mark.classList.toggle("on", i > -1);
+  };
+  addEventListener("scroll", run, { passive: true }); addEventListener("resize", () => { place(); run(); }); run();
+  if (document.fonts) document.fonts.ready.then(place);
+})();
 
 // the lake scene behind the hero lives in /scene.js
 if (window.lakeScene) lakeScene({ canvas: $("#air"), host: $("#top"), name: $("#top h1"), count: $("#until"), reduce });
@@ -337,6 +400,19 @@ function goRow(i) {
   let timer = 0;
   const tick = () => { const c = cells[(Math.random() * 200) | 0]; c.style.backgroundColor = "#eef2f6"; setTimeout(() => (c.style.backgroundColor = C[B[(Math.random() * 4) | 0]]), 160); };
   new IntersectionObserver(([e]) => { clearInterval(timer); if (e.isIntersecting) timer = setInterval(tick, 120); }).observe(el);
+  // wake: the columns the pointer sweeps past part down the middle, flash, and settle as new bases
+  let lastCol = -1;
+  const heat = (c, up) => {
+    c.style.setProperty("--dy", up ? "-4px" : "4px"); c.classList.add("hot"); c.style.backgroundColor = "#eef2f6"; clearTimeout(c.cool);
+    c.cool = setTimeout(() => { c.classList.remove("hot"); c.style.backgroundColor = C[B[(Math.random() * 4) | 0]]; }, 200);
+  };
+  el.addEventListener("pointermove", (e) => {
+    const r = el.getBoundingClientRect(), n = getComputedStyle(el).gridTemplateColumns.split(" ").length, rows = 200 / n;
+    const col = Math.max(0, Math.min(n - 1, Math.floor((e.clientX - r.left) / r.width * n)));
+    const from = lastCol < 0 ? col : Math.max(col - 14, Math.min(col + 14, lastCol)); lastCol = col;
+    for (let c = Math.min(from, col); c <= Math.max(from, col); c++) for (let k = 0; k < rows; k++) heat(cells[k * n + c], k < rows / 2);
+  });
+  el.addEventListener("pointerleave", () => { lastCol = -1; });
 })();
 
 // command menu: cmd/ctrl+k or "/" to open
