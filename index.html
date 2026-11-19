@@ -337,27 +337,17 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
 }), { threshold: 0.15 });
 document.querySelectorAll(".rv").forEach((el) => io.observe(el));
 
-// exonic rank: counts down from 100 to 2 as it moves up the screen, then stays at 2.
-// If the scrolling stops part way it finishes the count by itself, so it never rests on a wrong rank.
+// exonic rank: when it comes into view it counts down from 100, fast at first and slowing as it nears 2
 (() => {
-  const el = $("#rank"), box = el.parentNode;
+  const el = $("#rank");
   if (reduce) return;
-  let shown = 0, idle = 0, done = false;
-  const set = (v) => { if (v !== shown) el.textContent = shown = v; };
-  const stop = () => { done = true; clearTimeout(idle); removeEventListener("scroll", run); removeEventListener("resize", run); };
-  const finish = () => { // run out the rest of the count on a clock
-    const from = shown, t0 = performance.now(), dur = 280 + from * 7; stop();
-    (function step(now) { const p = Math.min(1, (now - t0) / dur); set(2 + Math.round((from - 2) * (1 - p) ** 2)); if (p < 1) requestAnimationFrame(step); })(t0);
-  };
-  function run() {
-    if (done) return;
-    const r = box.getBoundingClientRect(), vh = innerHeight, from = vh - r.height * 0.5, to = vh * 0.4;
-    const p = Math.min(1, Math.max(0, (from - r.top) / Math.max(1, from - to)));
-    set(2 + Math.round(98 * (1 - p) ** 1.6));
-    clearTimeout(idle);
-    if (p >= 1) stop(); else if (p > 0) idle = setTimeout(finish, 260);
-  }
-  addEventListener("scroll", run, { passive: true }); addEventListener("resize", run); run();
+  el.textContent = 100;
+  const io = new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting) return; io.disconnect();
+    const t0 = performance.now(), dur = 2400;
+    (function step(now) { const p = Math.min(1, (now - t0) / dur); el.textContent = 2 + Math.round(98 * (1 - p) ** 4); if (p < 1) requestAnimationFrame(step); })(t0);
+  }, { threshold: 0.6 });
+  io.observe(el.parentNode);
 })();
 
 // nav backdrop after the hero
