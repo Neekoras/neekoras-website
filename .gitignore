@@ -21,3 +21,5 @@ games/shared/fonts/
 *.env
 .env*
 *secret*
+# written on the server by a cron job (see neekoras-infra/weather)
+weather.json

@@ -310,7 +310,10 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
 // nav backdrop after the hero
 (() => { const bar = $("#bar"), f = () => bar.classList.toggle("solid", scrollY > innerHeight - 60); addEventListener("scroll", f, { passive: true }); f(); })();
 
-/* Lake scene: a dusk sky, cliffs and two waterfalls above a lake where the rays swim.
+/* Lake scene: cliffs, two waterfalls and the Golden Gate above a lake where rays and fish swim.
+   The sky is the Bay Area's real one: the sun and moon sit where they are right now over San
+   Francisco, and /weather.json (written by the server every ten minutes) picks clear, cloud,
+   fog, rain or storm. Add ?hour=18.5 or ?sky=rain to the address to preview another moment.
    Drawn into a small pixel buffer (one buffer pixel = 2 CSS px) and scaled up unsmoothed.
    - Water: a lattice of dots over a two-buffer ripple simulation. The rays' wakes, the cursor and
      clicks push on it; dots shift and lift slightly with the wave. Kept dim on purpose.
@@ -321,12 +324,27 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
   const cv = $("#air"), hero = $("#top"), ctx = cv.getContext("2d"), S = 2, G = 11, TAU = Math.PI * 2, TAIL = 18;
   const rgb = (h) => { const n = parseInt(h.slice(1), 16); return (0xff000000 | (n & 255) << 16 | (n >> 8 & 255) << 8 | n >> 16) >>> 0; };
   const DOTC = rgb("#7fb4e6"), DOTA = [0.09, 0.17, 0.3, 0.52];
-  // scenery palettes, top of the sky to the horizon and the lake from the shore down
-  const SKY = ["#0a1c36", "#0e2748", "#14345f", "#1e4179", "#31498a", "#4d5097", "#73589b", "#9d5f98", "#c4698e", "#e27c82", "#f39876", "#fbb582"].map(rgb);
-  const LAKE = ["#28568a", "#214b78", "#1b4068", "#163658", "#122c49", "#0e233b", "#0a1a2d", "#071220", "#050b14"].map(rgb);
-  const WATER = ["#f1faff", "#c9e8fb", "#98cdf0", "#6aaadb", "#467fb6"].map(rgb);
-  const ROCK = ["#132a41", "#19344f", "#1f3e5c"].map(rgb);
-  const C = { far: rgb("#4d4a88"), farTop: rgb("#6f5c9c"), mid: rgb("#2c3a6c"), seam: rgb("#0c1e30"), haze: rgb("#4a6a9a"), rim: rgb("#f09a7c"), moss: rgb("#245a55"), pine: rgb("#081725"), sun: rgb("#ffe7c2"), star: rgb("#c9dbf5"), white: rgb("#ffffff") };
+  // Scenery colours at four heights of the sun: night, dusk or dawn, golden hour, full day.
+  const hexes = (s) => s.split(" ").map((h) => rgb("#" + h)), EL = [-12, -1, 7, 22], RAD = Math.PI / 180;
+  const PAL = {
+    sky: [hexes("050b18 06101f 081527 0a1a30 0c1f39 0e2441 112949 142e51 173358 1a3960 1e3f67 22466e"), // top of the sky to the horizon
+      hexes("0a1c36 0e2748 14345f 1e4179 31498a 4d5097 73589b 9d5f98 c4698e e27c82 f39876 fbb582"),
+      hexes("17468a 22559c 3165ad 4577bb 5d89c6 7a9bce 99acd2 b9bbcf d5c4c0 e9c9ab f5cb96 fbcd88"),
+      hexes("1b57a4 2263b2 2b70bf 377dca 468ad3 5797db 6aa4e2 7eb1e8 93bded a8c9f1 bdd5f5 d2e1f8")],
+    lake: [hexes("14304f 112a46 0e243d 0c1f35 0a1a2d 081525 07111e 060e19 050b14"), // the shore down to the page colour
+      hexes("28568a 214b78 1b4068 163658 122c49 0e233b 0a1a2d 071220 050b14"),
+      hexes("3a74b0 2f659f 26578c 1e4978 173c64 113050 0c233c 081727 050b14"),
+      hexes("3f8ad2 3379bf 296aab 205a96 184b80 113c69 0c2d50 081d36 050b14")],
+    rock: [hexes("0c1c2e 101f33 142438"), hexes("132a41 19344f 1f3e5c"), hexes("3a4a5e 46586d 53667c"), hexes("4c5d70 5a6c80 69798c")],
+    far: hexes("1a2548 4d4a88 7a86b8 86a3cc"), farTop: hexes("26325a 6f5c9c 99a0cc a3bbdc"), mid: hexes("131d3c 2c3a6c 566a9c 5f82b4"),
+    seam: hexes("081422 0c1e30 263445 34455a"), haze: hexes("2a4266 4a6a9a 8fb2d8 a9cdea"), rim: hexes("7d9ccc f09a7c ffd9a0 fff4d6"),
+    moss: hexes("12332f 245a55 4d8a52 5da456"), pine: hexes("050e18 081725 1a3d33 245040"), gate: hexes("3d161a 8f2f2c c8452f d4553a"),
+    cloud: hexes("243250 e9a9a0 fff0dc ffffff"), cloudLo: hexes("19243c 85669a d9c2c0 cfdcec"), fish: hexes("4f7fb4 6f9bd0 a8d0f2 c4e2fb"), bird: hexes("0a1220 141c33 2a3850 2f3f5a"),
+  };
+  const WATER0 = hexes("f1faff c9e8fb 98cdf0 6aaadb 467fb6"), WHITE = rgb("#ffffff"), INK = rgb("#050b14"), RAINC = rgb("#cfe4ff"), LAMP = rgb("#ffd98a"), KOI = hexes("ff8a3c fff3e6");
+  const WX = { clear: { g: 0, clouds: 1 }, partly: { g: 0.15, clouds: 3 }, cloudy: { g: 0.45, clouds: 6 }, overcast: { g: 0.8, clouds: 8 },
+    fog: { g: 0.55, clouds: 2, fog: 1 }, rain: { g: 0.85, clouds: 8, rain: 1 }, storm: { g: 0.95, clouds: 8, rain: 2, bolt: 1 } };
+  let SKY, LAKE, ROCK, WATER; const C = { white: WHITE, star: rgb("#c9dbf5"), moon: rgb("#e6edf7") };
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
   const mix = (a, b, t) => { const r = a & 255, g = a >> 8 & 255, bl = a >> 16 & 255; return (0xff000000 | (bl + ((b >> 16 & 255) - bl) * t) << 16 | (g + ((b >> 8 & 255) - g) * t) << 8 | (r + ((b & 255) - r) * t)) >>> 0; };
   const hash = (n) => { n = Math.imul(n ^ n >>> 15, 0x2c1b3c6d); n = Math.imul(n ^ n >>> 12, 0x297a2d39); return ((n ^ n >>> 15) >>> 0) / 4294967296; };
@@ -341,27 +359,72 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
   let W = 0, H = 0, img, buf, gw = 0, gh = 0, cur, prev, rays = [], mouse = null, last = 0, acc = 0, raf = 0, visible = true;
-  let scene, shore = 0, top, stars = [], falls = [], mist = [], fallAcc = 0, mistAcc = 0;
+  let scene, skyM, shore = 0, top, stars = [], falls = [], mist = [], fallAcc = 0, mistAcc = 0;
+  let clouds = [], drops = [], schools = [], lamps = [], beacons = [], jump = null, jumpIn = 4000, birds = null, birdIn = 7000, flash = 0, boltIn = 5000, rainAcc = 0;
 
-  /* The scenery is painted once per size into `scene`: a dithered dusk sky with a low sun, two far
-     ridges, a cliff on each side with pines, and the lake below the shore line. Each frame copies it
-     and draws the moving parts on top: the falls, foam, mist, the reflection, stars, dots and rays. */
+  // Where the sun and moon are over San Francisco right now (low-precision almanac formulas, good to about a degree).
+  const q = new URLSearchParams(location.search), hourArg = parseFloat(q.get("hour")), LAT = 37.77 * RAD, LON = -122.42;
+  const env = { el: 0, az: 180, mel: -90, maz: 0, phase: 0, night: 0, sky: WX[q.get("sky")] ? q.get("sky") : "clear", wind: 8 };
+  env.wx = WX[env.sky];
+  function look() {
+    let ms = Date.now();
+    if (hourArg >= 0 && hourArg <= 24) { const p = new Date(new Date(ms).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })); ms += (hourArg - p.getHours() - p.getMinutes() / 60) * 3600000; }
+    const d = ms / 86400000 - 10957.5, g = (357.529 + 0.98560028 * d) * RAD, e = (23.439 - 0.00000036 * d) * RAD;
+    const L = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * RAD, lst = ((18.697374558 + 24.06570982441908 * d) * 15 + LON) * RAD;
+    const at = (lon) => { // a point on the ecliptic, as height above the horizon and compass bearing
+      const ra = Math.atan2(Math.cos(e) * Math.sin(lon), Math.cos(lon)), dec = Math.asin(Math.sin(e) * Math.sin(lon)), ha = lst - ra;
+      return [Math.asin(Math.sin(LAT) * Math.sin(dec) + Math.cos(LAT) * Math.cos(dec) * Math.cos(ha)) / RAD,
+        (Math.atan2(Math.sin(ha), Math.cos(ha) * Math.sin(LAT) - Math.tan(dec) * Math.cos(LAT)) / RAD + 540) % 360];
+    };
+    env.phase = (((d - 5.26) / 29.530588853) % 1 + 1) % 1; // 0 new moon, 0.5 full
+    [env.el, env.az] = at(L); [env.mel, env.maz] = at(L + env.phase * TAU);
+    env.night = clamp((-env.el - 1) / 9, 0, 1);
+  }
+  // Blend the four palettes for the sun's height, then grey them down for cloud and rain.
+  function theme() {
+    let k = 0; while (k < 2 && env.el > EL[k + 1]) k++;
+    const t = clamp((env.el - EL[k]) / (EL[k + 1] - EL[k]), 0, 1), g = env.wx.g, dark = env.wx.rain ? 0.24 : g > 0.7 ? 0.1 : 0;
+    const tone = (c, a) => { const l = (c & 255) * 0.3 + (c >> 8 & 255) * 0.59 + (c >> 16 & 255) * 0.11; return mix(mix(c, (0xff000000 | Math.min(255, l * 1.08) << 16 | (l * 0.98) << 8 | (l * 0.92)) >>> 0, a), INK, dark); };
+    const set = (name, a) => PAL[name][k].map((c, i) => tone(mix(c, PAL[name][k + 1][i], t), a));
+    SKY = set("sky", g * 0.85); LAKE = set("lake", g * 0.5); LAKE[LAKE.length - 1] = INK; ROCK = set("rock", g * 0.4);
+    for (const n of ["far", "farTop", "mid", "seam", "haze", "rim", "moss", "pine", "gate", "cloud", "cloudLo", "fish", "bird"]) C[n] = tone(mix(PAL[n][k], PAL[n][k + 1], t), g * 0.4);
+    C.rim = mix(C.rim, ROCK[2], g * 0.7); C.cloud = mix(C.cloud, C.cloudLo, g * 0.5);
+    C.sun = mix(rgb("#ffe7c2"), rgb("#fffbe8"), clamp(env.el / 20, 0, 1));
+    WATER = WATER0.map((c) => mix(c, PAL.lake[0][2], 0.3 * env.night + (env.wx.rain ? 0.12 : 0)));
+  }
+
+  /* The scenery is painted into `scene` for the current size, sun and weather: a dithered sky with
+     the sun or moon, two far ridges, the bridge, a cliff on each side with pines, and the lake below
+     the shore line. Each frame copies it and draws the moving parts on top. `skyM` marks the pixels
+     that are still open sky, so clouds pass behind everything else. */
   function build() {
+    theme();
     const hr = hero.getBoundingClientRect(), nameTop = (hero.querySelector("h1").getBoundingClientRect().top - hr.top - 28) / S;
     shore = Math.round(clamp(Math.min(H * 0.46, nameTop), H * 0.24, H * 0.5)); // the shore line sits just above the name
-    scene = new Uint32Array(W * H); top = new Int16Array(W).fill(shore);
-    const sx = W * 0.37, sy = shore - H * 0.13, sr = Math.max(9, H * 0.055), n = SKY.length - 1, skySet = new Set(SKY.slice(0, 4));
+    scene = new Uint32Array(W * H); skyM = new Uint8Array(W * H).fill(1, 0, shore * W); top = new Int16Array(W).fill(shore);
+    const paint = (i, c) => { scene[i] = c; skyM[i] = 0; };
+    const g = env.wx.g, sr = Math.max(8, H * 0.05), hz = shore - H * 0.04, n = SKY.length - 1;
+    const lift = (el) => hz - (el < 0 ? el / 80 : Math.pow(Math.min(1, el / 80), 0.75)) * (hz - 36 - sr), across = (az) => W * (0.4 + (az - 180) / 300); // the view looks south: east on the left, and noon sits over the gap
+    const sx = across(env.az), sy = lift(env.el), glow = (1 - g * 0.8) * (2.8 - 1.3 * clamp(env.el / 20, 0, 1)) * clamp((env.el + 9) / 9, 0, 1);
     for (let y = 0; y < shore; y++) for (let x = 0; x < W; x++) {
       const d = Math.hypot(x - sx, (y - sy) * 1.15);
-      const f = Math.min(n, Math.pow(y / shore, 1.25) * n + Math.max(0, 1 - d / (sr * 5)) * 2.8), i = Math.floor(f);
-      scene[y * W + x] = d < sr ? C.sun : SKY[Math.min(n, i + (f - i > BAYER[(y & 3) * 4 + (x & 3)] ? 1 : 0))];
+      const f = Math.min(n, Math.pow(y / shore, 1.25) * n + Math.max(0, 1 - d / (sr * 5)) * glow), i = Math.floor(f);
+      scene[y * W + x] = d < sr && g < 0.7 ? C.sun : SKY[Math.min(n, i + (f - i > BAYER[(y & 3) * 4 + (x & 3)] ? 1 : 0))];
+    }
+    if (env.mel > 2 && env.el < 5 && g < 0.7) { // the moon, lit on the side that faces the sun
+      const mx = Math.round(across(env.maz)), my = Math.round(lift(env.mel)), mr = Math.round(sr * 0.8), c = Math.cos(env.phase * TAU);
+      for (let dy = -mr; dy <= mr; dy++) for (let dx = -mr; dx <= mr; dx++) {
+        const x = mx + dx, y = my + dy, lim = Math.sqrt(Math.max(0, mr * mr - dy * dy));
+        if (x < 0 || x >= W || y < 0 || y >= shore || Math.abs(dx) > lim) continue;
+        if (env.phase < 0.5 ? dx > c * lim : dx < -c * lim) scene[y * W + x] = mix(C.moon, SKY[0], 0.35 * clamp(env.el / 5, 0, 1));
+      }
     }
     const ridge = (x, s, base, amp) => Math.max(0, Math.round(base - amp * (0.55 * vn(x / (W * 0.11), s) + 0.3 * vn(x / (W * 0.045), s + 7) + 0.15 * vn(x / (W * 0.018), s + 13))));
     for (let x = 0; x < W; x++) {
       let y0 = ridge(x, 11, shore - H * 0.045, H * 0.13);
-      for (let y = y0; y < shore; y++) scene[y * W + x] = y === y0 ? C.farTop : C.far;
+      for (let y = y0; y < shore; y++) paint(y * W + x, y === y0 ? C.farTop : C.far);
       y0 = ridge(x, 29, shore - H * 0.012, H * 0.085);
-      for (let y = y0; y < shore; y++) scene[y * W + x] = C.mid;
+      for (let y = y0; y < shore; y++) paint(y * W + x, C.mid);
     }
     // cliffs: stepped ledges up to a terraced top, with a notch where the river goes over
     const mh = Math.min(H * 0.3, shore * 0.62), ledge = (t) => Math.floor(clamp(t, 0, 1) * 6) / 6, terr = (x, s, a) => Math.floor(vn(x / 26, s) * a / 3) * 3;
@@ -369,6 +432,24 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
     const fw = clamp(Math.round(W * 0.04), 10, 30), fx = Math.round(W * (W < 330 ? 0.68 : 0.715));
     falls = [{ x: fx, w: fw }, { x: Math.round(W * 0.07), w: Math.max(5, Math.round(fw * 0.42)) }]; // the main falls and a thin one across the lake
     const inFalls = (x, pad) => falls.some((f) => x >= f.x - pad && x <= f.x + f.w - 1 + pad);
+    { // the Golden Gate, far off across the gap between the cliffs: two towers, the cable and its hangers
+      const b0 = Math.round(xl + (xl1 - xl) * 0.45), b1 = Math.round(xr + (xr1 - xr) * 0.55), span = b1 - b0, deck = shore - Math.max(5, Math.round(H * 0.028)), th = Math.round(clamp(H * 0.11, 12, Math.min(shore * 0.3, span * 0.4)));
+      const leg = W > 500 ? 3 : 2, t1 = Math.round(b0 + span * 0.27), t2 = Math.round(b0 + span * 0.73), tt = deck - th, col = mix(C.gate, C.haze, 0.12), thin = mix(col, C.haze, 0.45);
+      const cable = (x) => x < t1 ? tt + (deck - 1 - tt) * Math.pow((t1 - x) / (t1 - b0), 1.25) : x > t2 + leg ? tt + (deck - 1 - tt) * Math.pow((x - t2 - leg) / (b1 - t2 - leg), 1.25)
+        : tt + (deck - 2 - tt) * (1 - Math.pow(2 * (x - t1 - leg / 2) / (t2 - t1) - 1, 2));
+      lamps = []; beacons = [];
+      for (let x = b0; x <= b1; x++) {
+        const cy = Math.round(cable(x));
+        if ((x - b0) % 4 === 0) for (let y = cy + 1; y < deck; y++) paint(y * W + x, thin);
+        paint(cy * W + x, col); paint(deck * W + x, col); if (W > 500) paint((deck + 1) * W + x, thin);
+        if ((x - b0) % 9 === 4) lamps.push((deck - 1) * W + x);
+      }
+      for (const tx of [t1, t2]) {
+        for (let y = tt - 1; y < shore; y++) { paint(y * W + tx, col); paint(y * W + tx + leg, col); }
+        for (let k = 0; k < 4; k++) { const y = tt + Math.round((deck - tt) * k / 4); for (let x = tx; x <= tx + leg; x++) paint(y * W + x, col); }
+        beacons.push((tt - 2) * W + tx + (leg >> 1));
+      }
+    }
     for (let x = 0; x < W; x++) {
       let y = shore;
       if (x >= xr) y = shore - Math.round(mh * (x < xr1 ? ledge((x - xr) / (xr1 - xr)) : 1) * 0.84) - (x >= xr1 ? terr(x, 3, mh * 0.2) : 0);
@@ -381,7 +462,7 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
           : ROCK[Math.min(2, Math.floor((vn(x / 7, 41) * 0.55 + vn(yy / 5 + Math.floor(x / 6) * 3.7, 77) * 0.45) * 3))];
         if (yy > y + 2 && (yy - y) % 17 === 9 && hash(x * 5 + yy) > 0.3) c = mix(c, C.rim, 0.16); // ledges
         if (shore - yy < 34) c = mix(c, C.haze, 0.3 * (1 - (shore - yy) / 34)); // spray haze near the water
-        scene[yy * W + x] = c;
+        paint(yy * W + x, c);
       }
     }
     for (let x = 1; x < W - 1; x++) { // rock faces that look toward the sun catch its light
@@ -393,7 +474,7 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
       const h = 7 + Math.floor(hash(k * 71 + 5) * 9);
       for (let r = 0; r < h; r++) {
         const y = top[x] - h + r, half = r >= h - 2 ? 0 : Math.floor(((r % 4) + 1) * 0.5 + r * 0.2);
-        if (y >= 0) for (let d = -half; d <= half; d++) scene[y * W + x + d] = C.pine;
+        if (y >= 0) for (let d = -half; d <= half; d++) paint(y * W + x + d, C.pine);
       }
     }
     const ln = LAKE.length - 1;
@@ -402,10 +483,11 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
       scene[y * W + x] = LAKE[Math.min(ln, i + (f - i > BAYER[(y & 3) * 4 + (x & 3)] ? 1 : 0))];
     }
     for (let x = 0; x < W; x++) if (top[x] < shore) scene[shore * W + x] = mix(scene[shore * W + x], C.white, 0.22);
+    if (env.wx.fog) for (let y = 0; y < shore; y++) { const a = 0.5 * Math.pow(y / shore, 2); for (let x = 0; x < W; x++) scene[y * W + x] = mix(scene[y * W + x], C.haze, a); }
     stars = [];
-    for (let k = 0, m = Math.round(W * shore / 2400); k < m; k++) {
-      const i = Math.floor(hash(k * 97 + 1) * shore * 0.5) * W + Math.floor(hash(k * 193 + 2) * W);
-      if (skySet.has(scene[i])) stars.push({ i, ph: hash(k * 389 + 3) * TAU, sp: 0.6 + hash(k * 7 + 4) });
+    for (let k = 0, m = Math.round(W * shore / 1500); k < m; k++) {
+      const i = Math.floor(hash(k * 97 + 1) * shore * 0.7) * W + Math.floor(hash(k * 193 + 2) * W);
+      if (skyM[i]) stars.push({ i, ph: hash(k * 389 + 3) * TAU, sp: 0.6 + hash(k * 7 + 4) });
     }
     mist = [];
     falls.forEach((f, n) => {
@@ -420,8 +502,22 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
     W = w; H = h; cv.width = W; cv.height = H;
     img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer);
     gw = Math.ceil(W / G) + 2; gh = Math.ceil(H / G) + 2; cur = new Float32Array(gw * gh); prev = new Float32Array(gw * gh);
-    build();
-    const n = W < 330 ? 2 : 4;
+    look(); build();
+    const small = W < 330;
+    clouds = Array.from({ length: 8 }, (_, i) => { // a row of overlapping ovals cut off flat along the bottom
+      const w = Math.round(clamp(W * (0.07 + hash(i * 31 + 2) * 0.09), 24, 104)), h = Math.round(w * (0.2 + hash(i * 37 + 3) * 0.08)) + 3, m = new Uint8Array(w * h), nb = 3 + Math.floor(hash(i * 41 + 4) * 3);
+      for (let b = 0; b < nb; b++) {
+        const cx = w * (0.2 + 0.6 * (b + hash(i * 43 + b) * 0.5) / nb), rv = h * (0.4 + 0.26 * hash(i * 47 + b * 3)) * (1 - 0.5 * Math.abs(b - (nb - 1) / 2) / nb), rh = rv * 1.6, cy = h - rv * 0.5;
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (((x - cx) / rh) ** 2 + ((y - cy) / rv) ** 2 < 1) m[y * w + x] = y > h * 0.66 ? 2 : 1;
+      }
+      return { w, h, m, x: hash(i * 53 + 5) * (W + w) - w, band: hash(i * 61 + 7), sp: 0.0016 + hash(i * 59 + 6) * 0.0018 };
+    });
+    drops = Array.from({ length: Math.round(W * H / 1400) }, () => ({ x: Math.random() * W * 1.15, y: Math.random() * H, sp: 0.3 + Math.random() * 0.22 }));
+    // schools follow one wandering path, each fish a little behind and beside the last; the koi go alone
+    schools = Array.from({ length: small ? 2 : 3 }, (_, i) => ({ s: i * 2.3, ph: i * 2.1 + 0.7, spd: 0.00011 + i * 0.00002, fx: 0.3 + 0.4 * ((i * 0.41 + 0.2) % 1), fy: 0.34 + 0.4 * ((i * 0.57 + 0.1) % 1), n: small ? 5 : 7 }))
+      .concat(Array.from({ length: small ? 1 : 2 }, (_, i) => ({ s: i * 3.1 + 1, ph: i * 1.3 + 4, spd: 0.00006 + i * 0.000015, fx: 0.35 + 0.3 * i, fy: 0.5 - 0.12 * i, n: 1, koi: true })));
+    jump = birds = null;
+    const n = small ? 2 : 4;
     rays = Array.from({ length: n }, (_, i) => {
       const f = { k: KIND[i], sz: [2.1, 1.65, 1.3, 1][i], s: i * 2.1, ph: i * 1.7, spd: 0.00017 - i * 0.00002,
         cx: W * (0.3 + 0.4 * ((i * 0.37) % 1)), cy: shore + (H - shore) * (0.36 + 0.34 * ((i * 0.61) % 1)), ax: W * 0.32, ay: (H - shore) * 0.3,
@@ -434,6 +530,9 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
       return f;
     }).reverse(); // deepest drawn first
   }
+  const swim = (o, s) => [W * o.fx + W * 0.3 * Math.sin(s + o.ph) + W * 0.1 * Math.sin(2.3 * s + o.ph * 2),
+    clamp(shore + (H - shore) * (o.fy + 0.16 * Math.cos(0.8 * s + o.ph) + 0.07 * Math.sin(1.9 * s + o.ph)), shore + 14, H - 8)];
+  const dab = (x, y, c, a) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) { const p = y * W + x; buf[p] = a < 1 ? mix(buf[p], c, a) : c; } };
   const goal = (f) => ({
     x: clamp(f.cx + f.ax * Math.sin(f.s + f.ph) + f.ax * 0.33 * Math.sin(2.7 * f.s + f.ph + 1.3), 24, W - 24),
     y: clamp(f.cy + f.ay * Math.cos(0.9 * f.s + f.ph) + f.ay * 0.42 * Math.sin(1.6 * f.s + f.ph + 0.5), shore + 26, H - 24),
@@ -473,6 +572,23 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
     mistAcc += dt; if (mistAcc > 110 && mist.length < 22) { mistAcc = 0; const f = falls[Math.random() < 0.8 ? 0 : 1]; mist.push({ x: f.x - 2 + Math.random() * (f.w + 4), y: shore - 2, vx: (Math.random() - 0.5) * 0.014, vy: -(0.005 + Math.random() * 0.009), life: 1 }); }
     for (const m of mist) { m.x += m.vx * dt; m.y += m.vy * dt; m.life -= dt / 2600; }
     mist = mist.filter((m) => m.life > 0);
+    for (const c of clouds) { c.x += c.sp * (1 + env.wind / 15) * dt; if (c.x > W) c.x = -c.w; }
+    for (const o of schools) o.s += o.spd * dt;
+    if (env.wx.rain) {
+      const wind = 0.05 + env.wind * 0.003;
+      for (const d of drops) { d.y += d.sp * dt; d.x -= wind * dt; if (d.y > H) { d.y -= H; d.x = Math.random() * W * 1.15; } }
+      rainAcc += dt; if (rainAcc > 90 / env.wx.rain) { rainAcc = 0; poke(Math.random() * W, shore + 8 + Math.random() * (H - shore - 12), 0.2); }
+    }
+    if (env.wx.bolt) { boltIn -= dt; if (boltIn <= 0) { flash = 1; boltIn = 7000 + Math.random() * 12000; } }
+    if (flash > 0) flash -= dt / 260;
+    jumpIn -= dt; // now and then a fish leaves the water
+    if (!jump && jumpIn <= 0) { jump = { x: W * (0.12 + Math.random() * 0.76), y: shore + 18 + Math.random() * (H - shore) * 0.45, u: 0, dir: Math.random() < 0.5 ? -1 : 1, h: 9 + Math.random() * 8, d: 10 + Math.random() * 8 }; poke(jump.x, jump.y, 1.1); }
+    if (jump) { jump.u += dt / 780; if (jump.u >= 1) { poke(jump.x + jump.dir * jump.d, jump.y, 1.4); jump = null; jumpIn = 5000 + Math.random() * 9000; } }
+    if (!birds && env.el > 2 && !env.wx.rain && !env.wx.fog) { // birds cross by day in fair weather
+      birdIn -= dt;
+      if (birdIn <= 0) { const dir = Math.random() < 0.5 ? 1 : -1; birds = { x: dir > 0 ? -24 : W + 24, y: 40 + Math.random() * Math.max(10, shore * 0.45 - 40), dir, n: 3 + Math.floor(Math.random() * 3), sp: 0.022 + Math.random() * 0.01 }; }
+    }
+    if (birds) { birds.x += birds.dir * birds.sp * dt; if (birds.x < -60 || birds.x > W + 60) { birds = null; birdIn = 20000 + Math.random() * 25000; } }
     acc += dt; let n = 0;
     while (acc >= 33 && n++ < 4) {
       acc -= 33;
@@ -501,7 +617,20 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
   }
   function render(t = 0) {
     buf.set(scene);
-    for (const s of stars) buf[s.i] = Math.sin(t * 0.001 * s.sp + s.ph) > 0.2 ? C.star : mix(scene[s.i], C.star, 0.35);
+    const dusk = env.night * (1 - env.wx.g); // how much of the night shows through
+    if (dusk > 0.05) for (const s of stars) buf[s.i] = mix(scene[s.i], C.star, dusk * (Math.sin(t * 0.001 * s.sp + s.ph) > 0.2 ? 1 : 0.35));
+    for (let k = 0, nc = Math.ceil(env.wx.clouds * (W < 330 ? 0.6 : 1)); k < nc && k < clouds.length; k++) {
+      const c = clouds[k], x0 = Math.round(c.x), y0 = Math.round(36 + c.band * Math.max(8, shore * 0.6 - 36 - c.h));
+      for (let y = 0; y < c.h && y0 + y < shore; y++) for (let x = Math.max(0, -x0); x < c.w && x0 + x < W; x++) {
+        const v = c.m[y * c.w + x], p = (y0 + y) * W + x0 + x;
+        if (v && skyM[p]) buf[p] = v === 1 ? C.cloud : C.cloudLo;
+      }
+    }
+    if (flash > 0) for (let i = 0, a = flash * 0.42, e = shore * W; i < e; i++) if (skyM[i]) buf[i] = mix(buf[i], WHITE, a);
+    if (dusk > 0.05) { // lamps along the bridge deck and a slow red light on each tower
+      for (const i of lamps) buf[i] = mix(buf[i], LAMP, env.night * 0.9);
+      if (Math.floor(t / 900) % 2 === 0) for (const i of beacons) buf[i] = mix(buf[i], KOI[0], env.night);
+    }
     // the lake mirrors what is above the shore, squashed and wobbling, fading into the water
     const RH = Math.min(Math.round(H * 0.11), H - shore - 2);
     for (let k = 0; k < RH; k++) {
@@ -530,6 +659,24 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
       const x0 = Math.round(m.x), y0 = Math.round(m.y);
       for (let y = y0; y < y0 + 2; y++) for (let x = x0; x < x0 + 4; x++) if (x >= 0 && y >= 0 && x < W && y < H) buf[y * W + x] = mix(buf[y * W + x], C.white, 0.3 * m.life);
     }
+    if (env.wx.fog) for (let y = Math.max(0, shore - 30); y < Math.min(H, shore + 16); y++) { // a bank of fog drifting along the shore
+      const a = 0.55 * (1 - Math.abs(y - (shore - 7)) / 23), row = y * W;
+      for (let x = 0; x < W; x++) buf[row + x] = mix(buf[row + x], C.haze, a * (0.5 + 0.5 * vn(x / 38 + t * 0.00003 + y * 0.07, 5)));
+    }
+    for (let n = 0; n < schools.length; n++) {
+      const o = schools[n], dim = 1 - 0.45 * env.night;
+      for (let i = 0; i < o.n; i++) {
+        const si = o.s - i * 0.03, [x, y] = swim(o, si), [x1, y1] = swim(o, si + 0.012), l = Math.hypot(x1 - x, y1 - y) || 1, dx = (x1 - x) / l, dy = (y1 - y) / l;
+        const off = o.koi ? 0 : ((i * 7 + n * 3) % 5 - 2) * 2.4 + Math.sin(t * 0.003 + i), hx = x - dy * off, hy = y + dx * off, wag = Math.round(Math.sin(t * 0.012 + i * 2 + n));
+        if (o.koi) {
+          for (let j = 0; j < 6; j++) { const c = KOI[j === 1 || j === 4 ? 1 : 0]; dab(hx - dx * j, hy - dy * j, c, 0.9 * dim); if (j > 0 && j < 4) dab(hx - dx * j - dy, hy - dy * j + dx, c, 0.9 * dim); }
+          dab(hx - dx * 6 - dy * wag, hy - dy * 6 + dx * wag, KOI[0], 0.7 * dim);
+        } else {
+          for (let j = 0; j < 3; j++) dab(hx - dx * j, hy - dy * j, C.fish, 0.55);
+          dab(hx - dx * 3 - dy * wag, hy - dy * 3 + dx * wag, C.fish, 0.4);
+        }
+      }
+    }
     for (let j = 1; j < gh - 1; j++) {
       if ((j - 1) * G + 5 < shore + 5) continue; // dots only on the water
       for (let i = 1; i < gw - 1; i++) {
@@ -539,6 +686,17 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
       }
     }
     for (const f of rays) drawRay(f);
+    if (jump) { // an arc out of the water and back in
+      const u = jump.u, x = jump.x + jump.dir * jump.d * u, y = jump.y - 4 * jump.h * u * (1 - u), vx = jump.dir * jump.d, vy = -4 * jump.h * (1 - 2 * u), l = Math.hypot(vx, vy) || 1;
+      for (let j = 0; j < 4; j++) dab(x - vx / l * j, y - vy / l * j, j ? WATER[1] : WHITE, 1);
+      dab(x - vx / l * 4 + vy / l, y - vy / l * 4 - vx / l, WATER[2], 1);
+      if (u < 0.3) for (let k = -1; k <= 1; k++) dab(jump.x + k * (2 + u * 14), jump.y - 2 - u * 16 * (1 - u * 1.6), WHITE, 0.8 - u * 2);
+    }
+    if (birds) for (let i = 0; i < birds.n; i++) {
+      const rank = (i + 1) >> 1, bx = birds.x - birds.dir * rank * 7, by = birds.y + (i % 2 ? -1 : 1) * rank * 4, up = Math.sin(t * 0.012 + i) > 0;
+      for (let k = -2; k <= 2; k++) dab(bx + k, by - (up ? Math.abs(k) : k === -2 || k === 2 ? 1 : 0), C.bird, 1);
+    }
+    if (env.wx.rain) for (let i = 0, m = Math.round(drops.length * env.wx.rain / 2); i < m; i++) { const d = drops[i]; dab(d.x, d.y, RAINC, 0.42); dab(d.x, d.y - 1, RAINC, 0.42); dab(d.x + 1, d.y - 2, RAINC, 0.3); }
     ctx.putImageData(img, 0, 0);
   }
   function frame(now) {
@@ -562,6 +720,13 @@ document.querySelectorAll(".rv").forEach((el) => io.observe(el));
   new IntersectionObserver((es) => { visible = es[0].isIntersecting; start(); }).observe(hero);
   document.addEventListener("visibilitychange", start);
   addEventListener("resize", () => { size(); if (reduce) render(); });
+  const refresh = () => { if (!W) return; look(); build(); if (reduce) render(); };
+  function weather() {
+    const use = (sky, wind) => { if (WX[q.get("sky")]) sky = q.get("sky"); env.wind = wind; if (sky !== env.sky) { env.sky = sky; env.wx = WX[sky]; refresh(); } };
+    fetch("/weather.json", { cache: "no-store" }).then((r) => r.json())
+      .then((j) => use(WX[j.sky] && Date.now() - Date.parse(j.at) < 3 * 3600000 ? j.sky : "clear", clamp(+j.wind || 8, 0, 60))).catch(() => use("clear", 8));
+  }
+  setInterval(refresh, 60000); setInterval(weather, 600000); weather();
   size(); if (reduce) render(); else start();
   if (document.fonts) document.fonts.ready.then(() => { size(true); if (reduce) render(); }); // the name moves once its font loads
 })();
