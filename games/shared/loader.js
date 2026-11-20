@@ -17,10 +17,10 @@
   const css = `
     #gl-loader { position: fixed; inset: 0; z-index: 99000; display: flex; align-items: center; justify-content: center;
       background: radial-gradient(120% 80% at 50% -10%, #0d2136 0%, #081424 45%, #050b14 100%);
-      color: #eef2f6; font-family: "Schibsted Grotesk", system-ui, sans-serif; transition: opacity .6s ease; padding: 24px; box-sizing: border-box; text-align: left; line-height: normal; letter-spacing: normal; }
+      color: #eef2f6; font-family: "Schibsted Grotesk", system-ui, sans-serif; transition: opacity .35s ease; padding: 24px; box-sizing: border-box; text-align: left; line-height: normal; letter-spacing: normal; }
     #gl-loader.gl-gone { opacity: 0; pointer-events: none; }
     #gl-loader .gl-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
-      font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .2s; }
+      font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .15s; }
     #gl-loader .gl-back:hover { color: #eef2f6; }
     #gl-loader .gl-back:focus-visible, #gl-loader .gl-retry:focus-visible { outline: 2px solid #b7a6ff; outline-offset: 2px; }
     #gl-loader .gl-inner { width: 100%; max-width: 440px; }
@@ -28,15 +28,17 @@
     #gl-loader .gl-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 700; font-size: clamp(44px, 9vw, 72px);
       line-height: .9; margin: 0 0 34px; letter-spacing: -.05em; text-transform: lowercase; color: #eef2f6; }
     #gl-loader .gl-bar { position: relative; height: 3px; background: #17222f; overflow: hidden; }
-    #gl-loader .gl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, rgba(183, 166, 255, 0), #b7a6ff 70%, #f2a7c3); transition: width .35s linear; }
-    #gl-loader .gl-bar.gl-busy .gl-fill { width: 35% !important; transition: none; animation: gl-slide 1.3s ease-in-out infinite; }
-    @keyframes gl-slide { 0% { left: -35%; } 100% { left: 100%; } }
-    @media (prefers-reduced-motion: reduce) { #gl-loader .gl-bar.gl-busy .gl-fill { animation: none; width: 100% !important; opacity: .5; } }
+    #gl-loader .gl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: linear-gradient(90deg, rgba(183, 166, 255, 0), #b7a6ff 70%, #f2a7c3); transform: scaleX(0); transform-origin: left; transition: transform .35s linear; }
+    /* the bar moves with transform so it keeps moving while the game is busy starting up */
+    #gl-loader .gl-bar.gl-busy .gl-fill { width: 35%; transition: none; animation: gl-slide 1.3s ease-in-out infinite; }
+    @keyframes gl-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(286%); } }
+    @media (prefers-reduced-motion: reduce) { #gl-loader .gl-bar.gl-busy .gl-fill { animation: none; width: 100%; transform: none !important; opacity: .5; } }
     #gl-loader .gl-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
     #gl-loader .gl-muted { color: #7f8c9c; font-size: 13px; margin-top: 6px; }
     #gl-loader .gl-note { margin: 34px 0 0; font-size: 14px; line-height: 1.6; color: #7f8c9c; }
     #gl-loader .gl-retry { margin-top: 18px; min-height: 44px; padding: 0 22px; border: 0; border-radius: 99px; background: #eef2f6; color: #050b14;
-      font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; cursor: pointer; }
+      font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; cursor: pointer; transition: background .15s; }
+    #gl-loader .gl-retry:hover { background: #b7a6ff; }
     #gl-loader * { box-sizing: border-box; }
   `;
 
@@ -86,7 +88,7 @@
     }
     function drawBar() {
       const pct = Math.floor(frac * 100);
-      fill.style.width = frac * 100 + "%";
+      fill.style.transform = "scaleX(" + frac + ")";
       bar.setAttribute("aria-valuenow", pct);
       pctEl.textContent = pct + "%";
     }
@@ -142,13 +144,13 @@
         if (finished) return;
         finished = true;
         root.classList.add("gl-gone");
-        setTimeout(() => { root.remove(); style.remove(); }, 700);
+        setTimeout(() => { root.remove(); style.remove(); }, 420);
       },
       fail(message) {
         if (finished) return;
         finished = true;
         busy(false);
-        fill.style.width = "0";
+        fill.style.transform = "scaleX(0)";
         phaseEl.textContent = "The game could not load";
         pctEl.textContent = "";
         mbEl.textContent = "";

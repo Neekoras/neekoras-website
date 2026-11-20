@@ -25,9 +25,13 @@
 :root{--bg:#050b14;--ink:#eef2f6;--soft:#7f8c9c;--line:#17222f;--sig:#f2a7c3;--glow:#b7a6ff;--tint:#d3caf5;--well:#0a1320;--edge:#2a3747;--on:#0b0710;--dim:#74818f;
   --out:cubic-bezier(.16,1,.3,1);--sans:"Schibsted Grotesk",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--pad:clamp(16px,3vw,40px)}
 *{box-sizing:border-box;margin:0}
-html{scroll-behavior:smooth;scroll-padding-top:64px;background:var(--bg)}
+html{scroll-behavior:smooth;scroll-padding-top:64px;background:var(--bg);color-scheme:dark;-webkit-tap-highlight-color:rgba(183,166,255,.18)}
 body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
+a,button,input{touch-action:manipulation}
+h1,h2,h3,.hl,.lead{text-wrap:balance}
+.skip{position:fixed;left:var(--pad);top:6px;z-index:30;display:inline-flex;align-items:center;height:36px;padding:0 14px;background:var(--ink);color:var(--bg);transform:translateY(-200%)}
+.skip:focus-visible{transform:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;text-align:inherit}
 :focus-visible{outline:2px solid var(--glow);outline-offset:2px}
 ::selection{background:color-mix(in srgb,var(--glow) 36%,transparent);color:var(--ink)}
@@ -42,7 +46,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 .bar .mark{position:absolute;left:0;bottom:-3px;width:1px;height:2px;background:linear-gradient(90deg,var(--glow),var(--sig));transform-origin:left;opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.65,0,.35,1),opacity .2s}
 .bar .mark.on{opacity:1}
 .bar a{position:relative;display:inline-flex;align-items:center;height:44px}
-.bar a::after{content:"";position:absolute;left:0;right:0;bottom:10px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .2s var(--out)}
+.bar a::after{content:"";position:absolute;left:0;right:0;bottom:10px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .15s var(--out)}
 .bar a:hover::after{transform:scaleX(1);transform-origin:left}
 
 /* hero: full screen, rays drawn on a low-resolution canvas behind the text */
@@ -52,7 +56,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 .until{position:absolute;z-index:1;left:var(--pad);top:56px;padding:6px 10px;background:color-mix(in srgb,var(--bg) 70%,transparent);font-variant-numeric:tabular-nums;pointer-events:none}
 .until span{display:block}.until span[hidden]{display:none}.until button+span{margin-top:2px}.until span+span{margin-top:2px}
 /* the clock line is a button: it plays the whole day in ten seconds */
-.until button{all:unset;display:block;box-sizing:border-box;margin:-16px -10px;padding:16px 10px;pointer-events:auto;cursor:pointer;transition:color .2s}
+.until button{all:unset;display:block;box-sizing:border-box;margin:-16px -10px;padding:16px 10px;pointer-events:auto;cursor:pointer;transition:color .15s}
 .until button:hover{color:var(--tint)}
 .until button:focus-visible{outline:2px solid var(--glow);outline-offset:-10px}
 h1{font:700 clamp(56px,11.5vw,176px)/.86 var(--sans);letter-spacing:-.055em;text-transform:lowercase}
@@ -61,13 +65,14 @@ h1{font:700 clamp(56px,11.5vw,176px)/.86 var(--sans);letter-spacing:-.055em;text
 .ln>span{display:block;transform:translateY(105%);animation:rise 1s var(--out) forwards;animation-delay:var(--d,0ms)}
 @keyframes rise{to{transform:none}}
 h1 i{font-style:normal;color:var(--sig)}
-.lede{font-size:clamp(18px,1.6vw,22px);line-height:1.4;max-width:34ch;margin-top:28px;opacity:0;animation:in .7s ease forwards .7s}
+.lede{font-size:clamp(18px,1.6vw,22px);line-height:1.4;max-width:34ch;margin-top:28px;opacity:0;animation:in .6s var(--out) forwards .6s}
 @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .spec{border-top:1px solid var(--ink);background:color-mix(in srgb,var(--bg) 70%,transparent)}
 .spec div{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .spec dt{color:var(--soft)}
 dl,dd{margin:0}
-.down{position:absolute!important;left:var(--pad);bottom:6px;display:inline-flex;align-items:center;height:44px;color:var(--soft)}
+.down{position:absolute!important;left:var(--pad);bottom:6px;display:inline-flex;align-items:center;height:44px;color:var(--soft);transition:color .15s}
+.down:hover{color:var(--ink)}
 
 /* a row flashes when the command menu jumps to it */
 .tr.flash>.row{animation:flash 1.2s ease}
@@ -80,7 +85,8 @@ dl,dd{margin:0}
 .dna i.hot{transform:translateY(var(--dy,-4px));transition:background-color .1s,transform .09s ease-out}
 
 /* command menu */
-.kbtn{margin-left:4px;min-height:28px;border:1px solid var(--edge);padding:3px 7px;color:var(--soft);transition:color .2s,border-color .2s}
+.kbtn{margin-left:4px;min-height:28px;border:1px solid var(--edge);padding:3px 7px;color:var(--soft);transition:color .15s,border-color .15s,transform .08s}
+.kbtn:active{transform:scale(.95)}
 .kbtn:hover{color:var(--ink);border-color:var(--glow)}
 .cmdk{position:fixed;inset:0;z-index:100;background:rgba(3,7,13,.74);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:center;padding:14vh 16px 16px}
 .cmdk[hidden]{display:none}
@@ -89,7 +95,7 @@ dl,dd{margin:0}
 #cmdk-q{width:100%;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);font:400 17px/1.2 var(--sans);padding:18px 20px;outline:0}
 #cmdk-q::placeholder{color:var(--dim)}
 #cmdk-q:focus-visible{box-shadow:inset 0 -2px 0 var(--glow)}
-#cmdk-list{list-style:none;margin:0;padding:6px;max-height:min(52vh,420px);overflow:auto}
+#cmdk-list{list-style:none;margin:0;padding:6px;max-height:min(52vh,420px);overflow:auto;overscroll-behavior:contain}
 #cmdk-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;cursor:pointer;color:var(--ink)}
 #cmdk-list li small{font:400 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--soft);white-space:nowrap}
 #cmdk-list li[aria-selected="true"]{background:linear-gradient(90deg,color-mix(in srgb,var(--glow) 22%,transparent),color-mix(in srgb,var(--sig) 8%,transparent) 55%,transparent);box-shadow:inset 2px 0 0 var(--glow)}
@@ -110,14 +116,16 @@ section{padding:clamp(72px,12vh,128px) var(--pad) 0}
 .th,.tr>.row{display:grid;grid-template-columns:56px minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) 28px;gap:16px;align-items:baseline;width:100%;padding:0 12px}
 .th{padding-top:12px;padding-bottom:10px;color:var(--soft)}
 .tr{position:relative;margin:0 -12px}
-.tr>.row{position:relative;isolation:isolate;padding:18px 24px;transition:background .15s,color .15s,padding .2s var(--out)}
+.tr>.row{position:relative;isolation:isolate;padding:18px 24px}
+.tr>.row>span:not(.plus){transition:transform .2s var(--out),color .15s}
+.tr .c3{--s:6px}.tr .c4{--s:3px}
 .tr>.row::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,color-mix(in srgb,var(--glow) 22%,transparent),color-mix(in srgb,var(--sig) 8%,transparent) 55%,transparent);box-shadow:inset 2px 0 0 var(--glow);opacity:0;z-index:-1;transition:opacity .12s ease-in;pointer-events:none}
 .tr>.row:active::before{opacity:1;transition-duration:.05s}
 .tr::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:1px;background:var(--line);transform:scaleX(0);transform-origin:left;transition:transform .6s cubic-bezier(.33,1,.68,1);transition-delay:calc(var(--i)*45ms + .1s)}
 .in .tr::after{transform:scaleX(1)}
 .tr .name{font:500 clamp(20px,2.2vw,28px)/1.15 var(--sans);letter-spacing:-.025em}
 .tr .plus{justify-self:end;font:400 18px/1 var(--mono);transition:transform .3s var(--out)}
-@media (hover:hover){.tr>.row:hover{padding-left:36px}.tr>.row:hover::before{opacity:1;transition:opacity .15s ease-out}.tr>.row:hover .soft{color:var(--tint)}}
+@media (hover:hover){.tr>.row:hover>span:not(.plus){transform:translateX(var(--s,12px))}.tr>.row:hover::before{opacity:1;transition:opacity .15s ease-out}.tr>.row:hover .soft{color:var(--tint)}}
 .tr.open .plus{transform:rotate(45deg)}
 a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (hover:hover){a.row:hover .plus{transform:translate(2px,-2px)}}
 .grp{padding:40px 0 10px;border-bottom:1px solid var(--line)}
@@ -131,7 +139,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 .more p{color:var(--soft);max-width:52ch}
 .more p.hl{color:var(--ink);font:500 clamp(22px,2.4vw,32px)/1.15 var(--sans);letter-spacing:-.03em;max-width:18ch;margin-bottom:14px}
 .more a{display:inline-flex;align-items:center;min-height:44px;color:var(--ink)}
-.more a,.spec a{text-decoration:underline;text-decoration-color:var(--edge);text-underline-offset:4px;transition:text-decoration-color .2s}
+.more a,.spec a{text-decoration:underline;text-decoration-color:var(--edge);text-underline-offset:4px;transition:text-decoration-color .15s}
 .more a:hover,.spec a:hover{text-decoration-color:var(--ink)}
 
 /* numbers */
@@ -149,7 +157,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 
 /* exonic */
 .exo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:var(--pad);border-bottom:1px solid var(--line);padding:28px 0 32px;align-items:start}
-.exo .rank{font:700 clamp(96px,17vw,240px)/.8 var(--sans);letter-spacing:-.06em;font-variant-numeric:tabular-nums}
+.exo .rank{font:700 clamp(96px,17vw,240px)/.8 var(--sans);letter-spacing:-.06em;font-variant-numeric:tabular-nums;pointer-events:none}
 .exo .rank i{font-style:normal;color:color-mix(in srgb,var(--sig) 76%,var(--bg))}
 .exo p{color:var(--soft);max-width:52ch;margin-bottom:14px}.exo p.lead{color:var(--ink);font:500 clamp(20px,2vw,26px)/1.25 var(--sans);letter-spacing:-.02em;max-width:26ch;margin-bottom:18px}.exo .spec{margin-top:22px}.exo sup{font-size:.7em;line-height:0;vertical-align:.45em;color:var(--glow)}
 .exo .spec{background:none}
@@ -170,11 +178,12 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 .block div{padding:12px 12px 20px 0;border-right:1px solid var(--line)}
 .block div+div{padding-left:12px}.block div:last-child{border-right:0}
 .block span{display:block;color:var(--soft);margin-bottom:4px}
-.block a{display:inline-flex;align-items:center;min-height:44px;margin:-13px 0;max-width:100%;overflow-wrap:anywhere}
+.block a{display:inline-flex;align-items:center;min-height:44px;margin:-13px 0;max-width:100%;overflow-wrap:anywhere;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:4px;transition:text-decoration-color .15s}
+.block a:hover{text-decoration-color:var(--ink)}
 
 /* footer */
 .foot{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:var(--pad) var(--pad) 0;border-top:1px solid var(--line);padding:6px 0 12px;color:var(--soft)}
-.foot a{display:inline-flex;align-items:center;min-height:44px;transition:color .2s}.foot a:hover{color:var(--ink)}
+.foot a{display:inline-flex;align-items:center;min-height:44px;transition:color .15s}.foot a:hover{color:var(--ink)}
 
 .rv{opacity:0;transform:translateY(12px);transition:opacity .5s ease,transform .5s var(--out)}
 .rv.in{opacity:1;transform:none}
@@ -185,11 +194,12 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
   .nums{grid-template-columns:1fr}.num{border-right:0;padding-left:0!important}.num+.num{border-top:1px solid var(--line)}
   .dna{grid-template-columns:repeat(50,minmax(0,1fr))}.kbtn{display:none}.exo{grid-template-columns:1fr}.focus{grid-template-columns:1fr}.focus article{border-right:0;border-bottom:1px solid var(--line);padding-left:0!important}.focus article:last-child{border-bottom:0}.block{grid-template-columns:repeat(2,1fr)}.block div:nth-child(2n){border-right:0}.block div:nth-child(odd){padding-left:0}.block div:nth-child(even){padding-left:12px}}
 @media (max-width:480px){.bar nav{width:100%;gap:0;justify-content:space-between}}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important;transition-delay:0ms!important}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important;transition-delay:0ms!important}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
-<div class="bar mono" id="bar"><nav><a href="#work">Hackathons</a><a href="#exonic">Exonic</a><a href="#focus">Research</a><a href="#contact">Contact</a><a href="/games">Games</a><i class="mark" id="mark" aria-hidden="true"></i><button class="kbtn mono" id="kbtn" type="button" aria-label="Open command menu" aria-haspopup="dialog">⌘K</button></nav></div>
+<a class="skip mono" href="#main">Skip to content</a>
+<div class="bar mono" id="bar"><nav><a href="#work">Hackathons</a><a href="#exonic">Exonic</a><a href="#focus">Research</a><a href="#contact">Contact</a><a href="/games">Games</a><i class="mark" id="mark" aria-hidden="true"></i><button class="kbtn mono" id="kbtn" type="button" aria-label="Open command menu" aria-haspopup="dialog" translate="no">⌘K</button></nav></div>
 
 <header class="hero" id="top">
   <canvas id="air" aria-hidden="true"></canvas>
@@ -230,7 +240,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
     <div><div class="rank" role="img" aria-label="Number 2"><i>#</i><b id="rank" style="font-weight:inherit">2</b></div><span class="mono soft">Worldwide</span></div>
     <div>
       <p class="lead">I finished second in the world designing the piece of DNA that tells a drug where to turn on.</p>
-      <p>Synthetic enhancers are short DNA sequences that decide where a gene therapy fires. Get one right and the therapy hits hard inside the target cell and stays silent everywhere else. Gosai et al. showed in 2024 that a deep learning model, Malinois, could design such enhancers from scratch, predicting a 200-base sequence's activity in a given cell line; Exonic pushed the same model past the range its training data covered and built the strongest synthetic enhancer found so far. The tournament opens that problem up: write 200 bases, let the models score them on target and off, and try to beat everyone else's.</p>
+      <p>Synthetic enhancers are short DNA sequences that decide where a gene therapy fires. Get one right and the therapy hits hard inside the target cell and stays silent everywhere else. Gosai et al. showed in 2024 that a deep learning model, Malinois, could design such enhancers from scratch, predicting a 200-base sequence’s activity in a given cell line; Exonic pushed the same model past the range its training data covered and built the strongest synthetic enhancer found so far. The tournament opens that problem up: write 200 bases, let the models score them on target and off, and try to beat everyone else’s.</p>
       <p>Drug discovery usually means screening: make a million candidates, test them all, keep what works. Screening does not dent a space of 4<sup>200</sup> sequences, which is more than there are atoms in the observable universe. But a model of a cell is differentiable. You can ask what happens to the gene if base 72 becomes a G and get an exact number back instead of an experiment, so I did not screen for a sequence, I wrote one: take the gradient, step, repeat, the way directed evolution works in a lab but at a generation per microsecond. The catch is that a single model will cheerfully call gibberish the strongest enhancer ever built, the same blind spot that makes a sticker turn a stop sign into a speed limit, so every candidate had to survive a committee of models rather than please one.</p>
       <dl class="spec mono">
         <div><dt>Result</dt><dd>2nd, worldwide</dd></div>
@@ -250,10 +260,10 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 
 <section id="contact" class="contact rv">
   <div class="sh"><span class="mono soft">Contact</span><i class="rule"></i></div>
-  <a class="big" href="mailto:nickylin211@gmail.com">get in touch<span>↗</span></a>
+  <a class="big" href="mailto:nickylin211@gmail.com">get in touch<span aria-hidden="true">↗</span></a>
   <div class="block mono">
-    <div><span>Email</span><a href="mailto:nickylin211@gmail.com">nickylin211@gmail.com</a></div>
-    <div><span>GitHub</span><a href="https://github.com/Neekoras" target="_blank" rel="noopener">Neekoras</a></div>
+    <div><span>Email</span><a href="mailto:nickylin211@gmail.com" translate="no">nickylin211@gmail.com</a></div>
+    <div><span>GitHub</span><a href="https://github.com/Neekoras" target="_blank" rel="noopener" translate="no">Neekoras</a></div>
     <div><span>LinkedIn</span><a href="https://www.linkedin.com/in/nicholas-lin-086600390/" target="_blank" rel="noopener">Nicholas Lin</a></div>
     <div><span>Also</span><a href="/games">Games</a></div>
   </div>
@@ -267,7 +277,7 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 
 <div class="cmdk" id="cmdk" hidden role="dialog" aria-modal="true" aria-label="Command menu">
   <div class="cmdk-box">
-    <input id="cmdk-q" type="text" aria-label="Jump to a section, event or link" placeholder="Jump to a section, event or link" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="cmdk-list" aria-autocomplete="list">
+    <input id="cmdk-q" type="text" aria-label="Jump to a section, event or link" placeholder="Jump to a section, event or link…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="cmdk-list" aria-autocomplete="list">
     <ul id="cmdk-list" role="listbox"></ul>
     <div class="cmdk-foot mono"><span>↑↓ move</span><span>↵ open</span><span>esc close</span></div>
   </div>
@@ -283,29 +293,38 @@ $("#yr").textContent = new Date().getFullYear();
 const WORK = [
   { t: "Hack the Stackathon", on: "2026-01-31", k: "Y Combinator HQ · Jan 2026", r: "2nd place, $10,000", u: "https://events.ycombinator.com/HacktheStackathon",
     hl: "I predicted the winners.",
-    d: "The one result I didn't see coming was ours. A résumé can't tell you who ships in 12 hours, but a track record can, so we built Stack the Hack: a rating system for hackers. We scraped Devpost, Cerebral Valley, AGI House and more, logged over 7,000 hackers, and folded team size, placement, demos, sponsors and event prestige into a single ELO score, the kind of ladder chess and competitive programming have had for decades. No slides at the demo. I pulled volunteers out of the crowd and looked them up live. One told me afterward he'd raised his hand to catch us faking the data; instead he proved it was real. We didn't take 1st, but we built the thing that predicts who will." },
+    d: "The one result I didn’t see coming was ours. A résumé can’t tell you who ships in 12 hours, but a track record can, so we built Stack the Hack: a rating system for hackers. We scraped Devpost, Cerebral Valley, AGI House and more, logged over 7,000 hackers, and folded team size, placement, demos, sponsors and event prestige into a single ELO score, the kind of ladder chess and competitive programming have had for decades. No slides at the demo. I pulled volunteers out of the crowd and looked them up live. One told me afterward he’d raised his hand to catch us faking the data; instead he proved it was real. We didn’t take 1st, but we built the thing that predicts who will." },
   { t: "Celebrity Hunt", on: "2026-02-22", k: "Entrepreneurs First, SF \u00b7 Feb 2026", r: "1st place, $1,250", u: "https://luma.com/rlq0qpd1",
     hl: "Michael Dell picked up.",
-    d: "LSE Generate's one-day sprint set one task: get someone from a list of 100 celebrities on FaceTime. The list ran from presidents to Jensen Huang and Tim Cook. Their numbers are not findable, so we built Entrough, which maps the people around a target \u2014 assistants, managers, producers, collaborators \u2014 and works inward to a number. It found phone numbers for more than 40 people on the list. Most hung up. The 13th richest person in the world did not. We were the only team all hackathon to reach anyone on the list." },
+    d: "LSE Generate’s one-day sprint set one task: get someone from a list of 100 celebrities on FaceTime. The list ran from presidents to Jensen Huang and Tim Cook. Their numbers are not findable, so we built Entrough, which maps the people around a target (assistants, managers, producers, collaborators) and works inward to a number. It found phone numbers for more than 40 people on the list. Most hung up. The 13th richest person in the world did not. We were the only team all hackathon to reach anyone on the list." },
   { t: "AI4Healthcare", on: "2026-01-10", k: "AGI House × MITHRL · Jan 2026", r: "1st place", u: "https://www.agihouse.org/events/AI4Healthcare%20Build%20Day%20-20260110",
     hl: "We evolved new drug candidates instead of screening for them.",
-    d: "A technical workshop on AI in healthcare from AGI House and MITHRL. Drug discovery usually means brute-force screening huge libraries of molecules. Our platform generates candidates instead: it evolves chemical structures and keeps optimizing them toward a target protein. Under the hood it predicts the protein's structure, simulates how each molecule binds to it and scores every candidate automatically, with visual tools so a researcher can generate, evaluate and compare them in one place. It took 1st place, and I got to talk shop with Vivek Adarsh, MITHRL's founder, about where the field is going." },
+    d: "A technical workshop on AI in healthcare from AGI House and MITHRL. Drug discovery usually means brute-force screening huge libraries of molecules. Our platform generates candidates instead: it evolves chemical structures and keeps optimizing them toward a target protein. Under the hood it predicts the protein’s structure, simulates how each molecule binds to it and scores every candidate automatically, with visual tools so a researcher can generate, evaluate and compare them in one place. It took 1st place, and I got to talk shop with Vivek Adarsh, MITHRL’s founder, about where the field is going." },
   { t: "Hack_Use: Computer-Use Agents", on: "2025-12-13", minor: true, pair: "start", k: "Frontier Tower, SF · Dec 2025", r: "Winner", u: "https://luma.com/hack_use",
-    d: "A one-day hackathon on agents that operate a computer through its interface, hosted by CodeRabbit with Cua's founder on the judging panel. Project: write-up to come." },
+    d: "A one-day hackathon on agents that operate a computer through its interface, hosted by CodeRabbit with Cua’s founder on the judging panel. Project: write-up to come." },
   { t: "Single Shot Hackathon", on: "2025-12-13", minor: true, pair: "end", k: "Homebrew Club, SF · Dec 2025", r: "Winner", u: "https://luma.com/drdhvvwm",
-    d: "Berrry.app's contest to build the most fun app from a single prompt. Project: write-up to come." },
+    d: "Berrry.app’s contest to build the most fun app from a single prompt. Project: write-up to come." },
   { t: "Funding the Commons SF", on: "2026-03-14", minor: true, k: "Frontier Tower, SF · Mar 2026", r: "3rd of 240", u: "https://luma.com/ftchack-sf-2026",
     d: "Intelligence at the Frontier: a curated two-day hackathon from Funding the Commons and Protocol Labs, with tracks in robotics, agentic funding, AI safety and sovereign infrastructure. Placing led to an invitation to a private investor meeting. Project: write-up to come." },
 ];
-$("#rows").innerHTML = WORK.map((w, i) => `${w.minor && !WORK[i - 1].minor ? `<div class="grp mono soft">Also placed</div>` : ""}${w.pair === "start" ? `<div class="pair"><div class="pair-cap">Two wins in one day <span>Dec 13, 2025</span></div>` : ""}<div class="tr${w.open ? " open" : ""}${w.minor ? " minor" : ""}" style="--i:${i}">${w.minor
-    ? `<a class="row" href="${w.u}" target="_blank" rel="noopener"><span class="mono soft">0${i + 1}</span><span class="name" data-scr>${w.t}</span><span class="mono soft c3">${w.k}</span><span class="mono c4">${w.r}</span><span class="plus">↗</span></a></div>${w.pair === "end" ? "</div>" : ""}`
-    : `<button class="row" aria-expanded="${!!w.open}"><span class="mono soft">0${i + 1}</span><span class="name" data-scr>${w.t}</span><span class="mono soft c3">${w.k}</span><span class="mono c4">${w.r}</span><span class="plus">+</span></button>
+const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+$("#rows").innerHTML = WORK.map((w, i) => `${w.minor && !WORK[i - 1].minor ? `<div class="grp mono soft">Also placed</div>` : ""}${w.pair === "start" ? `<div class="pair"><div class="pair-cap">Two wins in one day <span>Dec 13, 2025</span></div>` : ""}<div class="tr${w.open ? " open" : ""}${w.minor ? " minor" : ""}"${w.minor ? "" : ` id="${slug(w.t)}"`} style="--i:${i}">${w.minor
+    ? `<a class="row" href="${w.u}" target="_blank" rel="noopener"><span class="mono soft">0${i + 1}</span><span class="name" data-scr>${w.t}</span><span class="mono soft c3">${w.k}</span><span class="mono c4">${w.r}</span><span class="plus" aria-hidden="true">↗</span></a></div>${w.pair === "end" ? "</div>" : ""}`
+    : `<button class="row" aria-expanded="${!!w.open}"><span class="mono soft">0${i + 1}</span><span class="name" data-scr>${w.t}</span><span class="mono soft c3">${w.k}</span><span class="mono c4">${w.r}</span><span class="plus" aria-hidden="true">+</span></button>
   <div class="more"><div><div class="inner"><span></span><div>${w.hl ? `<p class="hl">${w.hl}</p>` : ""}<p>${w.d}</p>${w.u ? `<a class="mono" href="${w.u}" target="_blank" rel="noopener">Event page ↗</a>` : ""}</div></div></div></div></div>`}`).join("");
 document.querySelectorAll(".tr>button.row").forEach((b) => b.addEventListener("click", () => {
   const tr = b.parentElement, open = !tr.classList.contains("open");
   document.querySelectorAll(".tr.open").forEach((o) => { o.classList.remove("open"); o.firstElementChild.setAttribute("aria-expanded", "false"); });
   tr.classList.toggle("open", open); b.setAttribute("aria-expanded", open);
+  history.replaceState(null, "", open ? "#" + tr.id : location.pathname + location.search); // the open write-up is in the address, so it can be shared
 }));
+// a link to a write-up opens it
+(() => {
+  const tr = location.hash.length > 1 && document.getElementById(location.hash.slice(1));
+  if (!tr || !tr.matches("#rows .tr")) return;
+  tr.classList.add("open"); tr.firstElementChild.setAttribute("aria-expanded", "true");
+  requestAnimationFrame(() => tr.scrollIntoView({ behavior: "instant", block: "start" }));
+})();
 
 // decode: text resolves left to right out of random glyphs
 const GLYPH = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789/<>#";
@@ -392,13 +411,15 @@ function goRow(i) {
   const tick = () => { const c = cells[(Math.random() * 200) | 0]; c.style.backgroundColor = "#eef2f6"; setTimeout(() => (c.style.backgroundColor = C[B[(Math.random() * 4) | 0]]), 160); };
   new IntersectionObserver(([e]) => { clearInterval(timer); if (e.isIntersecting) timer = setInterval(tick, 120); }).observe(el);
   // wake: the columns the pointer sweeps past part down the middle, flash, and settle as new bases
-  let lastCol = -1;
+  let lastCol = -1, r = null, n = 100;
+  const measure = () => { r = el.getBoundingClientRect(); n = getComputedStyle(el).gridTemplateColumns.split(" ").length; };
+  el.addEventListener("pointerenter", measure); addEventListener("resize", () => { r = null; });
   const heat = (c, up) => {
     c.style.setProperty("--dy", up ? "-4px" : "4px"); c.classList.add("hot"); c.style.backgroundColor = "#eef2f6"; clearTimeout(c.cool);
     c.cool = setTimeout(() => { c.classList.remove("hot"); c.style.backgroundColor = C[B[(Math.random() * 4) | 0]]; }, 200);
   };
   el.addEventListener("pointermove", (e) => {
-    const r = el.getBoundingClientRect(), n = getComputedStyle(el).gridTemplateColumns.split(" ").length, rows = 200 / n;
+    if (!r) measure(); const rows = 200 / n;
     const col = Math.max(0, Math.min(n - 1, Math.floor((e.clientX - r.left) / r.width * n)));
     const from = lastCol < 0 ? col : Math.max(col - 14, Math.min(col + 14, lastCol)); lastCol = col;
     for (let c = Math.min(from, col); c <= Math.max(from, col); c++) for (let k = 0; k < rows; k++) heat(cells[k * n + c], k < rows / 2);
@@ -409,7 +430,7 @@ function goRow(i) {
 // command menu: cmd/ctrl+k or "/" to open
 (() => {
   const box = $("#cmdk"), q = $("#cmdk-q"), list = $("#cmdk-list"), kbtn = $("#kbtn"), mac = /Mac|iPhone|iPad/.test(navigator.platform);
-  if (!mac) kbtn.textContent = "Ctrl K";
+  if (!mac) kbtn.textContent = "Ctrl\u00a0K";
   const go = (sel) => () => document.querySelector(sel).scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
   const link = (u) => () => window.open(u, "_blank", "noopener");
   const ITEMS = [
@@ -443,6 +464,7 @@ function goRow(i) {
   list.addEventListener("mousemove", (e) => { const li = e.target.closest("[data-i]"); if (li && +li.dataset.i !== sel) { sel = +li.dataset.i; draw(); } });
   list.addEventListener("click", (e) => { const li = e.target.closest("[data-i]"); if (li) run(+li.dataset.i); });
   box.addEventListener("mousedown", (e) => { if (e.target === box) close(); });
+  ["wheel", "touchmove"].forEach((t) => box.addEventListener(t, (e) => { if (!list.contains(e.target)) e.preventDefault(); }, { passive: false })); // the page behind does not scroll
   addEventListener("keydown", (e) => {
     const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement !== q;
     if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (e.key === "/" && box.hidden && !typing)) { e.preventDefault(); box.hidden ? open() : close(); return; }
