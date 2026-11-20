@@ -5,7 +5,9 @@
    fog, rain or storm. Add ?hour=18.5 or ?sky=rain to the address to preview another moment.
    The calendar is California's too. From mid-November to New Year's Day there is a lit tree on
    the cliff and snow: light flurries always, heavier when the real weather is rain. Santa crosses
-   the sky from December 20 to 25, and fireworks go up from New Year's Eve evening through New
+   the sky from December 20 to 25; on Christmas Eve and Christmas Day he stays out with five
+   reindeer: a lap round the tree or the moon, then a turn back across the far side of the sky and
+   another to come past in front again. Fireworks go up from New Year's Eve evening through New
    Year's Day. `count` is an element that gets a small status line (the time in San Francisco, the
    temperature and the weather) and under it a countdown: to Christmas from December 1, then to
    the new year from December 26. ?date=12-25 previews a date.
@@ -40,8 +42,10 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
   };
   const WATER0 = hexes("f1faff c9e8fb 98cdf0 6aaadb 467fb6"), WHITE = rgb("#ffffff"), INK = rgb("#050b14"), RAINC = rgb("#cfe4ff"), LAMP = rgb("#ffd98a"), KOI = hexes("ff8a3c fff3e6");
   const GOLD = rgb("#ffd24a"), BULBS = hexes("ff4d4d ffd24a 6fc3ff ff7ac0"), SPARK = hexes("ec65a6 ff7a2e ffd24a 7fe0ff ffffff 8be28b");
-  // Santa, drawn a letter per pixel: the sleigh, then a deer repeated three times with the reins between
-  const SLEIGH = ["....rw......", "...rrr......", "bb.ssw......", "kbbrrrr...kk", "kkkkkkkkkkk.", ".gggggggggg."], DEER = ["......d.", ".....dbb", ".bbbbbb.", "bbbbbbb."], LEGS = [".b....b.", "b......b"];
+  // Santa, drawn a letter per pixel and facing right: the sleigh (sack, Santa, the curled front, a gold runner)
+  // and one reindeer (antlers, head, a white tail), whose legs gallop between two poses
+  const SLEIGH = ["....wr........", ".gd..rrr......", "dddd.wss......", "ddddrwwrr...kk", "kkkkkkkkkkk..k", "krrrrrrrrrrrrk", ".krrrrrrrrrrkg", "..ggggggggggg."];
+  const DEER = [".......d.d", "........d.", ".......bbb", "......bb..", "wbbbbbbb..", ".bbbbbbb.."], LEGS = [[".b.....b..", "d.......d."], ["..b...b...", "...d.d...."]];
   const INKS = { r: rgb("#e0343f"), w: WHITE, s: rgb("#f3c9a2"), b: rgb("#8a5a34"), d: rgb("#5a3a20"), k: rgb("#9c1f2c"), g: GOLD, n: rgb("#ff3b3b"), l: rgb("#c9a56c") };
   const WX = { clear: { g: 0, clouds: 1 }, partly: { g: 0.15, clouds: 3 }, cloudy: { g: 0.45, clouds: 6 }, overcast: { g: 0.8, clouds: 8 },
     fog: { g: 0.55, clouds: 2, fog: 1 }, rain: { g: 0.85, clouds: 8, rain: 1 }, storm: { g: 0.95, clouds: 8, rain: 2, bolt: 1 } };
@@ -71,7 +75,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
   const CARS = Array.from({ length: 9 }, (_, i) => ({ sp: 0.000034 + hash(i * 17 + 3) * 0.000026, ph: hash(i * 29 + 5), dir: i % 2 ? 1 : -1 }));
   const HEAD = rgb("#fff3c4"), TAILC = rgb("#ff5a4a");
   const WORDS = { rain: "rain", storm: "storm", thunder: "storm", fog: "fog", snow: "rain", sun: "clear", clear: "clear", cloud: "cloudy" };
-  let shift = 0, bulbs = [], star = 0, santa = null, santaIn = 3500, rockets = [], sparks = [], fwIn = 600;
+  let shift = 0, bulbs = [], star = 0, moonAt = null, santa = null, santaIn = 3500, rockets = [], sparks = [], fwIn = 600;
 
   // Where the sun and moon are over San Francisco right now (low-precision almanac formulas, good to about a degree).
   const q = new URLSearchParams(location.search), hourArg = parseFloat(q.get("hour")), dateArg = /^(\d\d?)-(\d\d?)$/.exec(q.get("date") || ""), LAT = 37.77 * RAD, LON = -122.42;
@@ -87,7 +91,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     shift = ms - Date.now(); // how far a previewed date or hour, or the time-lapse, is from the real clock
     env.tree = (p.month === 11 && p.day >= 15) || p.month === 12 || (p.month === 1 && p.day === 1); // the season of the tree and the snow
     env.snow = env.tree || !!(wish && wish.snow); // typing "snow" brings the snow without the tree
-    env.santa = p.month === 12 && p.day >= 20 && p.day <= 25;
+    env.santa = p.month === 12 && p.day >= 20 && p.day <= 25; env.eve = env.santa && p.day >= 24; // Christmas Eve and Day get the long flight
     env.fireworks = (p.month === 12 && p.day === 31 && p.hour >= 18) || (p.month === 1 && p.day === 1);
     const d = ms / 86400000 - 10957.5, g = (357.529 + 0.98560028 * d) * RAD, e = (23.439 - 0.00000036 * d) * RAD;
     const L = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * RAD, lst = ((18.697374558 + 24.06570982441908 * d) * 15 + LON) * RAD;
@@ -133,9 +137,10 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
       const f = Math.min(n, Math.pow(y / shore, 1.25) * n + Math.max(0, 1 - d / (sr * 5)) * glow), i = Math.floor(f);
       scene[y * W + x] = d < sr && g < 0.7 ? C.sun : SKY[Math.min(n, i + (f - i > BAYER[(y & 3) * 4 + (x & 3)] ? 1 : 0))];
     }
+    moonAt = null;
     if (env.mel > 2 && env.el < 5 && g < 0.7) { // the moon, lit on the side that faces the sun
       const mx = Math.round(across(env.maz)), my = Math.round(lift(env.mel)), mr = Math.round(sr * 0.8), c = Math.cos(env.phase * TAU);
-      orbs.push({ x: mx, y: my, r: mr });
+      orbs.push({ x: mx, y: my, r: mr }); moonAt = { x: mx, y: my };
       for (let dy = -mr; dy <= mr; dy++) for (let dx = -mr; dx <= mr; dx++) {
         const x = mx + dx, y = my + dy, lim = Math.sqrt(Math.max(0, mr * mr - dy * dy));
         if (x < 0 || x >= W || y < 0 || y >= shore || Math.abs(dx) > lim) continue;
@@ -276,6 +281,39 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
     x: clamp(f.cx + f.ax * Math.sin(f.s + f.ph) + f.ax * 0.33 * Math.sin(2.7 * f.s + f.ph + 1.3), 24, W - 24),
     y: clamp(f.cy + f.ay * Math.cos(0.9 * f.s + f.ph) + f.ay * 0.42 * Math.sin(1.6 * f.s + f.ph + 0.5), shore + 26, H - 24),
   });
+  /* Santa's route is a chain of legs, measured in pixels flown so the team can follow it in file.
+     A straight leg swoops from one height to another. A turn is part of a wide flat loop, the way a
+     level circle looks from the side: the top is the near side, the bottom the far side, where he
+     is drawn dimmer and goes behind the tree and the cliffs. On an ordinary night the route is one
+     leg across. On Christmas Eve and Day he laps the tree's star or the moon, flies on, turns back
+     along the far side, turns again and leaves in front. */
+  function route(dir, big) {
+    const segs = [], rnd = Math.random, high = () => skyTop + 4 + rnd() * Math.max(4, peak - 22 - skyTop), out = dir > 0 ? W + 26 : -26;
+    let x = dir > 0 ? -26 : W + 26, y = high(), h = dir, far = false;
+    const line = (xb, yb) => { segs.push({ len: Math.abs(xb - x), xa: x, ya: y, yb, h, far, amp: (rnd() < 0.5 ? -1 : 1) * (4 + rnd() * 8) }); x = xb; y = yb; };
+    const turn = (rx, ry, laps) => { // 1 is a full lap; 0.5 turns him round, onto the far side or back off it
+      segs.push({ len: TAU * laps * rx, cx: x, cy: far ? y - ry : y + ry, rx, ry, D: far ? -h : h, t0: far ? Math.PI : 0 });
+      if (laps === 0.5) { y += far ? -2 * ry : 2 * ry; h = -h; far = !far; }
+    };
+    if (big) {
+      const spots = [], sy = Math.floor(star / W), rt = clamp(W * 0.07, 18, 44), rx = clamp(W * 0.14, 34, 90); // the lap and both turns are kept on screen
+      if (star) { const ry = clamp(sy >> 1, 3, 9); spots.push({ x: star % W, top: sy + 4 - 2 * ry, ry }); } // the far side of the lap passes behind the top of the tree
+      if (moonAt && moonAt.y >= 12 && moonAt.x > rx + 8 && moonAt.x < W - rx - 8) { const ry = clamp(moonAt.y - 8, 3, 8); spots.push({ x: moonAt.x, top: moonAt.y - 3 - ry, ry }); }
+      if (!spots.length) spots.push({ x: W * 0.5, top: skyTop + 6, ry: 8 });
+      const o = spots[Math.floor(rnd() * spots.length)];
+      line(o.x, o.top); turn(rx, o.ry, 1);
+      line(dir > 0 ? Math.min(W - rt - 6, Math.max(o.x + 40, W * 0.84)) : Math.max(rt + 6, Math.min(o.x - 40, W * 0.16)), high()); turn(rt, 5, 0.5);
+      line(dir > 0 ? W * 0.16 : W * 0.84, clamp(peak - 6 + rnd() * 12, skyTop + 16, shore - 18)); turn(rt, 5, 0.5);
+    }
+    line(out, high());
+    return { segs, s: 0, n: big && W >= 330 ? 5 : 3, len: segs.reduce((a, g) => a + g.len, 0) };
+  }
+  function fly(a, s) { // the spot `s` pixels along the route: where it is, which way it faces, and whether it is on the far side
+    let i = 0, g = a.segs[0]; while (i < a.segs.length - 1 && s >= g.len) { s -= g.len; g = a.segs[++i]; }
+    if (g.rx) { const th = g.t0 + s / g.rx, c = Math.cos(th); return { x: g.cx + g.D * g.rx * Math.sin(th), y: g.cy - g.ry * c, face: c >= 0 ? g.D : -g.D, far: c < 0 }; }
+    const v = clamp(s / g.len, 0, 1);
+    return { x: g.xa + g.h * s, y: clamp(g.ya + (g.yb - g.ya) * v * v * (3 - 2 * v) + g.amp * Math.sin(Math.PI * v) ** 2, 3, shore - 12), face: g.h, far: g.far };
+  }
   function poke(x, y, a) {
     const i = Math.round((x - 5) / G) + 1, j = Math.round((y - 5) / G) + 1;
     if (i > 0 && j > 0 && i < gw - 1 && j < gh - 1) cur[j * gw + i] -= a;
@@ -335,9 +373,9 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
       rainAcc += dt; if (rainAcc > 90 / env.wx.rain) { rainAcc = 0; poke(Math.random() * W, shore + 8 + Math.random() * (H - shore - 12), 0.2); }
     }
     if (env.santa) {
-      if (santa) { santa.x += santa.dir * 0.05 * dt; if (santa.x < -70 || santa.x > W + 70) { santa = null; santaIn = 12000 + Math.random() * 16000; } }
-      else if ((santaIn -= dt) <= 0) { const dir = Math.random() < 0.5 ? 1 : -1; santa = { x: dir > 0 ? -60 : W + 60, y: skyTop + 4 + Math.random() * Math.max(4, peak - 16 - skyTop), dir }; }
-    }
+      if (santa) { santa.s += 0.062 * dt; if (santa.s > santa.len + 130) { santa = null; santaIn = env.eve ? 3500 + Math.random() * 4500 : 12000 + Math.random() * 16000; } }
+      else if ((santaIn -= dt) <= 0) santa = route(Math.random() < 0.5 ? 1 : -1, env.eve);
+    } else santa = null;
     if (env.fireworks && (fwIn -= dt) <= 0) { // a rocket goes up from behind the hills
       fwIn = (env.night > 0.5 ? 110 : 650) + Math.random() * (env.night > 0.5 ? 320 : 800);
       rockets.push({ x: W * (0.04 + Math.random() * 0.92), y: shore - 3, ty: skyTop + 4 + Math.random() * Math.max(8, shore * 0.72 - skyTop), c: SPARK[Math.floor(Math.random() * SPARK.length)] });
@@ -487,14 +525,24 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
       spot(k.x, k.y, k.c, a); spot(k.px, k.py, k.c, a * 0.45); spot(2 * k.px - k.x, 2 * k.py - k.y, k.c, a * 0.2);
       dab(k.x, shore + 2 + (shore - k.y) * 0.4, k.c, 0.16 * a);
     }
-    if (santa) { // sleigh and three reindeer, with a few gold sparks behind
-      const fr = Math.floor(t / 160) % 2, y0 = Math.round(santa.y + Math.sin(santa.x * 0.03) * 3);
-      for (let r = 0; r < 6; r++) {
-        const deer = r === 0 ? "........" : r === 5 ? LEGS[fr] : DEER[r - 1], gap = r === 3 ? "l" : ".";
-        const row = SLEIGH[r] + gap + gap + deer + gap + deer + gap + (r === 2 ? ".....dbn" : deer); // the lead deer has the red nose
-        for (let k = 0; k < row.length; k++) if (row[k] !== ".") dab(santa.x + santa.dir * (k - 20), y0 + r, INKS[row[k]], 1);
+    if (santa) { // the sleigh and each deer follow the route one behind the other, each tipped to its own climb or dive
+      const fr = Math.floor(t / 150), n = santa.n, back = (n - 1) * 12 + 15, team = [];
+      for (let j = 0; j <= n; j++) { // 0 is the sleigh, n the lead deer
+        const at = santa.s - (j ? (n - j) * 12 : back), p = fly(santa, at), q = fly(santa, at + 3), dx = q.x - p.x;
+        p.tilt = Math.abs(dx) > 0.6 ? clamp((q.y - p.y) / dx, -0.5, 0.5) : 0; p.x = Math.round(p.x); p.y = Math.round(p.y + (j ? Math.sin(t * 0.011 + j * 1.7) * 0.7 : 0)); // the deer bob as they run
+        team.push(p);
       }
-      for (let k = 0; k < 5; k++) dab(santa.x - santa.dir * (23 + k * 4 + hash(ft + k) * 3), y0 + 1 + hash(ft * 3 + k) * 4, GOLD, 0.8 - k * 0.14);
+      const ink = (p, x, y, c, a) => { x = Math.round(x); y = Math.round(y); if (!p.far) dab(x, y, c, a); else if (x >= 0 && y >= 0 && x < W && y < H && skyM[y * W + x]) dab(x, y, c, a * 0.78); };
+      for (let k = 0; k < 8; k++) { const p = fly(santa, santa.s - back - 10 - k * 4 - hash(ft + k) * 3); ink(p, p.x, p.y + 3 + hash(ft * 3 + k) * 4, GOLD, 0.85 - k * 0.1); } // gold dust off the runners
+      for (const far of [true, false]) team.forEach((p, j) => {
+        if (p.far !== far) return;
+        const art = j ? DEER.concat(LEGS[(fr + j) % 2]) : SLEIGH, half = j ? 5 : 7, lift = (o) => Math.round(p.tilt * p.face * o);
+        if (j < n) { // the rein to the deer ahead, from Santa's hands or the harness
+          const q = team[j + 1], ax = p.x + p.face * (j ? 3 : 2), ay = p.y + (j ? 4 : 3) + lift(j ? 3 : 2), bx = q.x - q.face * 5, by = q.y + 4 - Math.round(q.tilt * q.face * 5), m = Math.max(1, Math.abs(bx - ax), Math.abs(by - ay));
+          if (m < 24) for (let k = 0; k <= m; k++) ink(p, ax + (bx - ax) * k / m, ay + (by - ay) * k / m, INKS.l, 0.9);
+        }
+        for (let r = 0; r < 8; r++) for (let k = 0, row = art[r]; k < row.length; k++) if (row[k] !== ".") ink(p, p.x + p.face * (k - half), p.y + r + lift(k - half), j === n && r === 2 && k === 9 ? INKS.n : INKS[row[k]], 1); // the lead deer has the red nose
+      });
     }
     if (env.snow) for (let i = 0, m = Math.round(drops.length * (env.wx.rain > 1 ? 1 : env.wx.rain ? 0.6 : 0.22)); i < m; i++) { const d = drops[i]; dab(d.x, d.y, WHITE, 0.9); if (i % 6 === 0) dab(d.x + 1, d.y, WHITE, 0.6); }
     else if (env.wx.rain) for (let i = 0, m = Math.round(drops.length * env.wx.rain / 2); i < m; i++) { const d = drops[i]; dab(d.x, d.y, RAINC, 0.42); dab(d.x, d.y - 1, RAINC, 0.42); dab(d.x + 1, d.y - 2, RAINC, 0.3); }
