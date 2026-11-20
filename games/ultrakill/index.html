@@ -116,12 +116,14 @@
             document.querySelector("#unity-canvas").hidden = false;
             return createUnityInstance(document.querySelector("#unity-canvas"), {
                 dataUrl: dataUrl,
-                frameworkUrl: "Build/ultrakill.framework.js.unityweb",
+                // v2: the port's framework with the game's progress folder linked into /idbfs (it used to live only in memory)
+                frameworkUrl: "Build/ultrakill.framework.v2.js",
                 codeUrl: wasmurl,
                 streamingAssetsUrl: "StreamingAssets",
                 companyName: "Hakita and Cake Logic",
                 productName: "ULTRAKILL",
                 productVersion: "1.4",
+                autoSyncPersistentDataPath: true,   // write progress to the browser's storage as soon as the game saves it
                 // matchWebGLToCanvasSize: false, // Uncomment this to separately control WebGL canvas render size and DOM element size.
                 // devicePixelRatio: 1, // Uncomment this to override low DPI rendering on high DPI displays.
             }, () => gameLoader.starting()).then((instance) => {
