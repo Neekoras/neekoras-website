@@ -20,11 +20,11 @@
       color: #eef2f6; font-family: "Schibsted Grotesk", system-ui, sans-serif; transition: opacity .35s ease; padding: 24px; box-sizing: border-box; text-align: left; line-height: normal; letter-spacing: normal; }
     #gl-loader.gl-gone { opacity: 0; pointer-events: none; }
     #gl-loader .gl-back { position: absolute; left: 24px; top: 10px; display: inline-flex; align-items: center; height: 44px;
-      font: 400 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; text-decoration: none; transition: color .15s; }
+      font: 400 14px/1 "Schibsted Grotesk", system-ui, sans-serif; color: #7f8c9c; text-decoration: none; transition: color .15s; }
     #gl-loader .gl-back:hover { color: #eef2f6; }
     #gl-loader .gl-back:focus-visible, #gl-loader .gl-retry:focus-visible { outline: 2px solid #b7a6ff; outline-offset: 2px; }
     #gl-loader .gl-inner { width: 100%; max-width: 440px; }
-    #gl-loader .gl-kicker { font: 400 12px/1.4 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; color: #7f8c9c; margin-bottom: 14px; }
+    #gl-loader .gl-kicker { font: 400 14px/1.4 "Schibsted Grotesk", system-ui, sans-serif; color: #7f8c9c; margin-bottom: 12px; }
     #gl-loader .gl-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 700; font-size: clamp(44px, 9vw, 72px);
       line-height: .9; margin: 0 0 34px; letter-spacing: -.05em; text-transform: lowercase; color: #eef2f6; }
     #gl-loader .gl-bar { position: relative; height: 3px; background: #17222f; overflow: hidden; }
@@ -37,7 +37,7 @@
     #gl-loader .gl-muted { color: #7f8c9c; font-size: 13px; margin-top: 6px; }
     #gl-loader .gl-note { margin: 34px 0 0; font-size: 14px; line-height: 1.6; color: #7f8c9c; }
     #gl-loader .gl-retry { margin-top: 18px; min-height: 44px; padding: 0 22px; border: 0; border-radius: 99px; background: #eef2f6; color: #050b14;
-      font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase; cursor: pointer; transition: background .15s; }
+      font: 500 15px/1 "Schibsted Grotesk", system-ui, sans-serif; cursor: pointer; transition: background .15s; }
     #gl-loader .gl-retry:hover { background: #b7a6ff; }
     #gl-loader * { box-sizing: border-box; }
   `;

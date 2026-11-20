@@ -20,10 +20,10 @@
 <meta name="twitter:image" content="https://neekoras.com/img/photo1.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#050b14;--ink:#eef2f6;--soft:#7f8c9c;--line:#17222f;--sig:#f2a7c3;--glow:#b7a6ff;--tint:#d3caf5;--well:#0a1320;--edge:#2a3747;--on:#0b0710;--dim:#74818f;
-  --out:cubic-bezier(.16,1,.3,1);--sans:"Schibsted Grotesk",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;--pad:clamp(16px,3vw,40px)}
+  --out:cubic-bezier(.16,1,.3,1);--sans:"Schibsted Grotesk",system-ui,sans-serif;--pad:clamp(16px,3vw,40px)}
 *{box-sizing:border-box;margin:0}
 html{scroll-behavior:smooth;scroll-padding-top:64px;background:var(--bg);color-scheme:dark;-webkit-tap-highlight-color:rgba(183,166,255,.18)}
 body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
@@ -35,25 +35,26 @@ h1,h2,h3,.hl,.lead{text-wrap:balance}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;text-align:inherit}
 :focus-visible{outline:2px solid var(--glow);outline-offset:2px}
 ::selection{background:color-mix(in srgb,var(--glow) 36%,transparent);color:var(--ink)}
-.mono{font:400 12px/1.4 var(--mono);letter-spacing:.02em;text-transform:uppercase}
+.sm{font:400 13px/1.4 var(--sans)}
 .soft{color:var(--soft)}
 
 /* nav: floats over the hero, gets a backdrop once you scroll past it */
 .bar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;justify-content:flex-end;align-items:center;height:48px;padding:0 var(--pad);border-bottom:1px solid transparent;transition:background .3s,border-color .3s}
 .bar.solid{background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom-color:var(--line)}
-.bar nav{position:relative;display:flex;align-items:center;gap:24px}
+.bar nav{position:relative;display:flex;align-items:center;gap:26px;font-size:14px}
 /* marker: a short line on the bar's lower edge that slides to the section being read */
-.bar .mark{position:absolute;left:0;bottom:-3px;width:1px;height:2px;background:linear-gradient(90deg,var(--glow),var(--sig));transform-origin:left;opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.65,0,.35,1),opacity .2s}
+.bar .mark{position:absolute;left:0;bottom:-3px;width:1px;height:1px;background:var(--ink);transform-origin:left;opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.65,0,.35,1),opacity .2s}
 .bar .mark.on{opacity:1}
 .bar a{position:relative;display:inline-flex;align-items:center;height:44px}
 .bar a::after{content:"";position:absolute;left:0;right:0;bottom:10px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .15s var(--out)}
 .bar a:hover::after{transform:scaleX(1);transform-origin:left}
 
 /* hero: full screen, rays drawn on a low-resolution canvas behind the text */
-.hero{background:radial-gradient(55% 45% at 88% 96%,rgba(183,166,255,.12) 0%,rgba(183,166,255,0) 70%),radial-gradient(120% 80% at 50% -10%,#0d2136 0%,#081424 45%,var(--bg) 100%);position:relative;min-height:100svh;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.9fr);gap:var(--pad);align-items:end;padding:96px var(--pad) clamp(56px,9vh,88px);overflow:hidden}
+.hero{background:radial-gradient(55% 45% at 88% 96%,rgba(183,166,255,.12) 0%,rgba(183,166,255,0) 70%),radial-gradient(120% 80% at 50% -10%,#0d2136 0%,#081424 45%,var(--bg) 100%);position:relative;min-height:100svh;display:grid;grid-template-columns:minmax(0,1fr);gap:var(--pad);align-items:end;padding:96px var(--pad) clamp(56px,9vh,88px);overflow:hidden}
 #air{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
-.hero>div,.hero>dl,.hero>.down{position:relative;z-index:1}
-.until{position:absolute;z-index:1;left:var(--pad);top:56px;padding:6px 10px;background:color-mix(in srgb,var(--bg) 70%,transparent);font-variant-numeric:tabular-nums;pointer-events:none}
+.hero>div{position:relative;z-index:1}
+.until{position:absolute;z-index:1;left:var(--pad);top:56px;padding:6px 10px;background:color-mix(in srgb,var(--bg) 70%,transparent);font:400 13px/1.35 var(--sans);letter-spacing:0;text-transform:none;pointer-events:none}
+.until span:last-child{font-variant-numeric:tabular-nums}
 .until span{display:block}.until span[hidden]{display:none}.until button+span{margin-top:2px}.until span+span{margin-top:2px}
 /* the clock line is a button: it plays the whole day in ten seconds */
 .until button{all:unset;display:block;box-sizing:border-box;margin:-16px -10px;padding:16px 10px;pointer-events:auto;cursor:pointer;transition:color .15s}
@@ -67,12 +68,10 @@ h1{font:700 clamp(56px,11.5vw,176px)/.86 var(--sans);letter-spacing:-.055em;text
 h1 i{font-style:normal;color:var(--sig)}
 .lede{font-size:clamp(18px,1.6vw,22px);line-height:1.4;max-width:34ch;margin-top:28px;opacity:0;animation:in .6s var(--out) forwards .6s}
 @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.spec{border-top:1px solid var(--ink);background:color-mix(in srgb,var(--bg) 70%,transparent)}
-.spec div{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
-.spec dt{color:var(--soft)}
+.open{margin-top:14px;opacity:0;animation:in .6s var(--out) forwards .75s}
+.open a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--ink) 45%,transparent);text-underline-offset:4px;transition:text-decoration-color .15s}
+.open a:hover{text-decoration-color:var(--ink)}
 dl,dd{margin:0}
-.down{position:absolute!important;left:var(--pad);bottom:6px;display:inline-flex;align-items:center;height:44px;color:var(--soft);transition:color .15s}
-.down:hover{color:var(--ink)}
 
 /* a row flashes when the command menu jumps to it */
 .tr.flash>.row{animation:flash 1.2s ease}
@@ -85,9 +84,6 @@ dl,dd{margin:0}
 .dna i.hot{transform:translateY(var(--dy,-4px));transition:background-color .1s,transform .09s ease-out}
 
 /* command menu */
-.kbtn{margin-left:4px;min-height:28px;border:1px solid var(--edge);padding:3px 7px;color:var(--soft);transition:color .15s,border-color .15s,transform .08s}
-.kbtn:active{transform:scale(.95)}
-.kbtn:hover{color:var(--ink);border-color:var(--glow)}
 .cmdk{position:fixed;inset:0;z-index:100;background:rgba(3,7,13,.74);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:center;padding:14vh 16px 16px}
 .cmdk[hidden]{display:none}
 .cmdk-box{width:min(560px,100%);background:var(--well);border:1px solid #223042;box-shadow:0 30px 80px rgba(0,0,0,.55);animation:pop .12s var(--out)}
@@ -97,10 +93,10 @@ dl,dd{margin:0}
 #cmdk-q:focus-visible{box-shadow:inset 0 -2px 0 var(--glow)}
 #cmdk-list{list-style:none;margin:0;padding:6px;max-height:min(52vh,420px);overflow:auto;overscroll-behavior:contain}
 #cmdk-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;cursor:pointer;color:var(--ink)}
-#cmdk-list li small{font:400 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--soft);white-space:nowrap}
-#cmdk-list li[aria-selected="true"]{background:linear-gradient(90deg,color-mix(in srgb,var(--glow) 22%,transparent),color-mix(in srgb,var(--sig) 8%,transparent) 55%,transparent);box-shadow:inset 2px 0 0 var(--glow)}
+#cmdk-list li small{font:400 12px/1 var(--sans);color:var(--soft);white-space:nowrap}
+#cmdk-list li[aria-selected="true"]{background:color-mix(in srgb,var(--glow) 12%,transparent)}
 #cmdk-list li[aria-selected="true"] small{color:var(--tint)}
-#cmdk-list li.g{padding:12px 14px 6px;font:400 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--soft);cursor:default}
+#cmdk-list li.g{padding:12px 14px 6px;font:400 12px/1 var(--sans);color:var(--soft);cursor:default}
 #cmdk-list li.none{color:var(--soft);cursor:default}
 .cmdk-foot{display:flex;gap:18px;border-top:1px solid var(--line);padding:10px 16px;color:var(--soft)}
 
@@ -110,126 +106,99 @@ section{padding:clamp(72px,12vh,128px) var(--pad) 0}
 .sh h2{font:700 clamp(28px,3.4vw,44px)/1 var(--sans);letter-spacing:-.04em;text-transform:lowercase}
 .rule{position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--ink);transform:scaleX(0);transform-origin:left;transition:transform .7s cubic-bezier(.33,1,.68,1)}
 .in .rule{transform:scaleX(1)}
-.rule::before{content:"";position:absolute;left:0;top:-1px;width:120px;height:3px;background:linear-gradient(90deg,var(--glow),var(--sig) 45%,transparent)}
 
 /* work table */
-.th,.tr>.row{display:grid;grid-template-columns:56px minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) 28px;gap:16px;align-items:baseline;width:100%;padding:0 12px}
+.th,.tr>.row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) 28px;gap:16px;align-items:baseline;width:100%;padding:0 12px}
 .th{padding-top:12px;padding-bottom:10px;color:var(--soft)}
 .tr{position:relative;margin:0 -12px}
 .tr>.row{position:relative;isolation:isolate;padding:18px 24px}
 .tr>.row>span:not(.plus){transition:transform .2s var(--out),color .15s}
 .tr .c3{--s:6px}.tr .c4{--s:3px}
-.tr>.row::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,color-mix(in srgb,var(--glow) 22%,transparent),color-mix(in srgb,var(--sig) 8%,transparent) 55%,transparent);box-shadow:inset 2px 0 0 var(--glow);opacity:0;z-index:-1;transition:opacity .12s ease-in;pointer-events:none}
+.c3{display:flex;justify-content:space-between;gap:16px}.c3 i{font-style:normal;white-space:nowrap}
+.tr>.row::before{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--glow) 9%,transparent);opacity:0;z-index:-1;transition:opacity .12s ease-in;pointer-events:none}
 .tr>.row:active::before{opacity:1;transition-duration:.05s}
 .tr::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:1px;background:var(--line);transform:scaleX(0);transform-origin:left;transition:transform .6s cubic-bezier(.33,1,.68,1);transition-delay:calc(var(--i)*45ms + .1s)}
 .in .tr::after{transform:scaleX(1)}
 .tr .name{font:500 clamp(20px,2.2vw,28px)/1.15 var(--sans);letter-spacing:-.025em}
-.tr .plus{justify-self:end;font:400 18px/1 var(--mono);transition:transform .3s var(--out)}
+.tr .plus{justify-self:end;font:400 18px/1 var(--sans);transition:transform .3s var(--out)}
 @media (hover:hover){.tr>.row:hover>span:not(.plus){transform:translateX(var(--s,12px))}.tr>.row:hover::before{opacity:1;transition:opacity .15s ease-out}.tr>.row:hover .soft{color:var(--tint)}}
 .tr.open .plus{transform:rotate(45deg)}
 a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (hover:hover){a.row:hover .plus{transform:translate(2px,-2px)}}
 .grp{padding:40px 0 10px;border-bottom:1px solid var(--line)}
-.pair{position:relative}.pair::before{content:"";position:absolute;left:-14px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--glow),var(--sig) 55%,transparent)}
-.pair-cap{display:flex;gap:10px;align-items:baseline;padding:16px 0 6px;font:400 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--glow)}.pair-cap span{color:var(--soft)}
+
+.pair-cap{display:flex;gap:10px;align-items:baseline;padding:16px 0 6px;font:400 13px/1.2 var(--sans);color:var(--ink)}.pair-cap span{color:var(--soft)}
 .tr.minor .name{font-size:clamp(16px,1.5vw,19px);font-weight:400;letter-spacing:-.01em}
 .more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .16s cubic-bezier(.7,0,.84,0)}
 .tr.open .more{grid-template-rows:1fr;transition:grid-template-rows .3s var(--out)}
 .more>div{overflow:hidden}
-.more .inner{display:grid;grid-template-columns:56px minmax(0,2fr) minmax(0,2fr);gap:16px;padding:6px 24px 26px}
+.more .inner{padding:6px 24px 26px}
 .more p{color:var(--soft);max-width:52ch}
 .more p.hl{color:var(--ink);font:500 clamp(22px,2.4vw,32px)/1.15 var(--sans);letter-spacing:-.03em;max-width:18ch;margin-bottom:14px}
-.more a{display:inline-flex;align-items:center;min-height:44px;color:var(--ink)}
-.more a,.spec a{text-decoration:underline;text-decoration-color:var(--edge);text-underline-offset:4px;transition:text-decoration-color .15s}
-.more a:hover,.spec a:hover{text-decoration-color:var(--ink)}
+.more a,.exo a{display:inline-flex;align-items:center;min-height:44px;color:var(--ink)}
+.more a,.exo a,.also a{text-decoration:underline;text-decoration-color:var(--edge);text-underline-offset:4px;transition:text-decoration-color .15s}
+.more a:hover,.exo a:hover,.also a:hover{text-decoration-color:var(--ink)}
 
 /* numbers */
-.nums{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}
-.num{padding:22px 16px 22px 0;border-right:1px solid var(--line)}
-.num+.num{padding-left:16px}.num:last-child{border-right:0}
-.num b{display:block;font:700 clamp(36px,5vw,72px)/1 var(--sans);letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.tally{font:500 clamp(20px,2vw,26px)/1.3 var(--sans);letter-spacing:-.02em;max-width:38ch;padding:24px 0 30px;text-wrap:pretty}
+.tally b{font-weight:700;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}.tally .won{color:var(--sig)}
 /* each digit is a strip of numbers that rolls up to its place */
-.reel{display:inline-block;height:1em;overflow:hidden;vertical-align:top;padding:0 .04em;margin:0 -.04em}
+.reel{display:inline-block;height:1em;overflow:hidden;vertical-align:-.21em;padding:0 .04em;margin:0 -.04em}
 .reel>span{display:block;transition:transform var(--t,1.4s) cubic-bezier(.2,.9,.25,1) var(--w,0s)}
 .reel>span>span{display:block;height:1em}
 .pn{font-variant-numeric:normal}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.num>span{display:block;margin-top:8px}
 
 /* exonic */
 .exo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:var(--pad);border-bottom:1px solid var(--line);padding:28px 0 32px;align-items:start}
 .exo .rank{font:700 clamp(96px,17vw,240px)/.8 var(--sans);letter-spacing:-.06em;font-variant-numeric:tabular-nums;pointer-events:none}
 .exo .rank i{font-style:normal;color:color-mix(in srgb,var(--sig) 76%,var(--bg))}
-.exo p{color:var(--soft);max-width:52ch;margin-bottom:14px}.exo p.lead{color:var(--ink);font:500 clamp(20px,2vw,26px)/1.25 var(--sans);letter-spacing:-.02em;max-width:26ch;margin-bottom:18px}.exo .spec{margin-top:22px}.exo sup{font-size:.7em;line-height:0;vertical-align:.45em;color:var(--glow)}
-.exo .spec{background:none}
-.spec a{display:inline-flex;align-items:center;min-height:44px;margin:-14px 0}
+.exo p{color:var(--soft);max-width:52ch;margin-bottom:14px}.exo p.lead{color:var(--ink);font:500 clamp(20px,2vw,26px)/1.25 var(--sans);letter-spacing:-.02em;max-width:26ch;margin-bottom:18px}.exo sup{font-size:.7em;line-height:0;vertical-align:.45em;color:var(--glow)}
 
 /* focus */
 .focus{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-bottom:1px solid var(--line)}
 .focus article{padding:22px 20px 26px 0;border-right:1px solid var(--line)}
 .focus article+article{padding-left:20px}.focus article:last-child{border-right:0}
-.focus h3{font:500 20px/1.2 var(--sans);letter-spacing:-.02em;margin:10px 0 8px}
+.focus h3{font:500 20px/1.2 var(--sans);letter-spacing:-.02em;margin:0 0 8px}
 .focus p{color:var(--soft)}
 
 /* contact */
-.contact a.big{display:inline-flex;align-items:baseline;gap:.2em;min-height:44px;font:700 clamp(40px,8vw,128px)/.95 var(--sans);letter-spacing:-.055em;text-transform:lowercase;margin-top:20px}
-.contact a.big span{transition:transform .25s var(--out);display:inline-block;color:var(--sig)}
-.contact a.big:hover span{transform:translate(.08em,-.08em)}
-.block{display:grid;grid-template-columns:repeat(4,1fr);margin-top:clamp(56px,9vh,96px);border-top:1px solid var(--ink)}
-.block div{padding:12px 12px 20px 0;border-right:1px solid var(--line)}
-.block div+div{padding-left:12px}.block div:last-child{border-right:0}
-.block span{display:block;color:var(--soft);margin-bottom:4px}
-.block a{display:inline-flex;align-items:center;min-height:44px;margin:-13px 0;max-width:100%;overflow-wrap:anywhere;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:4px;transition:text-decoration-color .15s}
-.block a:hover{text-decoration-color:var(--ink)}
+.contact a.big{display:inline-block;font:700 clamp(25px,6.4vw,104px)/1.1 var(--sans);letter-spacing:-.05em;margin-top:22px;text-decoration:underline;text-decoration-color:transparent;text-decoration-thickness:.05em;text-underline-offset:.12em;transition:text-decoration-color .15s}
+.contact a.big:hover{text-decoration-color:var(--sig)}
+.also{margin-top:16px;max-width:44ch;color:var(--soft);font-size:clamp(16px,1.4vw,19px)}
+.also a{color:var(--ink);padding:12px 0;margin:-12px 0}
 
 /* footer */
 .foot{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:var(--pad) var(--pad) 0;border-top:1px solid var(--line);padding:6px 0 12px;color:var(--soft)}
 .foot a{display:inline-flex;align-items:center;min-height:44px;transition:color .15s}.foot a:hover{color:var(--ink)}
 
-.rv{opacity:0;transform:translateY(12px);transition:opacity .5s ease,transform .5s var(--out)}
-.rv.in{opacity:1;transform:none}
 
 @media (max-width:820px){.hero{grid-template-columns:1fr;align-content:end}.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:64%;background:linear-gradient(to top,var(--bg) 42%,transparent);pointer-events:none}.th{display:none}
-  .tr>.row{grid-template-columns:36px 1fr 24px;padding:16px 12px}.tr .c3,.tr .c4{grid-column:2;grid-row:auto}.tr .plus{grid-column:3;grid-row:1}
-  .more .inner{grid-template-columns:36px 1fr;padding:0 12px 20px}
-  .nums{grid-template-columns:1fr}.num{border-right:0;padding-left:0!important}.num+.num{border-top:1px solid var(--line)}
-  .dna{grid-template-columns:repeat(50,minmax(0,1fr))}.kbtn{display:none}.exo{grid-template-columns:1fr}.focus{grid-template-columns:1fr}.focus article{border-right:0;border-bottom:1px solid var(--line);padding-left:0!important}.focus article:last-child{border-bottom:0}.block{grid-template-columns:repeat(2,1fr)}.block div:nth-child(2n){border-right:0}.block div:nth-child(odd){padding-left:0}.block div:nth-child(even){padding-left:12px}}
+  .tr>.row{grid-template-columns:1fr 24px;padding:16px 12px}.tr .c3,.tr .c4{grid-column:1;grid-row:auto}.tr .plus{grid-column:2;grid-row:1}
+  .more .inner{padding:0 12px 20px}
+  .dna{grid-template-columns:repeat(50,minmax(0,1fr))}.exo{grid-template-columns:1fr}.focus{grid-template-columns:1fr}.focus article{border-right:0;border-bottom:1px solid var(--line);padding-left:0!important}.focus article:last-child{border-bottom:0}}
 @media (max-width:480px){.bar nav{width:100%;gap:0;justify-content:space-between}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important;transition-delay:0ms!important}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
-<a class="skip mono" href="#main">Skip to content</a>
-<div class="bar mono" id="bar"><nav><a href="#work">Hackathons</a><a href="#exonic">Exonic</a><a href="#focus">Research</a><a href="#contact">Contact</a><a href="/games">Games</a><i class="mark" id="mark" aria-hidden="true"></i><button class="kbtn mono" id="kbtn" type="button" aria-label="Open command menu" aria-haspopup="dialog" translate="no">⌘K</button></nav></div>
+<a class="skip sm" href="#main">Skip to content</a>
+<div class="bar sm" id="bar"><nav><a href="#work">Hackathons</a><a href="#exonic">Exonic</a><a href="#focus">Research</a><a href="#contact">Contact</a><a href="/games">Games</a><i class="mark" id="mark" aria-hidden="true"></i></nav></div>
 
 <header class="hero" id="top">
   <canvas id="air" aria-hidden="true"></canvas>
-  <p class="until mono" id="until" hidden></p>
+  <p class="until sm" id="until" hidden></p>
   <div>
     <h1><span class="ln hi"><span style="--d:60ms">hi, i’m</span></span><span class="ln"><span style="--d:170ms">nicholas<i>.</i></span></span></h1>
     <p class="lede">Software developer in the Bay Area. I build working products in a day, and I have won hackathons at Y Combinator, AGI House and Entrepreneurs First.</p>
+    <p class="open"><a href="mailto:nickylin211@gmail.com">Open to projects, email me</a></p>
   </div>
-  <dl class="spec mono" id="spec">
-    <div><dt>Role</dt><dd data-x>Software developer</dd></div>
-    <div><dt>Location</dt><dd data-x>Bay Area, California</dd></div>
-    <div><dt>Focus</dt><dd data-x>AI, security, rapid builds</dd></div>
-    <div><dt>Status</dt><dd data-x>Open to projects</dd></div>
-  </dl>
-  <a class="down mono" href="#work">Scroll ↓</a>
 </header>
 
 <main id="main">
-<section class="rv" aria-label="Numbers">
-  <div class="sh"><span class="mono soft">Record</span><span class="mono soft">Dec 2025 to Mar 2026</span><i class="rule"></i></div>
-  <div class="nums">
-    <div class="num"><b data-roll>15+</b><span class="mono soft">Hackathons entered</span></div>
-    <div class="num"><b data-roll style="color:var(--glow)">3,000+</b><span class="mono soft">Hackers competed against</span></div>
-    <div class="num"><b data-roll style="color:var(--sig)">$20,205</b><span class="mono soft">Total won, cash and credits</span></div>
-  </div>
-</section>
-
 <section id="work" class="rv">
   <div class="sh"><h2>hackathons</h2><i class="rule"></i></div>
-    <div class="th mono"><span>No.</span><span>Event</span><span>Where · when</span><span>Result</span><span></span></div>
+  <p class="tally">I entered <b data-roll>15+</b> hackathons between December 2025 and March 2026, competed against <b data-roll>3,000+</b> hackers and won <b data-roll class="won">$20,205</b> in cash and credits.</p>
+    <div class="th sm"><span>Event</span><span class="c3"><span>Where</span><i>When</i></span><span>Result</span><span></span></div>
   <div id="rows"></div>
 </section>
 
@@ -237,15 +206,12 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
   <div class="sh"><h2>exonic</h2><i class="rule"></i></div>
   <div class="dna" id="dna" aria-hidden="true"></div>
   <div class="exo">
-    <div><div class="rank" role="img" aria-label="Number 2"><i>#</i><b id="rank" style="font-weight:inherit">2</b></div><span class="mono soft">Worldwide</span></div>
+    <div><div class="rank" role="img" aria-label="Number 2"><i>#</i><b id="rank" style="font-weight:inherit">2</b></div><span class="sm soft">Worldwide</span></div>
     <div>
       <p class="lead">I finished second in the world designing the piece of DNA that tells a drug where to turn on.</p>
       <p>Synthetic enhancers are short DNA sequences that decide where a gene therapy fires. Get one right and the therapy hits hard inside the target cell and stays silent everywhere else. Gosai et al. showed in 2024 that a deep learning model, Malinois, could design such enhancers from scratch, predicting a 200-base sequence’s activity in a given cell line; Exonic pushed the same model past the range its training data covered and built the strongest synthetic enhancer found so far. The tournament opens that problem up: write 200 bases, let the models score them on target and off, and try to beat everyone else’s.</p>
       <p>Drug discovery usually means screening: make a million candidates, test them all, keep what works. Screening does not dent a space of 4<sup>200</sup> sequences, which is more than there are atoms in the observable universe. But a model of a cell is differentiable. You can ask what happens to the gene if base 72 becomes a G and get an exact number back instead of an experiment, so I did not screen for a sequence, I wrote one: take the gradient, step, repeat, the way directed evolution works in a lab but at a generation per microsecond. The catch is that a single model will cheerfully call gibberish the strongest enhancer ever built, the same blind spot that makes a sticker turn a stop sign into a speed limit, so every candidate had to survive a committee of models rather than please one.</p>
-      <dl class="spec mono">
-        <div><dt>Result</dt><dd>2nd, worldwide</dd></div>
-        <div><dt>Link</dt><dd><a href="https://www.exonic.ai/tournament" target="_blank" rel="noopener">exonic.ai/tournament ↗</a></dd></div>
-      </dl>
+      <p><a href="https://www.exonic.ai/tournament" target="_blank" rel="noopener">See the tournament at exonic.ai</a></p>
     </div>
   </div>
 </section>
@@ -253,24 +219,19 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
 <section id="focus" class="rv">
   <div class="sh"><h2>research</h2><i class="rule"></i></div>
   <div class="focus">
-    <article><span class="mono soft">01</span><h3>AI research</h3><p>Second in the world designing synthetic DNA enhancers against models that predict how a sequence behaves in a living cell, and first place building AI for healthcare at AGI House. Agents that operate real software, judged by the people building the field.</p></article>
-    <article><span class="mono soft">02</span><h3>Security research</h3><p>I have found real vulnerabilities in venture-backed companies and reported them. The best way to understand how something works is to try to break it.</p></article>
+    <article><h3>AI research</h3><p>Second in the world designing synthetic DNA enhancers against models that predict how a sequence behaves in a living cell, and first place building AI for healthcare at AGI House. Agents that operate real software, judged by the people building the field.</p></article>
+    <article><h3>Security research</h3><p>I have found real vulnerabilities in venture-backed companies and reported them. The best way to understand how something works is to try to break it.</p></article>
   </div>
 </section>
 
 <section id="contact" class="contact rv">
-  <div class="sh"><span class="mono soft">Contact</span><i class="rule"></i></div>
-  <a class="big" href="mailto:nickylin211@gmail.com">get in touch<span aria-hidden="true">↗</span></a>
-  <div class="block mono">
-    <div><span>Email</span><a href="mailto:nickylin211@gmail.com" translate="no">nickylin211@gmail.com</a></div>
-    <div><span>GitHub</span><a href="https://github.com/Neekoras" target="_blank" rel="noopener" translate="no">Neekoras</a></div>
-    <div><span>LinkedIn</span><a href="https://www.linkedin.com/in/nicholas-lin-086600390/" target="_blank" rel="noopener">Nicholas Lin</a></div>
-    <div><span>Also</span><a href="/games">Games</a></div>
-  </div>
+  <div class="sh"><h2>contact</h2><i class="rule"></i></div>
+  <a class="big" href="mailto:nickylin211@gmail.com" translate="no">nickylin211@gmail.com</a>
+  <p class="also">I am also on <a href="https://github.com/Neekoras" target="_blank" rel="noopener">GitHub</a> and <a href="https://www.linkedin.com/in/nicholas-lin-086600390/" target="_blank" rel="noopener">LinkedIn</a>, and I keep an <a href="/games">arcade</a>.</p>
 </section>
 </main>
 
-<footer class="foot mono">
+<footer class="foot sm">
   <span>© <span id="yr">2026</span> Nicholas Lin</span>
   <a href="/games">Games</a>
 </footer>
@@ -279,13 +240,13 @@ a.row{color:inherit}.tr.minor .plus{transition:transform .3s var(--out)}@media (
   <div class="cmdk-box">
     <input id="cmdk-q" type="text" aria-label="Jump to a section, event or link" placeholder="Jump to a section, event or link…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="cmdk-list" aria-autocomplete="list">
     <ul id="cmdk-list" role="listbox"></ul>
-    <div class="cmdk-foot mono"><span>↑↓ move</span><span>↵ open</span><span>esc close</span></div>
+    <div class="cmdk-foot sm"><span>↑↓ move</span><span>↵ open</span><span>esc close</span></div>
   </div>
 </div>
 
-<script src="/scene.js?v=6"></script>
+<script src="/scene.js?v=7"></script>
 <script>
-const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches, fine = matchMedia("(hover:hover) and (pointer:fine)").matches;
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (s) => document.querySelector(s);
 $("#yr").textContent = new Date().getFullYear();
 
@@ -294,7 +255,7 @@ const WORK = [
   { t: "Hack the Stackathon", on: "2026-01-31", k: "Y Combinator HQ · Jan 2026", r: "2nd place, $10,000", u: "https://events.ycombinator.com/HacktheStackathon",
     hl: "I predicted the winners.",
     d: "The one result I didn’t see coming was ours. A résumé can’t tell you who ships in 12 hours, but a track record can, so we built Stack the Hack: a rating system for hackers. We scraped Devpost, Cerebral Valley, AGI House and more, logged over 7,000 hackers, and folded team size, placement, demos, sponsors and event prestige into a single ELO score, the kind of ladder chess and competitive programming have had for decades. No slides at the demo. I pulled volunteers out of the crowd and looked them up live. One told me afterward he’d raised his hand to catch us faking the data; instead he proved it was real. We didn’t take 1st, but we built the thing that predicts who will." },
-  { t: "Celebrity Hunt", on: "2026-02-22", k: "Entrepreneurs First, SF \u00b7 Feb 2026", r: "1st place, $1,250", u: "https://luma.com/rlq0qpd1",
+  { t: "Celebrity Hunt", on: "2026-02-22", k: "Entrepreneurs First, SF · Feb 2026", r: "1st place, $1,250", u: "https://luma.com/rlq0qpd1",
     hl: "Michael Dell picked up.",
     d: "LSE Generate’s one-day sprint set one task: get someone from a list of 100 celebrities on FaceTime. The list ran from presidents to Jensen Huang and Tim Cook. Their numbers are not findable, so we built Entrough, which maps the people around a target (assistants, managers, producers, collaborators) and works inward to a number. It found phone numbers for more than 40 people on the list. Most hung up. The 13th richest person in the world did not. We were the only team all hackathon to reach anyone on the list." },
   { t: "AI4Healthcare", on: "2026-01-10", k: "AGI House × MITHRL · Jan 2026", r: "1st place", u: "https://www.agihouse.org/events/AI4Healthcare%20Build%20Day%20-20260110",
@@ -307,11 +268,12 @@ const WORK = [
   { t: "Funding the Commons SF", on: "2026-03-14", minor: true, k: "Frontier Tower, SF · Mar 2026", r: "3rd of 240", u: "https://luma.com/ftchack-sf-2026",
     d: "Intelligence at the Frontier: a curated two-day hackathon from Funding the Commons and Protocol Labs, with tracks in robotics, agentic funding, AI safety and sovereign infrastructure. Placing led to an invitation to a private investor meeting. Project: write-up to come." },
 ];
+const where = (k) => { const [a, b] = k.split(" · "); return `<span>${a}</span>${b ? `<i>${b}</i>` : ""}`; }; // place on the left, date lined up on the right
 const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-$("#rows").innerHTML = WORK.map((w, i) => `${w.minor && !WORK[i - 1].minor ? `<div class="grp mono soft">Also placed</div>` : ""}${w.pair === "start" ? `<div class="pair"><div class="pair-cap">Two wins in one day <span>Dec 13, 2025</span></div>` : ""}<div class="tr${w.open ? " open" : ""}${w.minor ? " minor" : ""}"${w.minor ? "" : ` id="${slug(w.t)}"`} style="--i:${i}">${w.minor
-    ? `<a class="row" href="${w.u}" target="_blank" rel="noopener"><span class="mono soft">0${i + 1}</span><span class="name" data-scr>${w.t}</span><span class="mono soft c3">${w.k}</span><span class="mono c4">${w.r}</span><span class="plus" aria-hidden="true">↗</span></a></div>${w.pair === "end" ? "</div>" : ""}`
-    : `<button class="row" aria-expanded="${!!w.open}"><span class="mono soft">0${i + 1}</span><span class="name" data-scr>${w.t}</span><span class="mono soft c3">${w.k}</span><span class="mono c4">${w.r}</span><span class="plus" aria-hidden="true">+</span></button>
-  <div class="more"><div><div class="inner"><span></span><div>${w.hl ? `<p class="hl">${w.hl}</p>` : ""}<p>${w.d}</p>${w.u ? `<a class="mono" href="${w.u}" target="_blank" rel="noopener">Event page ↗</a>` : ""}</div></div></div></div></div>`}`).join("");
+$("#rows").innerHTML = WORK.map((w, i) => `${w.minor && !WORK[i - 1].minor ? `<div class="grp sm soft">Also placed</div>` : ""}${w.pair === "start" ? `<div class="pair"><div class="pair-cap">Two wins in one day <span>Dec 13, 2025</span></div>` : ""}<div class="tr${w.open ? " open" : ""}${w.minor ? " minor" : ""}"${w.minor ? "" : ` id="${slug(w.t)}"`} style="--i:${i}">${w.minor
+    ? `<a class="row" href="${w.u}" target="_blank" rel="noopener"><span class="name">${w.t}</span><span class="sm soft c3">${where(w.k)}</span><span class="sm c4">${w.r}</span><span class="plus" aria-hidden="true">↗</span></a></div>${w.pair === "end" ? "</div>" : ""}`
+    : `<button class="row" aria-expanded="${!!w.open}"><span class="name">${w.t}</span><span class="sm soft c3">${where(w.k)}</span><span class="sm c4">${w.r}</span><span class="plus" aria-hidden="true">+</span></button>
+  <div class="more"><div><div class="inner"><div>${w.hl ? `<p class="hl">${w.hl}</p>` : ""}<p>${w.d}</p>${w.u ? `<a class="sm" href="${w.u}" target="_blank" rel="noopener">Event page</a>` : ""}</div></div></div></div></div>`}`).join("");
 document.querySelectorAll(".tr>button.row").forEach((b) => b.addEventListener("click", () => {
   const tr = b.parentElement, open = !tr.classList.contains("open");
   document.querySelectorAll(".tr.open").forEach((o) => { o.classList.remove("open"); o.firstElementChild.setAttribute("aria-expanded", "false"); });
@@ -326,19 +288,6 @@ document.querySelectorAll(".tr>button.row").forEach((b) => b.addEventListener("c
   requestAnimationFrame(() => tr.scrollIntoView({ behavior: "instant", block: "start" }));
 })();
 
-// decode: text resolves left to right out of random glyphs
-const GLYPH = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789/<>#";
-function decode(el, ms = 700) {
-  if (reduce || el._busy) return; el._busy = true;
-  const to = el.dataset.txt || (el.dataset.txt = el.textContent), t0 = performance.now();
-  (function step(now) {
-    const p = Math.min(1, (now - t0) / ms), n = Math.floor(p * to.length);
-    el.textContent = to.slice(0, n) + [...to.slice(n)].map((c) => (c === " " ? " " : GLYPH[(Math.random() * GLYPH.length) | 0])).join("");
-    if (p < 1) requestAnimationFrame(step); else { el.textContent = to; el._busy = false; }
-  })(t0);
-}
-document.querySelectorAll("#spec [data-x]").forEach((el, i) => { const t = el.textContent; el.dataset.txt = t; el.textContent = ""; setTimeout(() => decode(el, 600), 700 + i * 140); });
-if (fine) document.querySelectorAll(".tr>.row").forEach((b) => b.addEventListener("mouseenter", () => decode(b.querySelector("[data-scr]"), 350)));
 
 // rolling digits: every digit of a stat becomes a strip of numbers; it rolls at least once round and stops on its digit
 document.querySelectorAll("[data-roll]").forEach((el) => {
@@ -427,10 +376,9 @@ function goRow(i) {
   el.addEventListener("pointerleave", () => { lastCol = -1; });
 })();
 
-// command menu: cmd/ctrl+k or "/" to open
+// command menu: a keyboard shortcut only, cmd/ctrl+k or "/"
 (() => {
-  const box = $("#cmdk"), q = $("#cmdk-q"), list = $("#cmdk-list"), kbtn = $("#kbtn"), mac = /Mac|iPhone|iPad/.test(navigator.platform);
-  if (!mac) kbtn.textContent = "Ctrl\u00a0K";
+  const box = $("#cmdk"), q = $("#cmdk-q"), list = $("#cmdk-list");
   const go = (sel) => () => document.querySelector(sel).scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
   const link = (u) => () => window.open(u, "_blank", "noopener");
   const ITEMS = [
@@ -457,9 +405,8 @@ function goRow(i) {
     const cur = list.querySelector('[aria-selected="true"]'); if (cur) cur.scrollIntoView({ block: "nearest" });
   }
   const open = () => { back = document.activeElement; box.hidden = false; q.value = ""; sel = 0; draw(); q.focus(); };
-  const close = () => { q.blur(); box.hidden = true; const to = back && back !== document.body && back.isConnected ? back : kbtn; if (to.offsetParent) to.focus(); };
+  const close = () => { q.blur(); box.hidden = true; if (back && back !== document.body && back.isConnected && back.offsetParent) back.focus(); };
   const run = (i) => { const it = shown[i]; if (!it) return; close(); it.run(); };
-  kbtn.addEventListener("click", open);
   q.addEventListener("input", () => { sel = 0; draw(); });
   list.addEventListener("mousemove", (e) => { const li = e.target.closest("[data-i]"); if (li && +li.dataset.i !== sel) { sel = +li.dataset.i; draw(); } });
   list.addEventListener("click", (e) => { const li = e.target.closest("[data-i]"); if (li) run(+li.dataset.i); });

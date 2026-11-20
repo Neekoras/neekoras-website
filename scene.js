@@ -67,7 +67,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
   let scene, skyM, shore = 0, skyTop = 36, peak = 0, top, stars = [], falls = [], mist = [], fallAcc = 0, mistAcc = 0;
   let surge = 0, flow = 0, lastY = scrollY; // surge: how hard the page is being scrolled, 0 to 1
   let clouds = [], drops = [], schools = [], lamps = [], beacons = [], jump = null, jumpIn = 4000, birds = null, birdIn = 7000, flash = 0, boltIn = 5000, rainAcc = 0;
-  const LABEL = { clear: "Clear", partly: "Partly cloudy", cloudy: "Cloudy", overcast: "Overcast", fog: "Fog", rain: "Rain", storm: "Storm" };
+  const LABEL = { clear: "clear", partly: "partly cloudy", cloudy: "cloudy", overcast: "overcast", fog: "foggy", rain: "raining", storm: "stormy" };
   const CLOCK = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" });
   let lineNow, lineCount;
   if (tag) { lineNow = document.createElement(reduce ? "span" : "button"); if (!reduce) { lineNow.type = "button"; lineNow.title = "Play a whole day in ten seconds"; lineNow.addEventListener("click", () => play()); } lineCount = document.createElement("span"); tag.replaceChildren(lineNow, lineCount); tag.hidden = false; }
@@ -583,7 +583,7 @@ window.lakeScene = ({ canvas: cv, host: hero, name, count: tag, rays: wantRays =
   function tick() {
     if (!tag) return;
     const now = Date.now() + shift, p = pacific(now), two = (n) => String(n).padStart(2, "0");
-    const status = "San Francisco " + CLOCK.format(now) + (env.known && env.temp != null ? " · " + Math.round(env.temp * 9 / 5 + 32) + "°F" : "") + (env.known ? " · " + (wish && wish.snow ? "Snow" : LABEL[env.sky]) : "");
+    const status = CLOCK.format(now) + " in San Francisco" + (env.known ? ", " + (env.temp != null ? Math.round(env.temp * 9 / 5 + 32) + "°F and " : "") + (wish && wish.snow ? "snowing" : LABEL[env.sky]) : ""); // one plain sentence
     if (lineNow.textContent !== status) lineNow.textContent = status;
     const to = p.month !== 12 ? null : p.day < 25 ? ["Christmas", Date.UTC(p.year, 11, 25, 8)] : p.day > 25 ? [String(p.year + 1), Date.UTC(p.year + 1, 0, 1, 8)] : null;
     let text = p.month === 12 && p.day === 25 ? "Merry Christmas" : p.month === 1 && p.day === 1 ? "Happy New Year" : "";
