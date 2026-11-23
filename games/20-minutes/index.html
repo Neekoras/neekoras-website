@@ -37,7 +37,7 @@
     <script>
         var gameLoader = GameLoader({
             title: "20 Minutes Till Dawn",
-            totalBytes: 57700579, // the data file and wasm parts below
+            totalBytes: 57699246, // the data file and wasm parts below
             note: "The first load is about 55 MB, so give it a minute on a slow connection.",
         });
     </script>
@@ -76,10 +76,12 @@
         }
 
         (async () => {
-            // Game data is served from here, not the CDN. It is the upstream file with every upgrade's
-            // icon filled in: the port only fixes the title-screen copies, so the in-game upgrade
-            // choices showed blank slots. The rest of the build still comes from upstream.
-            const dataUrl = URL.createObjectURL(await fetchTracked("Build/20minutes.data?v=1"));
+            // Game data is served from here, not the CDN. It is the upstream file with two fixes:
+            // every upgrade's icon is filled in (the port only fixes the title-screen copies, so the
+            // in-game upgrade choices showed blank slots), and the two UI font atlases are stored
+            // uncompressed again so missing letters can be added at runtime instead of showing gaps.
+            // The rest of the build still comes from upstream.
+            const dataUrl = URL.createObjectURL(await fetchTracked("Build/20minutes.data?v=2"));
             const wasmUrl = await mergeFiles("20minutes.wasm", 2);
 
             await new Promise((resolve, reject) => {
