@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <base href="/games/20-minutes/">
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>20 Minutes Till Dawn</title>
+    <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml">
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            background: #000;
+        }
+
+        #unity-container {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        #unity-canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body style="text-align: center; padding: 0; border: 0; margin: 0;">
+    <script src="/games/shared/loader.js?v=8"></script>
+    <script>
+        var gameLoader = GameLoader({
+            title: "20 Minutes Till Dawn",
+            totalBytes: 57650104, // the data and wasm parts below
+            note: "The first load is about 55 MB, so give it a minute on a slow connection.",
+        });
+    </script>
+    <div id="unity-container">
+        <canvas id="unity-canvas" tabindex="-1" hidden></canvas>
+    </div>
+    <script src="/games/shared/tabpause.js?v=2"></script>
+    <script>
+        // The game build is served from the upstream repository, pinned to one commit so every part matches.
+        var BUILD = "https://cdn.jsdelivr.net/gh/web-ports/20-minutes@e82366ecffd3ed46f804da050d02a44422986204/Build/";
+
+        // Streams a file, adding its bytes to the loading screen as they arrive.
+        var loadedBytes = 0;
+        async function fetchTracked(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("HTTP " + res.status + " for " + url);
+            const reader = res.body.getReader();
+            const chunks = [];
+            for (;;) {
+                const step = await reader.read();
+                if (step.done) break;
+                chunks.push(step.value);
+                loadedBytes += step.value.length;
+                gameLoader.download(loadedBytes);
+            }
+            return new Blob(chunks);
+        }
+
+        // Fetches the numbered parts in order and joins them into one file the engine can read.
+        async function mergeFiles(name, count) {
+            const blobs = [];
+            for (let i = 1; i <= count; i++) {
+                blobs.push(await fetchTracked(BUILD + name + ".part" + i));
+            }
+            return URL.createObjectURL(new Blob(blobs));
+        }
+
+        (async () => {
+            const dataUrl = await mergeFiles("20minutes.data", 2);
+            const wasmUrl = await mergeFiles("20minutes.wasm", 2);
+
+            await new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = BUILD + "20minutes.loader.js";
+                script.onload = resolve;
+                script.onerror = () => reject(new Error("Could not load the game loader."));
+                document.body.appendChild(script);
+            });
+
+            gameLoader.starting();
+            const canvas = document.querySelector("#unity-canvas");
+            // Fill the window. The engine keeps its render size in step with the canvas.
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                canvas.style.width = window.innerWidth + "px";
+                canvas.style.height = window.innerHeight + "px";
+            }
+            resizeCanvas();
+            window.addEventListener("resize", resizeCanvas);
+            canvas.hidden = false;
+            const instance = await createUnityInstance(canvas, {
+                dataUrl: dataUrl,
+                frameworkUrl: BUILD + "20minutes.framework.js",
+                codeUrl: wasmUrl,
+                streamingAssetsUrl: "StreamingAssets",
+                companyName: "Flanne",
+                productName: "MinutesTillDawn",
+                productVersion: "0.6.6",
+            }, () => gameLoader.starting());
+            gameLoader.done();
+            TabPause.attach(instance.Module);
+        })().catch((e) => {
+            console.error(e);
+            gameLoader.fail(e && e.message ? e.message : "The game could not load.");
+        });
+    </script>
+</body>
+
+</html>
