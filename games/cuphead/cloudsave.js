@@ -450,34 +450,32 @@
       transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
     #cloudsave-btn:hover { background: rgba(23, 34, 47, .95); color: #eef2f6; border-color: rgba(238, 242, 246, .18); transform: translateY(-1px); }
     #cloudsave-btn:active { transform: scale(.95); }
-    #cloudsave-panel { position: fixed; right: 14px; bottom: 68px; z-index: 99991;
-      width: 320px; max-width: calc(100vw - 28px); max-height: min(72vh, 560px); overflow: auto; overscroll-behavior: contain;
+    #cloudsave-panel { position: fixed; right: 14px; bottom: 64px; z-index: 99991;
+      width: 288px; max-width: calc(100vw - 28px); max-height: min(72vh, 560px); overflow: auto; overscroll-behavior: contain;
       border-radius: 14px; background: rgba(9, 17, 28, .97);
       -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
       color: #eef2f6; border: 1px solid rgba(238, 242, 246, .09);
       box-shadow: 0 18px 50px rgba(0, 0, 0, .5), 0 2px 6px rgba(0, 0, 0, .3);
       font: 400 13px/1.45 "Schibsted Grotesk", system-ui, sans-serif; text-align: left; letter-spacing: normal;
-      padding: 4px 14px 14px; display: none; transform-origin: bottom right;
+      padding: 2px 12px 12px; display: none; transform-origin: bottom right;
       animation: cs-in .18s cubic-bezier(.2, .8, .2, 1);
       scrollbar-width: thin; scrollbar-color: #2a3747 transparent; }
     @keyframes cs-in { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
     #cloudsave-panel * { box-sizing: border-box; text-align: left; }
-    #cloudsave-panel .cs-home { display: inline-flex; align-items: center; min-height: 40px; color: #7f8c9c; text-decoration: none;
+    #cloudsave-panel .cs-home { display: inline-flex; align-items: center; min-height: 34px; color: #7f8c9c; text-decoration: none;
       font: 500 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; transition: color .15s ease; }
     #cloudsave-panel .cs-home:hover { color: #eef2f6; }
-    #cloudsave-panel h3 { margin: 0 0 2px; padding: 0; font: 700 17px/1.2 "Schibsted Grotesk", system-ui, sans-serif;
+    #cloudsave-panel h3 { margin: 0 0 2px; padding: 0; font: 700 15px/1.2 "Schibsted Grotesk", system-ui, sans-serif;
       letter-spacing: -.01em; color: #eef2f6; text-transform: none; }
     #cloudsave-panel .cs-status { color: #9aa6b4; font-size: 12px; margin: 0; }
-    #cloudsave-panel #cloudsave-status::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-      background: #b7a6ff; margin-right: 7px; vertical-align: 1px; box-shadow: 0 0 0 3px rgba(183, 166, 255, .15); }
-    #cloudsave-panel #cloudsave-sync { color: #66727f; font-size: 11.5px; margin: 1px 0 12px; }
+    #cloudsave-panel #cloudsave-sync { color: #66727f; font-size: 11.5px; margin: 1px 0 10px; }
     #cloudsave-panel button { -webkit-appearance: none; appearance: none; margin: 0; min-height: 32px; padding: 0 12px;
       border: 1px solid rgba(238, 242, 246, .10); border-radius: 8px; background: rgba(238, 242, 246, .04); color: #eef2f6;
       font: 500 12px/1 "Schibsted Grotesk", system-ui, sans-serif; letter-spacing: normal; text-transform: none; white-space: nowrap; text-align: center;
       cursor: pointer; box-shadow: none; transition: background .15s ease, border-color .15s ease, transform .1s ease; }
     #cloudsave-panel button:hover { background: rgba(238, 242, 246, .09); border-color: rgba(238, 242, 246, .18); }
     #cloudsave-panel button:active { transform: scale(.97); }
-    #cloudsave-panel #cloudsave-now { width: 100%; min-height: 38px; margin: 0 0 6px; background: #eef2f6; border-color: #eef2f6;
+    #cloudsave-panel #cloudsave-now { width: 100%; min-height: 34px; margin: 0 0 6px; background: #eef2f6; border-color: #eef2f6;
       color: #050b14; font-size: 13px; font-weight: 600; }
     #cloudsave-panel #cloudsave-now:hover { background: #fff; border-color: #fff; }
     #cloudsave-panel #cloudsave-now:disabled { opacity: .6; cursor: default; transform: none; }
@@ -489,7 +487,7 @@
     #cloudsave-panel .cs-row small { color: #7f8c9c; font-size: 11.5px; }
     #cloudsave-panel .cs-row button:last-child { width: 32px; padding: 0; font-size: 14px; }
     #cloudsave-panel .cs-empty { color: #7f8c9c; padding: 10px 0 4px; font-size: 12px; }
-    #cloudsave-panel #cloudsave-code { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(238, 242, 246, .07); }
+    #cloudsave-panel #cloudsave-code { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(238, 242, 246, .07); }
     #cloudsave-panel .cs-code-head { font: 500 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .06em;
       text-transform: uppercase; color: #9aa6b4; margin-bottom: 6px; }
     #cloudsave-panel .cs-code-hint { color: #7f8c9c; font-size: 12px; line-height: 1.5; margin-bottom: 10px; }
@@ -504,7 +502,7 @@
       border-radius: 9px; padding: 8px; margin: 4px 0 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     #cloudsave-panel .cs-viewing div { flex-basis: 100%; font-size: 12px; }
     #cloudsave-panel .cs-viewing code { font: 400 11px/1 "IBM Plex Mono", ui-monospace, monospace; }
-    #cloudsave-toast { position: fixed; right: 14px; bottom: 68px; z-index: 99992; max-width: calc(100vw - 28px);
+    #cloudsave-toast { position: fixed; right: 14px; bottom: 64px; z-index: 99992; max-width: calc(100vw - 28px);
       background: rgba(9, 17, 28, .96); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
       color: #eef2f6; border: 1px solid rgba(238, 242, 246, .09); border-radius: 10px; padding: 9px 14px;
       font: 500 13px/1.35 "Schibsted Grotesk", system-ui, sans-serif; text-align: left; letter-spacing: normal;
