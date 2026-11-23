@@ -209,6 +209,7 @@
                 onsuccess: function (module) {
                     gameLoader.done();
                     TabPause.attach(module);
+                    if (window.UnityCloudSave) UnityCloudSave.started();
                 },
                 onerror: function (message) {
                     console.error(message);
@@ -220,6 +221,11 @@
             gameLoader.fail(e && e.message ? e.message : "The game could not load.");
         });
     </script>
+    <script>
+        // Cloud saves: this game's folder in the browser's save storage is md5("https://neekoras.com/games/tabs").
+        window.UNITY_CLOUDSAVE = { slug: "tabs", dir: "701c9122aa6bc356fb24bc3d6882db4f", skip: ["modio-", "mod.io-"] // mod.io's cache, not progress };
+    </script>
+    <script src="/games/shared/unity-cloudsave.js?v=1"></script>
 </body>
 
 </html>
