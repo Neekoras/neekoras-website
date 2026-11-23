@@ -26,6 +26,14 @@
             left: 0;
         }
 
+        /* the sound choice on the loading screen, styled after the loader's own button */
+        .tabs-choice { display: flex; flex-wrap: wrap; gap: 10px; }
+        .tabs-choice .gl-retry { margin-top: 18px; }
+        #gl-loader .gl-retry.tabs-alt { background: transparent; color: #eef2f6; box-shadow: inset 0 0 0 1px #2a3746; }
+        #gl-loader .gl-retry.tabs-alt:hover { background: #17222f; }
+        .tabs-choice .tabs-hint { flex-basis: 100%; margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: #7f8c9c; }
+        #gl-loader .gl-note a { color: #eef2f6; }
+
         #unity-container canvas {
             width: 100% !important;
             height: 100% !important;
@@ -40,7 +48,7 @@
         var gameLoader = GameLoader({
             title: "TABS",
             totalBytes: 1830816309, // the data and wasm parts below
-            note: "The first load is about 1.8 GB, so give it a few minutes on a slow connection.",
+            note: "The first load downloads about 1.5 GB. Your browser keeps it afterward, so the next visit starts much faster.",
         });
     </script>
     <div id="unity-container"></div>
@@ -50,9 +58,33 @@
         // The game build is served from the upstream repository, pinned to one commit so every part matches.
         var BUILD = "https://cdn.jsdelivr.net/gh/web-ports/tabs@f03af105ef2a57a6a7c6ccf1831c95da3327c6f0/Build/";
 
-        // Streams a file, adding its bytes to the loading screen as they arrive.
+        // Parts are saved in the browser after the first visit, so later visits skip the download.
+        // The cache name carries the pinned commit, so a new build never mixes with old parts.
+        var CACHE_NAME = "tabs-f03af105";
+        var PARALLEL = 6; // parts downloaded at once
+        var cachePromise = ("caches" in window)
+            ? caches.open(CACHE_NAME).catch(() => null)
+            : Promise.resolve(null);
+        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
         var loadedBytes = 0;
-        async function fetchTracked(url) {
+        function addBytes(n) {
+            loadedBytes += n;
+            gameLoader.download(loadedBytes);
+        }
+
+        // Gets one part: from the browser's saved copy if there is one, otherwise from the network,
+        // adding its bytes to the loading screen as they arrive and saving it for next time.
+        async function fetchPart(url) {
+            const cache = await cachePromise;
+            if (cache) {
+                const hit = await cache.match(url).catch(() => null);
+                if (hit) {
+                    const blob = await hit.blob();
+                    addBytes(blob.size);
+                    return blob;
+                }
+            }
             const res = await fetch(url);
             if (!res.ok) throw new Error("HTTP " + res.status + " for " + url);
             const reader = res.body.getReader();
@@ -61,24 +93,104 @@
                 const step = await reader.read();
                 if (step.done) break;
                 chunks.push(step.value);
-                loadedBytes += step.value.length;
-                gameLoader.download(loadedBytes);
+                addBytes(step.value.length);
             }
-            return new Blob(chunks);
+            const blob = new Blob(chunks);
+            // A full disk or a browser that limits storage only means the next visit downloads again.
+            if (cache) cache.put(url, new Response(blob)).catch(() => {});
+            return blob;
         }
 
-        // Fetches the numbered parts in order and joins them into one file the engine can read.
-        async function mergeFiles(name, count) {
-            const blobs = [];
-            for (let i = 1; i <= count; i++) {
-                blobs.push(await fetchTracked(BUILD + name + ".part" + i));
+        // The data file packs its audio (the sharedassets*.resource files) at the very end. Parts 81 to 86
+        // hold nothing but that audio, so a game without sound can skip them and use blank bytes instead.
+        var DATA_PARTS = 86;
+        var PART_SIZE = 20866662;     // every data part but the last
+        var LAST_PART_SIZE = 9728858;
+        var FIRST_AUDIO_ONLY_PART = 81;
+        var SKIPPED_BYTES = (DATA_PARTS - FIRST_AUDIO_ONLY_PART) * PART_SIZE + LAST_PART_SIZE;
+        var TOTAL_BYTES = 1830816309;
+
+        function blankPart(n) {
+            return new Blob([new Uint8Array(n === DATA_PARTS ? LAST_PART_SIZE : PART_SIZE)]);
+        }
+
+        // Fetches the numbered parts a few at a time and joins them, in order, into one file the engine can read.
+        // skipFrom: the first part number to replace with blank bytes instead of downloading.
+        async function mergeFiles(name, count, skipFrom) {
+            const blobs = new Array(count);
+            let next = 0;
+            async function worker() {
+                while (next < count) {
+                    const i = next++;
+                    blobs[i] = (skipFrom && i + 1 >= skipFrom)
+                        ? blankPart(i + 1)
+                        : await fetchPart(BUILD + name + ".part" + (i + 1));
+                }
             }
+            await Promise.all(Array.from({ length: Math.min(PARALLEL, count) }, worker));
             return URL.createObjectURL(new Blob(blobs));
         }
 
+        // True when every part is already saved in this browser, so there is nothing to choose.
+        async function allSaved() {
+            const cache = await cachePromise;
+            if (!cache) return false;
+            const keys = await cache.keys().catch(() => []);
+            return keys.length >= DATA_PARTS + 3;
+        }
+
+        // Asks once whether to download the sound. The answer is remembered for next time.
+        function askAboutSound() {
+            return new Promise((resolve) => {
+                const note = document.querySelector("#gl-loader .gl-note");
+                const box = document.createElement("div");
+                box.className = "tabs-choice";
+                box.innerHTML =
+                    '<button type="button" class="gl-retry" data-sound="1">With sound</button>' +
+                    '<button type="button" class="gl-retry tabs-alt" data-sound="0">Without sound</button>' +
+                    '<p class="tabs-hint">Without sound skips about ' + Math.round(SKIPPED_BYTES / 1048576) + ' MB of audio. The game plays silently.</p>';
+                note.after(box);
+                box.querySelector("button").focus();
+                box.addEventListener("click", (e) => {
+                    const b = e.target.closest("button");
+                    if (!b) return;
+                    const sound = b.dataset.sound === "1";
+                    try { localStorage.setItem("tabs-sound", sound ? "1" : "0"); } catch (err) {}
+                    box.remove();
+                    resolve(sound);
+                });
+            });
+        }
+
         (async () => {
-            const dataUrl = await mergeFiles("tabs.data.unityweb", 86);
-            const wasmUrl = await mergeFiles("tabs.wasm.code.unityweb", 3);
+            let sound = true;
+            if (!(await allSaved())) {
+                let saved = null;
+                try { saved = localStorage.getItem("tabs-sound"); } catch (err) {}
+                sound = saved === null ? await askAboutSound() : saved === "1";
+            }
+            if (!sound) {
+                // The blank audio cannot be decoded. Hand the engine an empty sound instead, so every clip just stays quiet.
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (AC) AC.prototype.decodeAudioData = function (data, ok) {
+                    const silent = this.createBuffer(1, 1, this.sampleRate);
+                    if (ok) ok(silent);
+                    return Promise.resolve(silent);
+                };
+                gameLoader.download(0, TOTAL_BYTES - SKIPPED_BYTES);
+                const note = document.querySelector("#gl-loader .gl-note");
+                if (note) note.innerHTML = 'Downloading without sound. <a href="#" id="tabs-sound-on">Switch to sound</a>';
+                const on = document.getElementById("tabs-sound-on");
+                if (on) on.onclick = (e) => {
+                    e.preventDefault();
+                    try { localStorage.setItem("tabs-sound", "1"); } catch (err) {}
+                    location.reload();
+                };
+            }
+            const [dataUrl, wasmUrl] = await Promise.all([
+                mergeFiles("tabs.data.unityweb", DATA_PARTS, sound ? 0 : FIRST_AUDIO_ONLY_PART),
+                mergeFiles("tabs.wasm.code.unityweb", 3),
+            ]);
 
             // The engine asks for the data and code by their part-less names. Hand it the merged copies instead.
             const originalOpen = XMLHttpRequest.prototype.open;
