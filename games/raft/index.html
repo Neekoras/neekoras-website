@@ -106,16 +106,9 @@
                 mergeFiles("Raft-WEBGL.asm.code.unityweb", 2),
             ]);
 
-            // The engine asks for the data and code by their part-less names. Hand it the merged copies instead.
-            const originalOpen = XMLHttpRequest.prototype.open;
-            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-                if (url.indexOf("Raft-WEBGL.data.unityweb") > -1) {
-                    url = dataUrl;
-                } else if (url.indexOf("Raft-WEBGL.asm.code.unityweb") > -1) {
-                    url = codeUrl;
-                }
-                return originalOpen.call(this, method, url, ...rest);
-            };
+            // The port's UnityLoader.js is patched to read the merged data and code from these two globals.
+            window.dataUrll = dataUrl;
+            window.asmUrll = codeUrl;
 
             gameLoader.starting();
             UnityLoader.instantiate("unity-container", BUILD + "Raft-WEBGL.json", {
