@@ -27,7 +27,7 @@
       let id = localStorage.getItem(SHARED_KEY);
       if (!isCode(id)) {
         id = GAME_KEYS.map((k) => localStorage.getItem(k)).find(isCode);
-        if (!id) { id = crypto.randomUUID(); localStorage.setItem(CODE_FILE_KEY, "pending"); }
+        if (!id) id = crypto.randomUUID();
         localStorage.setItem(SHARED_KEY, id);
       }
       return id;
@@ -508,7 +508,7 @@
       '<div class="cs-status" id="cloudsave-sync"></div>' +
       '<button id="cloudsave-now">Save to cloud now</button><div id="cloudsave-list"></div>' +
       '<div id="cloudsave-code"><div class="cs-code-head">Save code</div>' +
-      '<div class="cs-code-hint">This one code holds your saves for every game on this site. A file with it was downloaded on your first visit; keep that file. If a browser forgets you, upload the file here and your saves come back. You can also give the code to a friend so they can grab a copy of your save.</div>' +
+      '<div class="cs-code-hint">This one code holds your saves for every game on this site. It stays saved in this browser. To keep a copy of your own, choose Download code file; if a browser ever forgets you, upload that file here and your saves come back. You can also give the code to a friend so they can grab a copy of your save.</div>' +
       '<div class="cs-code-row"><code id="cloudsave-code-val"></code><button id="cloudsave-copy">Copy</button></div>' +
       '<div class="cs-code-row"><button id="cloudsave-file">Download code file</button><button id="cloudsave-upload">Upload code file</button></div>' +
       '<button id="cloudsave-enter">Enter a save code&hellip;</button></div>';
@@ -581,17 +581,6 @@
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
     document.getElementById("cloudsave-file").onclick = downloadCodeFile;
-    // A brand new code is downloaded on the first click or key press (browsers block downloads before that).
-    if (localStorage.getItem(CODE_FILE_KEY) === "pending") {
-      const first = () => {
-        if (localStorage.getItem(CODE_FILE_KEY) !== "pending") return;
-        localStorage.setItem(CODE_FILE_KEY, "done");
-        downloadCodeFile();
-        setTimeout(() => toast("Your save code was saved to your Downloads folder. Keep that file.", { icon: "&#9729;", ms: 8000 }), 800);
-      };
-      document.addEventListener("pointerdown", first, { once: true, capture: true });
-      document.addEventListener("keydown", first, { once: true, capture: true });
-    }
     const fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.accept = ".txt,text/plain";

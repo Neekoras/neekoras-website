@@ -26,7 +26,7 @@
       let id = localStorage.getItem(SHARED_KEY);
       if (!isCode(id)) {
         id = GAME_KEYS.map((k) => localStorage.getItem(k)).find(isCode);
-        if (!id) { id = crypto.randomUUID(); localStorage.setItem(CODE_FILE_KEY, "pending"); }
+        if (!id) id = crypto.randomUUID();
         localStorage.setItem(SHARED_KEY, id);
       }
       return id;
