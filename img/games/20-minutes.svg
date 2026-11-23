@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-<rect width="400" height="400" fill="#120b14"/>
-<path d="M90 300 A110 110 0 0 1 310 300" fill="none" stroke="#f5b342" stroke-width="10" stroke-linecap="round"/>
-<line x1="60" y1="300" x2="340" y2="300" stroke="#c2407a" stroke-width="6" stroke-linecap="round"/>
-<text x="200" y="210" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="120" fill="#eef2f6" letter-spacing="-4">20</text>
-<text x="200" y="250" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="30" fill="#f5b342" letter-spacing="4">MINUTES</text>
-</svg>
