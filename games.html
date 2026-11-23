@@ -3,16 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Arcade · Nicholas Lin</title>
+<title>Arcade</title>
 <meta name="description" content="17 games that run in the browser. No downloads, no accounts.">
 <meta name="theme-color" content="#050b14">
 <link rel="icon" href="/favicon.ico?v=3" sizes="48x48">
 <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml">
 <link rel="icon" href="/favicon-96.png?v=3" type="image/png" sizes="96x96">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3">
-<meta property="og:title" content="Arcade · Nicholas Lin">
+<meta property="og:title" content="Arcade">
 <meta property="og:description" content="17 games that run in the browser. No downloads, no accounts.">
-<meta property="og:image" content="https://neekoras.com/img/photo1.jpg">
 <meta property="og:url" content="https://neekoras.com/games">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -47,7 +46,7 @@ h1,h2{text-wrap:balance}
 .until button:focus-visible{outline:2px solid var(--glow);outline-offset:-10px}
 
 /* top bar */
-.bar{display:flex;justify-content:space-between;align-items:center;height:48px;font-size:14px}
+.bar{display:flex;justify-content:flex-end;align-items:center;height:48px;font-size:14px}
 .bar a{display:inline-flex;align-items:center;height:44px;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:4px;transition:text-decoration-color .15s}
 .bar a:hover{text-decoration-color:var(--ink)}
 
@@ -138,8 +137,6 @@ h1,h2{text-wrap:balance}
 @keyframes draw{to{stroke-dashoffset:0}}
 .ask .msg.err{color:var(--warn)}
 
-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-top:6px;padding-bottom:12px;border-top:1px solid var(--line);color:var(--soft)}
-footer>span{line-height:44px}
 
 @media (max-width:1020px){.shelf{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:700px){
@@ -162,7 +159,6 @@ footer>span{line-height:44px}
 <div class="sky" id="sky">
 <canvas id="air" aria-hidden="true"></canvas>
 <nav class="wrap bar sm" aria-label="Site">
-  <span class="me">Nicholas Lin</span>
   <a href="#request">Request a game</a>
 </nav>
 
@@ -275,10 +271,6 @@ footer>span{line-height:44px}
 </section>
 </main>
 
-<footer class="wrap sm">
-  <span>© <span id="yr">2026</span> Nicholas Lin</span>
-</footer>
-
 <script src="/scene.js?v=7"></script>
 <script>if (window.lakeScene) lakeScene({ canvas: document.getElementById("air"), host: document.getElementById("sky"), name: document.querySelector(".top h1"), count: document.getElementById("until"), rays: false, reduce: matchMedia("(prefers-reduced-motion: reduce)").matches });</script>
 <script>
@@ -346,7 +338,6 @@ footer>span{line-height:44px}
       .catch(function(){say('The request did not send. Check your connection and try again.','err')})
       .then(function(){btn.disabled=false});
   });
-  document.getElementById('yr').textContent=new Date().getFullYear();
 })();
 </script>
 
