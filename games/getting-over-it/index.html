@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <base href="/games/getting-over-it/">
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <title>Getting Over It</title>
+    <!-- Web port from github.com/genizy/web-port (getting-over-it). The build files live in Build/ next to this page. -->
+    <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml">
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            background: #000;
+        }
+
+        #unity-container {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        #unity-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            outline: none;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="/games/shared/loader.js?v=8"></script>
+    <script>
+        var gameLoader = GameLoader({
+            title: "Getting Over It",
+            totalBytes: 691732588, // the data and wasm parts below
+            note: "The first load downloads about 660 MB. Your browser keeps it afterward, so the next visit starts much faster.",
+        });
+    </script>
+    <div id="unity-container">
+        <canvas id="unity-canvas" tabindex="-1" hidden></canvas>
+    </div>
+    <script src="/games/shared/tabpause.js?v=2"></script>
+    <script src="cloudsave.js?v=20261123"></script>
+    <script>
+        var BUILD = "Build/";
+
+        // Parts are saved in the browser after the first visit, so later visits skip the download.
+        // Change the version when the build files change, so old parts are never mixed in.
+        var CACHE_NAME = "getting-over-it-v1";
+        var PARALLEL = 6; // parts downloaded at once
+        var cachePromise = ("caches" in window)
+            ? caches.open(CACHE_NAME).catch(() => null)
+            : Promise.resolve(null);
+        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+        var loadedBytes = 0;
+        function addBytes(n) {
+            loadedBytes += n;
+            gameLoader.download(loadedBytes);
+        }
+
+        // Gets one part: from the browser's saved copy if there is one, otherwise from the network,
+        // adding its bytes to the loading screen as they arrive and saving it for next time.
+        async function fetchPart(url) {
+            const cache = await cachePromise;
+            if (cache) {
+                const hit = await cache.match(url).catch(() => null);
+                if (hit) {
+                    const blob = await hit.blob();
+                    addBytes(blob.size);
+                    return blob;
+                }
+            }
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("HTTP " + res.status + " for " + url);
+            const reader = res.body.getReader();
+            const chunks = [];
+            for (;;) {
+                const step = await reader.read();
+                if (step.done) break;
+                chunks.push(step.value);
+                addBytes(step.value.length);
+            }
+            const blob = new Blob(chunks);
+            // A full disk or a browser that limits storage only means the next visit downloads again.
+            if (cache) cache.put(url, new Response(blob)).catch(() => {});
+            return blob;
+        }
+
+        // Fetches the numbered parts a few at a time and joins them, in order, into one file the engine can read.
+        async function mergeFiles(name, count, type) {
+            const blobs = new Array(count);
+            let next = 0;
+            async function worker() {
+                while (next < count) {
+                    const i = next++;
+                    blobs[i] = await fetchPart(BUILD + name + ".part" + (i + 1));
+                }
+            }
+            await Promise.all(Array.from({ length: Math.min(PARALLEL, count) }, worker));
+            return URL.createObjectURL(new Blob(blobs, type ? { type: type } : {}));
+        }
+
+        (async () => {
+            const [dataUrl, wasmUrl] = await Promise.all([
+                mergeFiles("GettingOverIt.data", 32),
+                mergeFiles("GettingOverIt.wasm", 2, "application/wasm"),
+            ]);
+
+            await new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = BUILD + "GettingOverIt.loader.js";
+                script.onload = resolve;
+                script.onerror = () => reject(new Error("Could not load the game loader."));
+                document.body.appendChild(script);
+            });
+
+            gameLoader.starting();
+            const canvas = document.querySelector("#unity-canvas");
+            canvas.hidden = false;
+            const instance = await createUnityInstance(canvas, {
+                dataUrl: dataUrl,
+                frameworkUrl: BUILD + "GettingOverIt.framework.js",
+                codeUrl: wasmUrl,
+                streamingAssetsUrl: "StreamingAssets",
+                companyName: "Bennett Foddy",
+                productName: "Getting Over It",
+                productVersion: "1.7",
+            }, () => gameLoader.starting());
+            gameLoader.done();
+            TabPause.attach(instance.Module);
+        })().catch((e) => {
+            console.error(e);
+            gameLoader.fail(e && e.message ? e.message : "The game could not load.");
+        });
+    </script>
+</body>
+
+</html>
