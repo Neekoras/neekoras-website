@@ -60,7 +60,7 @@
         <canvas id="unity-canvas" tabindex="-1" hidden></canvas>
     </div>
     <script src="/games/shared/tabpause.js?v=2"></script>
-    <script src="cloudsave.js?v=20261123b"></script>
+    <script src="cloudsave.js?v=20261124"></script>
     <script>
         // The game build is served from the upstream repository, pinned to one commit so every part matches.
         var COMMIT = "a6069ee4139036ac01cca34a1a008ffc543469ac";
@@ -141,23 +141,48 @@
         }
 
         // Fetches the parts a few at a time and joins them, in order, into one file the engine can read.
-        async function mergeFiles(name, count, suffix, type) {
+        // fixPart, if given, may return a corrected copy of a part before it is joined.
+        async function mergeFiles(name, count, suffix, type, fixPart) {
             const blobs = new Array(count);
             let next = 0;
             async function worker() {
                 while (next < count) {
                     const i = next++;
-                    blobs[i] = await fetchPart(BUILD + name + suffix(i));
+                    const blob = await fetchPart(BUILD + name + suffix(i));
+                    blobs[i] = fixPart ? await fixPart(i, blob) : blob;
                 }
             }
             await Promise.all(Array.from({ length: Math.min(PARALLEL, count) }, worker));
             return URL.createObjectURL(new Blob(blobs, type ? { type: type } : {}));
         }
 
+        // The port saves to Application.dataPath, which in a browser is the page's web address, so the
+        // first save (right after the tutorial) fails and the game stops on the table. This changes the
+        // save folder lookup in SaveManager to Application.persistentDataPath, the browser storage that
+        // already holds the settings. In the compiled code that is one function-table number:
+        // 21706 (get_dataPath) becomes 19484 (get_persistentDataPath), same length, so nothing else moves.
+        // Each fix only applies if the original bytes are there, so a different build is left untouched.
+        var WASM_PART_SIZE = 20971520;
+        var WASM_FIXES = [
+            { at: 51847444, from: [0x41, 0xca, 0xa9, 0x01], to: [0x41, 0x9c, 0x98, 0x01] },
+        ];
+        async function fixWasmPart(i, blob) {
+            const start = i * WASM_PART_SIZE;
+            const mine = WASM_FIXES.filter((f) => f.at >= start && f.at + f.from.length <= start + blob.size);
+            if (!mine.length) return blob;
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            for (const f of mine) {
+                const o = f.at - start;
+                if (f.from.every((v, k) => bytes[o + k] === v)) bytes.set(f.to, o);
+                else console.warn("[inscryption] save fix skipped: unexpected bytes at", f.at);
+            }
+            return new Blob([bytes]);
+        }
+
         (async () => {
             const [dataUrl, wasmUrl] = await Promise.all([
                 mergeFiles(DATA, DATA_PARTS, dataSuffix),
-                mergeFiles(WASM, WASM_PARTS, wasmSuffix, "application/wasm"),
+                mergeFiles(WASM, WASM_PARTS, wasmSuffix, "application/wasm", fixWasmPart),
             ]);
 
             await new Promise((resolve, reject) => {
@@ -176,6 +201,8 @@
                 frameworkUrl: BUILD + "7492dd364cd7595cfa9d018ad373b295.framework.js",
                 codeUrl: wasmUrl,
                 streamingAssetsUrl: BUILD.replace(/Build\/$/, "StreamingAssets"),
+                // Without this, the save file the game writes stays in memory and is gone after a reload.
+                autoSyncPersistentDataPath: true,
                 companyName: "Daniel Mullins Games",
                 productName: "Inscryption",
                 productVersion: "Release",

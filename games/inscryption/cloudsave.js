@@ -170,7 +170,10 @@
   // Every Unity game on this site shares the "/idbfs" database, each in its own folder named
   // md5("https://neekoras.com/games/inscryption"). Only touch that folder, and skip Unity's analytics.
   const OWN_DIR = "/idbfs/1a19f12d4e1416a9a9a2fb5d556e9bb0";
+  // The game's progress file sits one level up: it saves to persistentDataPath + "/../" (see index.html).
+  const PROGRESS_FILES = ["/idbfs/SaveFile.gwsave", "/idbfs/SaveFile-Backup.gwsave"];
   function isSaveKey(key) {
+    if (PROGRESS_FILES.includes(key)) return true;
     return typeof key === "string" && key.startsWith(OWN_DIR + "/") && !key.startsWith(OWN_DIR + "/Unity/");
   }
 
