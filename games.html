@@ -46,7 +46,7 @@ h1,h2{text-wrap:balance}
 .until button:focus-visible{outline:2px solid var(--glow);outline-offset:-10px}
 
 /* top bar */
-.bar{display:flex;justify-content:flex-end;align-items:center;height:48px;font-size:14px}
+.bar{display:flex;justify-content:flex-end;align-items:center;gap:26px;height:48px;font-size:14px}
 .bar a{display:inline-flex;align-items:center;height:44px;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:4px;transition:text-decoration-color .15s}
 .bar a:hover{text-decoration-color:var(--ink)}
 
@@ -83,6 +83,17 @@ h1,h2{text-wrap:balance}
 .lbl b{font:700 clamp(15px,1.25vw,18px)/1.15 var(--sans);letter-spacing:-.015em}
 .lbl .sub{font-size:13px;line-height:1.35;color:var(--soft)}
 .play{position:absolute;left:12px;bottom:12px;padding:8px 13px;border-radius:99px;background:var(--ink);color:var(--bg);font-weight:500;line-height:1}
+
+/* dailies: other sites' daily puzzles, shown as cards that link out */
+.shelf[hidden],.dh[hidden]{display:none}
+.dh{padding-top:clamp(40px,6vw,72px);padding-bottom:clamp(26px,3.2vw,44px);border-top:1px solid var(--line)}
+.dh h2{font:900 clamp(40px,6.4vw,88px)/.9 var(--sans);letter-spacing:-.05em;text-transform:lowercase}
+.dh p{margin-top:18px;max-width:40ch;color:var(--soft)}
+.daily .art{background:#0d1420}
+.daily .g:first-child{grid-column:auto;grid-row:auto}
+.daily .g:first-child .art{aspect-ratio:1;flex:none}
+.daily .g:first-child .lbl b{font-size:clamp(15px,1.25vw,18px)}
+@media (hover:none){.daily .g .play{display:none}}
 
 /* first card takes a 2x2 slot */
 .g:first-child{grid-column:span 2;grid-row:span 2}
@@ -159,6 +170,7 @@ h1,h2{text-wrap:balance}
 <div class="sky" id="sky">
 <canvas id="air" aria-hidden="true"></canvas>
 <nav class="wrap bar sm" aria-label="Site">
+  <a href="#dailies">Dailies</a>
   <a href="#request">Request a game</a>
 </nav>
 
@@ -264,6 +276,109 @@ h1,h2{text-wrap:balance}
   </div>
 </div>
 
+<section class="wrap dh" id="dailies">
+  <h2>Dailies</h2>
+  <p>One new puzzle a day. These are played on their own sites and open in a new tab.</p>
+</section>
+<div class="wrap shelf daily" id="daily">
+  <a class="g" href="https://www.nytimes.com/games/wordle/index.html" target="_blank" rel="noopener" data-n="wordle five letter word nyt daily">
+    <span class="art"><img src="/img/dailies/wordle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Wordle</b><span class="sub">Word</span></span>
+  </a>
+  <a class="g" href="https://globle-game.com/" target="_blank" rel="noopener" data-n="globle geography country globe map daily">
+    <span class="art"><img src="/img/dailies/globle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Globle</b><span class="sub">Geography</span></span>
+  </a>
+  <a class="g" href="https://minecraftle.zachmanson.com/" target="_blank" rel="noopener" data-n="minecraftle minecraft crafting recipe daily">
+    <span class="art"><img src="/img/dailies/minecraftle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Minecraftle</b><span class="sub">Minecraft</span></span>
+  </a>
+  <a class="g" href="https://www.nytimes.com/games/connections" target="_blank" rel="noopener" data-n="connections word groups nyt daily">
+    <span class="art"><img src="/img/dailies/connections.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Connections</b><span class="sub">Word groups</span></span>
+  </a>
+  <a class="g" href="https://krillion.io/" target="_blank" rel="noopener" data-n="krillion trivia rarest answer daily">
+    <span class="art"><img src="/img/dailies/krillion.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Krillion</b><span class="sub">Trivia</span></span>
+  </a>
+  <a class="g" href="https://www.nytimes.com/games/strands" target="_blank" rel="noopener" data-n="strands word search nyt daily">
+    <span class="art"><img src="/img/dailies/strands.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Strands</b><span class="sub">Word search</span></span>
+  </a>
+  <a class="g" href="https://www.merriam-webster.com/games/quordle/" target="_blank" rel="noopener" data-n="quordle word four daily">
+    <span class="art"><img src="/img/dailies/quordle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Quordle</b><span class="sub">Four words at once</span></span>
+  </a>
+  <a class="g" href="https://www.britannica.com/games/octordle/daily" target="_blank" rel="noopener" data-n="octordle word eight daily">
+    <span class="art"><img src="/img/dailies/octordle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Octordle</b><span class="sub">Eight words at once</span></span>
+  </a>
+  <a class="g" href="https://worldle.teuteuf.fr/" target="_blank" rel="noopener" data-n="worldle geography country outline map daily">
+    <span class="art"><img src="/img/dailies/worldle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Worldle</b><span class="sub">Geography</span></span>
+  </a>
+  <a class="g" href="https://travle.earth/" target="_blank" rel="noopener" data-n="travle geography countries map daily">
+    <span class="art"><img src="/img/dailies/travle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Travle</b><span class="sub">Geography</span></span>
+  </a>
+  <a class="g" href="https://wafflegame.net/daily" target="_blank" rel="noopener" data-n="waffle word grid daily">
+    <span class="art"><img src="/img/dailies/waffle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Waffle</b><span class="sub">Word grid</span></span>
+  </a>
+  <a class="g" href="https://squaredle.app/" target="_blank" rel="noopener" data-n="squaredle word search square daily">
+    <span class="art"><img src="/img/dailies/squaredle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Squaredle</b><span class="sub">Word search</span></span>
+  </a>
+  <a class="g" href="https://contexto.me/" target="_blank" rel="noopener" data-n="contexto word meaning daily">
+    <span class="art"><img src="/img/dailies/contexto.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Contexto</b><span class="sub">Word meaning</span></span>
+  </a>
+  <a class="g" href="https://semantle.com/" target="_blank" rel="noopener" data-n="semantle word meaning daily">
+    <span class="art"><img src="/img/dailies/semantle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Semantle</b><span class="sub">Word meaning</span></span>
+  </a>
+  <a class="g" href="https://framed.wtf/" target="_blank" rel="noopener" data-n="framed movie film daily">
+    <span class="art"><img src="/img/dailies/framed.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Framed</b><span class="sub">Movies</span></span>
+  </a>
+  <a class="g" href="https://playdaily.org/songless" target="_blank" rel="noopener" data-n="songless music song daily">
+    <span class="art"><img src="/img/dailies/songless.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Songless</b><span class="sub">Music</span></span>
+  </a>
+  <a class="g" href="https://bandle.app/" target="_blank" rel="noopener" data-n="bandle music song instruments daily">
+    <span class="art"><img src="/img/dailies/bandle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Bandle</b><span class="sub">Music</span></span>
+  </a>
+  <a class="g" href="https://spotle.io/" target="_blank" rel="noopener" data-n="spotle music artist daily">
+    <span class="art"><img src="/img/dailies/spotle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Spotle</b><span class="sub">Music</span></span>
+  </a>
+  <a class="g" href="https://nerdlegame.com/" target="_blank" rel="noopener" data-n="nerdle maths math numbers equation daily">
+    <span class="art"><img src="/img/dailies/nerdle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Nerdle</b><span class="sub">Maths</span></span>
+  </a>
+  <a class="g" href="https://timeguessr.com/" target="_blank" rel="noopener" data-n="timeguessr photo year place geography daily">
+    <span class="art"><img src="/img/dailies/timeguessr.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">TimeGuessr</b><span class="sub">Photos</span></span>
+  </a>
+  <a class="g" href="https://www.flagle.io/" target="_blank" rel="noopener" data-n="flagle flag geography daily">
+    <span class="art"><img src="/img/dailies/flagle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Flagle</b><span class="sub">Flags</span></span>
+  </a>
+  <a class="g" href="https://games.oec.world/en/tradle/" target="_blank" rel="noopener" data-n="tradle geography country exports trade daily">
+    <span class="art"><img src="/img/dailies/tradle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Tradle</b><span class="sub">Geography</span></span>
+  </a>
+  <a class="g" href="https://murdle.com/" target="_blank" rel="noopener" data-n="murdle mystery logic murder daily">
+    <span class="art"><img src="/img/dailies/murdle.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Murdle</b><span class="sub">Mystery</span></span>
+  </a>
+  <a class="g" href="https://pokedoku.com/" target="_blank" rel="noopener" data-n="pokedoku pokemon grid daily">
+    <span class="art"><img src="/img/dailies/pokedoku.jpg?v=1" alt="" width="400" height="400" loading="lazy" decoding="async"><span class="play sm">Play</span></span>
+    <span class="lbl"><b translate="no">Pokedoku</b><span class="sub">Pokémon</span></span>
+  </a>
+</div>
+
 <section class="wrap ask" id="request">
   <div>
     <h2>Missing one?</h2>
@@ -289,7 +404,8 @@ h1,h2{text-wrap:balance}
 <script>
 (function(){
   var cards=[].slice.call(document.querySelectorAll('.g')),find=document.getElementById('find'),count=document.getElementById('count'),
-      none=document.getElementById('none'),noneQ=document.getElementById('none-q'),game=document.getElementById('ask-game');
+      none=document.getElementById('none'),noneQ=document.getElementById('none-q'),game=document.getElementById('ask-game'),
+      shelf=document.getElementById('shelf'),daily=document.getElementById('daily'),dh=document.getElementById('dailies');
   cards.forEach(function(c,i){c.style.setProperty('--i',i)});
 
   // cards lean toward the pointer: the corner under it dips, and the fixed counter-tilt is dropped while it does
@@ -311,6 +427,8 @@ h1,h2{text-wrap:balance}
     cards.forEach(function(c){var hit=!q||c.dataset.n.indexOf(q)>-1;c.hidden=!hit;if(hit)n++});
     count.textContent=q?n+' of '+cards.length:'';
     none.hidden=n>0;noneQ.textContent=find.value.trim();
+    var shown=function(box){return cards.some(function(c){return c.parentNode===box&&!c.hidden})};
+    shelf.hidden=n>0&&!shown(shelf);daily.hidden=dh.hidden=!shown(daily);
   }
   var was=new URLSearchParams(location.search).get('q');
   if(was){find.value=was.slice(0,80);run()}
