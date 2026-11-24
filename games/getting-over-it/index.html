@@ -131,9 +131,9 @@
             canvas.hidden = false;
             const instance = await createUnityInstance(canvas, {
                 dataUrl: dataUrl,
-                // v=2: the copy on the server is patched so pausing the game's audio (tab switch or
-                // click away) loops over its sounds with Object.values, not forEach on a plain object.
-                frameworkUrl: BUILD + "GettingOverIt.framework.js?v=2",
+                // v=3: the copy on the server is patched so pausing the game's audio (tab switch or
+                // click away) loops over its sounds with Object.values and skips any it cannot pause.
+                frameworkUrl: BUILD + "GettingOverIt.framework.js?v=3",
                 codeUrl: wasmUrl,
                 streamingAssetsUrl: "StreamingAssets",
                 companyName: "Bennett Foddy",
