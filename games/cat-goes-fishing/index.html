@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cat Goes Fishing</title>
+    <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml">
+    <!-- Web port from github.com/Reeyuki/CatFish (a GameMaker build). The build is served from that
+         repository, pinned to one commit so every file matches. -->
+    <script>
+        var BUILD = "https://cdn.jsdelivr.net/gh/Reeyuki/CatFish@6f8d9f78a4a98387d29ec6386afe7a3ade9e8e09/";
+
+        // The engine asks for its files by bare name ("runner.data", "game.unx", the music). Send those to
+        // the pinned build instead of this site. Absolute addresses and this site's own paths are left alone.
+        function toBuild(url) {
+            if (typeof url !== "string") return url;
+            if (/^(https?:|blob:|data:)/.test(url) || url.startsWith("/")) return url;
+            return BUILD + url.substring(url.lastIndexOf("/") + 1);
+        }
+
+        // The game data comes in three parts. They are fetched up front (so the loading screen can show real
+        // progress) and handed to the engine as one file when it asks for "game.unx".
+        var UNX_PARTS = ["game.unx.aa", "game.unx.ab", "game.unx.ac"];
+        var UNX_BYTES = 20971520 + 20971520 + 11652520;
+        var unxReady = null;
+        function loadUnx(onBytes) {
+            if (unxReady) return unxReady;
+            let loaded = 0;
+            unxReady = Promise.all(UNX_PARTS.map(async (name) => {
+                const res = await fetch(BUILD + name);
+                if (!res.ok) throw new Error("HTTP " + res.status + " for " + name);
+                const reader = res.body.getReader();
+                const chunks = [];
+                for (;;) {
+                    const step = await reader.read();
+                    if (step.done) break;
+                    chunks.push(step.value);
+                    loaded += step.value.length;
+                    onBytes(loaded);
+                }
+                return new Blob(chunks);
+            })).then((blobs) => new Blob(blobs).arrayBuffer());
+            return unxReady;
+        }
+
+        // The port shows a "Port by …" pop-up on start. The credit is kept in the comment above instead.
+        (function () {
+            const originalAlert = window.alert;
+            window.alert = function (msg) {
+                if (typeof msg === "string" && /^Port by /i.test(msg)) { console.log(msg); return; }
+                return originalAlert.call(window, msg);
+            };
+        })();
+
+        (function () {
+            const originalFetch = window.fetch;
+            window.fetch = function (url, options) {
+                url = toBuild(url);
+                if (typeof url === "string" && url.endsWith("/game.unx")) {
+                    return loadUnx(() => {}).then((buf) => new Response(buf, { headers: { "Content-Type": "application/octet-stream" } }));
+                }
+                return originalFetch.call(this, url, options);
+            };
+
+            // The engine may also ask for game.unx with XMLHttpRequest. Answer that one from the parts too.
+            const OriginalXHR = window.XMLHttpRequest;
+            window.XMLHttpRequest = function () {
+                const xhr = new OriginalXHR();
+                let isUnx = false;
+                let buffer = null;
+                const listeners = {};
+                const fire = (type) => {
+                    const h = xhr["on" + type];
+                    if (typeof h === "function") h.call(proxy, { type: type, target: proxy });
+                    (listeners[type] || []).forEach((l) => l.call(proxy, { type: type, target: proxy }));
+                };
+                const proxy = new Proxy(xhr, {
+                    get(target, prop) {
+                        if (isUnx) {
+                            if (prop === "status") return 200;
+                            if (prop === "statusText") return "OK";
+                            if (prop === "readyState") return buffer ? 4 : 1;
+                            if (prop === "response") return buffer;
+                        }
+                        if (prop === "addEventListener") {
+                            return function (type, l, o) {
+                                (listeners[type] = listeners[type] || []).push(l);
+                                return target.addEventListener(type, l, o);
+                            };
+                        }
+                        const val = target[prop];
+                        if (typeof val !== "function") return val;
+                        return function (...args) {
+                            if (prop === "open") {
+                                args[1] = toBuild(args[1]);
+                                if (typeof args[1] === "string" && args[1].endsWith("/game.unx")) { isUnx = true; return; }
+                            }
+                            if (prop === "send" && isUnx) {
+                                loadUnx(() => {}).then((buf) => {
+                                    buffer = buf;
+                                    fire("readystatechange");
+                                    fire("load");
+                                    fire("loadend");
+                                }).catch(() => fire("error"));
+                                return;
+                            }
+                            return val.apply(target, args);
+                        };
+                    },
+                    set(target, prop, value) { target[prop] = value; return true; },
+                });
+                return proxy;
+            };
+        })();
+    </script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* the canvas must not have a border or padding, or the mouse position will be off */
+        #canvas {
+            display: block;
+            border: 0;
+            background: #000;
+            outline: none;
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="/games/shared/loader.js?v=8"></script>
+    <script>
+        var gameLoader = GameLoader({
+            title: "Cat Goes Fishing",
+            totalBytes: UNX_BYTES,
+            note: "The first load is about 55 MB.",
+        });
+        loadUnx((n) => gameLoader.download(n)).catch((e) => gameLoader.fail(e && e.message ? e.message : "The game could not load."));
+    </script>
+    <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1" hidden></canvas>
+    <script>
+        var canvasElement = document.getElementById("canvas");
+        var startingWidth, startingHeight;
+
+        // Keep the game's own aspect ratio while filling as much of the window as possible.
+        function ensureAspectRatio() {
+            if (canvasElement.width === 300 && canvasElement.height === 150) return; // the size before the game sets its own
+            if (startingWidth === undefined) {
+                startingWidth = canvasElement.width;
+                startingHeight = canvasElement.height;
+            }
+            const aspect = startingWidth / startingHeight;
+            let w = window.innerWidth, h = w / aspect;
+            if (h > window.innerHeight) { h = window.innerHeight; w = h * aspect; }
+            canvasElement.style.width = w + "px";
+            canvasElement.style.height = h + "px";
+        }
+        new ResizeObserver(() => requestAnimationFrame(ensureAspectRatio)).observe(document.body);
+
+        var Module = {
+            locateFile: (path) => BUILD + path,
+            preRun: [],
+            postRun: [],
+            print: function (text) {
+                if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(" ");
+                console.log(text);
+                if (text === "Entering main loop.") {
+                    canvasElement.hidden = false;
+                    ensureAspectRatio();
+                    gameLoader.done();
+                    canvasElement.focus();
+                    // The engine renames the tab to its project name ("cat2.project"). Keep the game's name.
+                    const keepTitle = () => { if (document.title !== "Cat Goes Fishing") document.title = "Cat Goes Fishing"; };
+                    keepTitle();
+                    new MutationObserver(keepTitle).observe(document.querySelector("title"), { childList: true });
+                }
+            },
+            printErr: function (text) {
+                if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(" ");
+                console.error(text);
+            },
+            canvas: (function () {
+                canvasElement.addEventListener("webglcontextlost", (e) => {
+                    e.preventDefault();
+                    gameLoader.fail("The graphics context was lost. Reload the page to keep playing.");
+                }, false);
+                return canvasElement;
+            })(),
+            setStatus: function (text) {
+                if (text && /Preparing|Running/.test(text)) gameLoader.starting();
+            },
+            totalDependencies: 0,
+            monitorRunDependencies: function () {},
+        };
+        Module.arguments = [];
+        window.onerror = function (message) {
+            gameLoader.fail(String(message || "The game stopped with an error."));
+        };
+
+        // Hooks the GameMaker runner calls into. This page shows no ads and sells nothing, so an ad
+        // break finishes straight away and a purchase just reports back.
+        var g_pAddAsyncMethod = -1;
+        function setAddAsyncMethod(m) { g_pAddAsyncMethod = m; }
+        var g_pWadLoadCallback;
+        function setWadLoadCallback(cb) { g_pWadLoadCallback = cb; }
+        var g_pJSExceptionHandler;
+        function setJSExceptionHandler(h) { if (typeof h === "function") g_pJSExceptionHandler = h; }
+        function hasJSExceptionHandler() { return typeof g_pJSExceptionHandler === "function"; }
+        function doJSExceptionHandler(json) { if (hasJSExceptionHandler()) g_pJSExceptionHandler(JSON.parse(json)); }
+        function manifestFiles() {
+            return ["runner.data", "runner.js", "runner.wasm", "audio-worklet.js", "game.unx.aa", "game.unx.ab", "game.unx.ac",
+                "music_easylemon.ogg", "music_iceflow.ogg", "music_lionfish.ogg", "music_nightofchaos.ogg"].join(";");
+        }
+        function onFirstFrameRendered() {}
+        function onGameSetWindowSize() {}
+        function triggerAd(adId, beforeAd, afterAd, adDismissed, adViewed, adBreakDone) {
+            var p = triggerAdPrefix(beforeAd, afterAd, adDismissed, adViewed, adBreakDone);
+            doGMLCallback(p + 4 * 16, { id: adId });
+            triggerAdPostfix(p);
+        }
+        function triggerPayment(itemId, done) {
+            var p = triggerPaymentPrefix(done);
+            setTimeout(() => doGMLCallback(p, { id: itemId }), 0);
+            triggerPaymentPostfix();
+        }
+    </script>
+    <script src="/games/shared/tabpause.js?v=2"></script>
+    <script>
+        // Start the engine once the game data is in, so the loading screen stays up until then.
+        loadUnx(() => {}).then(() => {
+            gameLoader.starting();
+            const s = document.createElement("script");
+            s.src = BUILD + "runner.js";
+            s.onerror = () => gameLoader.fail("Could not load the game engine.");
+            document.body.appendChild(s);
+        }).catch(() => {});
+    </script>
+</body>
+
+</html>
