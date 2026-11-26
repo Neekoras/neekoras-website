@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Spotle tab icon: a pure white O, edge to edge, holding the five purple
+       waveform bars. Nothing behind it, so the corners stay see-through. -->
+  <circle cx="50" cy="50" r="50" fill="#ffffff" />
+  <g fill="#8370DE">
+    <rect x="13.4" y="40" width="10" height="20" rx="5" />
+    <rect x="29.2" y="26.35" width="10" height="47.3" rx="5" />
+    <rect x="45" y="16.4" width="10" height="67.2" rx="5" />
+    <rect x="60.8" y="35.1" width="10" height="29.8" rx="5" />
+    <rect x="76.6" y="42.55" width="10" height="14.9" rx="5" />
+  </g>
+</svg>
