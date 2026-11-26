@@ -2,8 +2,8 @@
  * Cloud saves for Cat Goes Fishing (GameMaker WebGL) on neekoras.com.
  *
  * The game saves .ini files in the browser's "/_savedata" IndexedDB database (object store
- * "FILE_DATA"), which Undertale shares. We watch that database for writes of this game's files
- * and upload snapshots to /games/cat-goes-fishing/api/. A snapshot is restored before the game
+ * "FILE_DATA"), in a folder named after its game id; Undertale uses the same database. We watch
+ * that folder for writes and upload snapshots to /games/cat-goes-fishing/api/. A snapshot is restored before the game
  * is reloaded.
  */
 (function () {
@@ -163,14 +163,16 @@
     });
   }
   const FILE_MODE = 33206; // regular file in Emscripten IDBFS
-  // Only this game's files: Undertale saves into the same database. n.ini is the save itself
-  // (n-backup.ini its backup, n_beta.ini from older versions) and meta.ini holds the settings.
-  const SAVE_RE = /^\/_savedata\/(n|n-backup|n_beta|meta)\.ini$/;
+  // Only this game's folder: Undertale saves into the same database. meta.ini lists the save slots
+  // (level, money, mode, hat) and each slot is an sdata<slot>…ini file.
+  const DIR = "/_savedata/88da906d-88e8-4d96-b507-06d480637dcd";
+  const DIR_MODE = 16893; // directory in Emscripten IDBFS
+  const SAVE_RE = /^\/_savedata\/88da906d-88e8-4d96-b507-06d480637dcd\/[^/]+$/;
   function isSaveKey(key) {
     return typeof key === "string" && SAVE_RE.test(key);
   }
   function hasProgress(files) {
-    return files.some((f) => /^n\.ini$/.test(f.name));
+    return files.some((f) => /(^|\/)sdata[^/]*\.ini$/.test(f.name));
   }
   async function readSaveFiles() {
     let db;
@@ -216,6 +218,8 @@
       const keep = new Set(files.map((f) => "/_savedata/" + f.name));
       const existing = os.getAllKeys();
       existing.onsuccess = () => {
+        // A browser that never saved has no folder yet; the game needs it to find the files.
+        if (!existing.result.includes(DIR)) os.put({ timestamp: new Date(), mode: DIR_MODE }, DIR);
         for (const key of existing.result) {
           if (isSaveKey(key) && !keep.has(key)) os.delete(key);
         }
