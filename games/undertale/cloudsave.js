@@ -162,12 +162,13 @@
     });
   }
   const FILE_MODE = 33206; // regular file in Emscripten IDBFS
-  // This database belongs to Undertale alone. Keep every direct child file so routes,
-  // settings and future saves survive a restore. A fresh launch only writes two config
-  // files; file0 or undertale.sav indicates actual progress.
+  // Keep every direct child file so routes, settings and future saves survive a restore. A fresh
+  // launch only writes two config files; file0 or undertale.sav indicates actual progress.
+  // Cat Goes Fishing (also GameMaker) saves into this same database: its files are left alone.
   const SAVE_RE = /^\/_savedata\/[^/]+$/;
+  const OTHER_GAME_RE = /^\/_savedata\/(n|n-backup|n_beta|meta)\.ini$/;
   function isSaveKey(key) {
-    return typeof key === "string" && SAVE_RE.test(key) && !/\/\.{1,2}$/.test(key);
+    return typeof key === "string" && SAVE_RE.test(key) && !OTHER_GAME_RE.test(key) && !/\/\.{1,2}$/.test(key);
   }
   function hasProgress(files) {
     return files.some((f) => /^(file[0-9]+|undertale\.sav)$/.test(f.name));
